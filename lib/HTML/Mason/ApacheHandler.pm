@@ -106,7 +106,9 @@ use HTML::Mason::MethodMaker
       );
 
 # use() params. Assign defaults, in case ApacheHandler is only require'd.
-use vars qw($ARGS_METHOD $AH);
+use vars qw($ARGS_METHOD $AH $VERSION);
+
+$VERSION = sprintf '%2d.%02d', q$Revision$ =~ /(\d+)\.(\d+)/;
 
 my @used = ($HTML::Mason::IN_DEBUG_FILE);
 
