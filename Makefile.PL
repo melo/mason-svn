@@ -55,6 +55,10 @@ sub test
     # The PORT env var is used by Apache::test.  Don't delete it!
     my $port = $APACHE{port} || 8228;
     $APACHE{apache_dir} ||= '';
+
+    # This works for newer MakeMakers (5.48_01 +)
+    $test =~ s/("-MExtUtils::Command::MM" "-e" ")(test_harness\(\$\(TEST_VERBOSE\).*?\)" \$\(TEST_FILES\))/$1 \\\$\$ENV{MASON_VERBOSE} == \$(TEST_VERBOSE) ? \$(TEST_VERBOSE) : \\\$\$ENV{MASON_VERBOSE}; \\\$\$ENV{PORT}=$port; \\\$\$ENV{APACHE_DIR}=q^$APACHE{apache_dir}^; $2/;
+
     $test =~ s/(runtests \@ARGV;)/\$\$ENV{MASON_VERBOSE} = \$(TEST_VERBOSE) ? \$(TEST_VERBOSE) : \$\$ENV{MASON_VERBOSE}; \$\$ENV{PORT}=$port; \$\$ENV{APACHE_DIR}=q^$APACHE{apache_dir}^; $1/;
 
     return $test;
