@@ -14,6 +14,7 @@ use HTML::Mason::Component::FileBased;
 use HTML::Mason::Component::Subcomponent;
 use HTML::Mason::Request;
 use HTML::Mason::Tools qw(dumper_method read_file);
+use Params::Validate qw(:all);
 
 use HTML::Mason::MethodMaker
     ( read_write => [ qw( default_escape_flags
@@ -58,13 +59,23 @@ sub new
     my $class = shift;
     my $self = {%fields};
 
+    validate( @_,
+	      { allow_globals => { type => ARRAYREF, optional => 1 },
+		default_escape_flags => { type => SCALAR, optional => 1 },
+		ignore_warnings_expr => { type => SCALAR, optional => 1 },
+		in_package => { type => SCALAR, optional => 1 },
+		postamble => { type => SCALAR, optional => 1 },
+		postprocess => { type => CODEREF, optional => 1 },
+		preamble => { type => SCALAR, optional => 1 },
+		preprocess => { type => CODEREF, optional => 1 },
+		taint_check => { type => SCALAR | UNDEF, optional => 1 },
+		use_strict => { type => SCALAR | UNDEF, optional => 1 },
+	      }
+	    );
+
     my (%options) = @_;
     while (my ($key,$value) = each(%options)) {
-	if (exists($fields{$key})) {
-	    $self->{$key} = $value;
-	} else {
-	    die "HTML::Mason::Parser::new: invalid option '$key'\n";
-	}
+	$self->{$key} = $value;
     }
     bless $self, $class;
     return $self;
