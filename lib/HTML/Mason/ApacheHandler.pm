@@ -920,6 +920,7 @@ sub prepare_request
 	    !APACHE2) {
 		$r->send_http_header();
 	}
+	return OK if $retval == 200;
 	return $retval;
     }
 

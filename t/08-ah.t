@@ -363,7 +363,7 @@ EOF
     {
         one_test( 1, '/comps/apache_request', 4, <<'EOF' );
 X-Mason-Test: Initial value
-Status code: 200
+Status code: 0
 EOF
     }
 
