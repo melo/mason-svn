@@ -90,7 +90,7 @@ sub handler
 
     # Always send the cookie out as there is no reason not to.
     my $cookie = new CGI::Cookie(-name=>'AF_SID', -value=>$HTML::Mason::Commands::session{_session_id}, -path => '/',);
-    $r->header_out('Set-Cookie', => $cookie);
+    $r->header_out('Set-Cookie' => $cookie);
 
     my $status = $ah->handle_request($r);
 
