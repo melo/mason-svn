@@ -326,15 +326,21 @@ sub handle_request {
 
     if ($err) {
 	#
-	# If first component was not found, return 404. In case of
-	# POST we must trick Apache into not reading POST content
+	# If first component was not found, return NOT_FOUND. In case
+	# of POST we must trick Apache into not reading POST content
 	# again. Wish there were a more standardized way to do this...
+	#
+	# This $err_code stuff is really only used to communicate found
+	# errors; it will be replaced with exceptions
 	#
 	if (defined($err_code) and $err_code eq 'top_not_found') {
 	    if ($apreq->method eq 'POST') {
 		$apreq->method('GET');
 		$apreq->headers_in->unset('Content-length');
 	    }
+	    
+	    # Log the error the same way that Apache does (taken from default_handler in http_core.c)
+	    $apreq->log_error("[Mason] File does not exist: ",$apreq->filename . ($apreq->path_info ? $apreq->path_info : ""));
 	    return NOT_FOUND;
 	}
 
@@ -552,16 +558,20 @@ sub handle_request_1
     $pathname .= $r->path_info unless $is_file;
 
     #
-    # Compute the component path via the resolver.
+    # Compute the component path via the resolver. Return NOT_FOUND on failure.
     #
     my $comp_path = $interp->resolver->file_to_path($pathname,$interp);
-    return NOT_FOUND unless $comp_path;
+    unless ($comp_path) {
+	$r->warn("[Mason] Cannot resolve file to component: $pathname (is file outside component root?)");
+	return NOT_FOUND;
+    }
 
     #
-    # Decline if file does not pass top level predicate.
+    # Return NOT_FOUND if file does not pass top level predicate.
     #
-    if ($is_file and defined($self->{top_level_predicate})) {
-	return NOT_FOUND unless $self->{top_level_predicate}->($r->filename);
+    if ($is_file and defined($self->top_level_predicate) and !$self->top_level_predicate->($r->filename)) {
+	$r->warn("[Mason] File fails top level predicate: ".$r->filename);
+	return NOT_FOUND;
     }
 
     #
