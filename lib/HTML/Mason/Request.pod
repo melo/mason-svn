@@ -191,13 +191,18 @@ causes foo to return immediately.
 
 =item caller_args
 
-Returns a list reference of the arguments passed by the component at
-the specified stack level. e.g.
+Returns the arguments passed by the component at the specified stack
+level. Use a positive argument to count from the current component and
+a negative argument to count from the component at the bottom of the
+stack. e.g.
 
     $m->caller_args(0)   # arguments passed to current component
-    $m->caller_args(-1)  # arguments passed to top-level component
+    $m->caller_args(1)   # arguments passed to component that called us
+    $m->caller_args(-1)  # arguments passed to first component executed
 
-    my %top_args = @{$m->caller_args(-1)}    # get top-level arguments as a hash
+When called in scalar context, a hash reference is returned.  When
+called in list context, a list of arguments (which may be assigned to
+a hash) is returned.
 
 =for html <a name="item_callers">
 
@@ -206,11 +211,14 @@ the specified stack level. e.g.
 With no arguments, returns the current component stack as a list of
 component objects, starting with the current component and ending with
 the top-level component. With one numeric argument, returns the
-component object at that index in the list. e.g.
+component object at that index in the list. Use a positive argument to
+count from the current component and a negative argument to count from
+the component at the bottom of the stack. e.g.
 
-    $m->callers(0)      # current component
-    $m->callers(1)      # component that called us
-    $m->callers(-1)     # top-level component
+    my @comps = $m->callers   # all components
+    $m->callers(0)            # current component
+    $m->callers(1)            # component that called us
+    $m->callers(-1)           # first component executed
 
 =for html <a name="item_call_next">
 
@@ -291,7 +299,10 @@ value is 1, which indicates we are in the top-level component.
 
 If the request has been handled by a dhandler, this method returns the
 remainder of the URI or C<Interp::exec> path when the dhandler directory is
-removed.  Otherwise returns undef.
+removed. Otherwise returns undef.
+
+C<dhandler_arg> may be called from any component in the request, not just
+the dhandler.
 
 =for html <a name="item_fetch_comp">
 
@@ -381,6 +392,18 @@ format (number of seconds since the epoch).
 By using C<$m-E<gt>time> rather than calling time() directly, you enable
 the option of previewer or port-based time/date simulations. e.g.
 a port that looks one day into the future.
+
+=item top_comp
+
+Returns the component originally called in the request. Note: because
+of autohandlers this may or may not be the first component executed.
+
+=item top_args
+
+Returns the arguments originally passed to the top level component.
+When called in scalar context, a hash reference is returned. When
+called in list context, a list of arguments (which may be assigned to
+a hash) is returned.
 
 =back
 

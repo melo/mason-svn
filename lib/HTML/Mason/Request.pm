@@ -19,7 +19,8 @@ use HTML::Mason::MethodMaker
 			 count
 			 declined
 			 error_code
-			 interp ) ],
+			 interp,
+			 top_comp ) ]
 
       read_write => [ qw( out_method
 			  out_mode ) ],
@@ -133,6 +134,10 @@ sub exec {
     }
     my $first_comp = shift(@wrapper_chain);
     $self->{wrapper_chain} = [@wrapper_chain];
+
+    # Fill top_level slots for introspection.
+    $self->{top_comp} = $first_comp;
+    $self->{top_args} = \@args;
 
     # Call the first component.
     my ($result, @result);
@@ -330,7 +335,12 @@ sub caller_args
     my ($self,$index) = @_;
     my @caller_stack = reverse(@{$self->stack});
     if (defined($index)) {
-	return $caller_stack[$index]->{args};
+	if (wantarray) {
+	    return @{$caller_stack[$index]->{args}};
+	} else {
+	    my %h = @{$caller_stack[$index]->{args}};
+	    return \%h;
+	}
     } else {
 	die "caller_args expects stack level as argument";
     }
@@ -696,6 +706,17 @@ sub flush_buffer
     my ($self, $content) = @_;
     $self->out_method->($self->{out_buffer});
     $self->{out_buffer} = '';    
+}
+
+sub top_args
+{
+    my ($self) = @_;
+    if (wantarray) {
+	return @{$self->{top_args}};
+    } else {
+	my %h = @{$self->{top_args}};
+	return \%h;
+    }
 }
 
 #
