@@ -129,7 +129,7 @@ component.  It then returns either a true (serve component) or false
 (reject component). In this example, the predicate rejects requests
 for components whose name starts with an "_" character:
 
-    top_level_predicate => sub { $_[0] !~ m{/_[^/]+$}
+    top_level_predicate => sub { $_[0] !~ m{/_[^/]+$} }
 
 =back
 
