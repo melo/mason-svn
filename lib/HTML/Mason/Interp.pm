@@ -227,7 +227,7 @@ sub check_reload_file {
 	my @lines = split("\n",$block);
 	foreach my $comp_path (@lines) {
 	    if (exists($self->{code_cache}->{$comp_path})) {
-		$self->{code_cache_current_size} -= $self->{code_cache}->{$comp_path}->{size};
+		$self->{code_cache_current_size} -= $self->{code_cache}->{$comp_path}->{comp}->object_size;
 		delete($self->{code_cache}->{$comp_path});
 	    }
 	}
@@ -269,17 +269,11 @@ sub load {
     my $resolver = $self->{resolver};
 
     #
-    # Use resolver to look up component and get fully-qualified path.
-    # Return undef if component not found.
-    #
-    my (@lookup_info) = $resolver->lookup_path($path,$self);
-    my $fq_path = $lookup_info[0] or return undef;
-
-    #
     # If using reload file, assume that we are using object files and
     # have a cached subroutine or object file.
     #
     if ($self->{use_reload_file}) {
+	my $fq_path = $path;   # note - this will foil multiple component roots
 	return $code_cache->{$fq_path}->{comp} if exists($code_cache->{$fq_path});
 
 	$objfile = $self->object_dir . $fq_path;
@@ -293,6 +287,13 @@ sub load {
 	$code_cache->{$fq_path}->{comp} = $comp;
 	return $comp;
     }
+
+    #
+    # Use resolver to look up component and get fully-qualified path.
+    # Return undef if component not found.
+    #
+    my (@lookup_info) = $resolver->lookup_path($path,$self);
+    my $fq_path = $lookup_info[0] or return undef;
 
     #
     # Get last modified time of source.
