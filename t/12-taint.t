@@ -108,7 +108,7 @@ my $code = "# MASON COMPILER ID: ". $interp->compiler->object_id ."\nmy \$x = '$
 ok is_tainted($code);
 
 eval { $interp->eval_object_code( object_code => \$code ) };
-ok $@, '', "Unable to eval a tainted object file";
+ok $@, '', "Unable to eval tainted object code";
 
 ###########################################################
 sub is_tainted {
