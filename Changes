@@ -17,6 +17,13 @@ of crashing when the specified stack level does not exist. Task id #495.
 Reported by Bernhard Schmalhofer.
 - The busy_lock option to $m->cache->get was broken.  Task id #484.
 Reported by Igor Muratov.
+- When generating the HTML error message page, we now only use basic
+HTML escaping.  This fixes two problems.  One is that if
+HTML::Entities is not installed, using the "|h" escape flag in the
+error display component causes an endless loop.  The other is that the
+"|h" flag can mangle non-Latin-1 characters.  Task ids #497 and #494.
+Reported by Harmen and Oleg Bartunov respectively.
+
 
 1.22  July 14, 2003
 
