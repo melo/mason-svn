@@ -40,13 +40,17 @@ local $| = 1;
     my $both_tests = 12;
     my $cgi_only_tests = 1;
     my $apr_only_tests = 1;
+    my $both_no_handler_tests = 8;
+    my $cgi_only_no_handler_tests = 1;
+    my $apr_only_no_handler_tests = 1;
 
-    my $total = $both_tests;
-    $total += $cgi_only_tests;
+    my $total = $both_tests + $both_no_handler_tests;
+    $total += $cgi_only_tests + $cgi_only_no_handler_tests;
     if ($has_apache_request)
     {
-	$total += $both_tests;
+	$total += $both_tests + $both_no_handler_tests;
 	$total += $apr_only_tests;
+	$total += $apr_only_no_handler_tests;
     }
 
     print "1..$total\n";
@@ -55,23 +59,14 @@ local $| = 1;
 write_test_comps();
 
 print STDERR "\n";
-cgi_tests();
+
+cgi_tests(1);
+cgi_tests(0);
 
 if ($has_apache_request)
 {
-    print STDERR "Waiting for previous httpd to shut down\n";
-    my $x = 0;
-    while ( -e "$ENV{APACHE_DIR}/httpd.pid" )
-    {
-	sleep (1);
-	$x++;
-	if ( $x > 10 )
-	{
-	    die "$ENV{APACHE_DIR}t/httpd.pid file still exists after 10 seconds.  Exiting.";
-	}
-    }
-
-    apache_request_tests();
+    apache_request_tests(1);
+    apache_request_tests(0);
 }
 
 sub write_test_comps
@@ -159,12 +154,18 @@ sub write_comp
 
 sub cgi_tests
 {
-    start_httpd('CGI');
+    my $with_handler = shift;
 
-    standard_tests();
+    my $def = $with_handler ? 'CGI' : 'CGI_no_handler';
+    start_httpd($def);
 
-    my $response = Apache::test->fetch( '/ah=0/comps/cgi_object' );
-    my $actual = filter_response($response);
+    standard_tests($with_handler);
+
+    my $path = '/comps/cgi_object';
+    $path = "/ah=0$path" if $with_handler;
+
+    my $response = Apache::test->fetch($path);
+    my $actual = filter_response($response, $with_handler);
     my $success = HTML::Mason::Tests->check_output( actual => $actual,
 						    expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -174,17 +175,23 @@ EOF
 						  );
     ok($success);
 
-    kill_httpd();
+    kill_httpd(1);
 }
 
 sub apache_request_tests
 {
-    start_httpd('mod_perl');
+    my $with_handler = shift;
 
-    standard_tests();
+    my $def = $with_handler ? 'mod_perl' : 'mod_perl_no_handler';
+    start_httpd($def);
 
-    my $response = Apache::test->fetch( '/ah=0/comps/apache_request' );
-    my $actual = filter_response($response);
+    standard_tests($with_handler);
+
+    my $path = '/comps/apache_request';
+    $path = "/ah=0$path" if $with_handler;
+
+    my $response = Apache::test->fetch($path);
+    my $actual = filter_response($response, $with_handler);
     my $success = HTML::Mason::Tests->check_output( actual => $actual,
 						    expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -194,13 +201,18 @@ EOF
 						  );
     ok($success);
 
-    kill_httpd();
+    kill_httpd(1);
 }
 
 sub standard_tests
 {
-    my $response = Apache::test->fetch( "/ah=0/comps/basic" );
-    my $actual = filter_response($response);
+    my $with_handler = shift;
+
+    my $path = '/comps/basic';
+    $path = "/ah=0$path" if $with_handler;
+
+    my $response = Apache::test->fetch($path);
+    my $actual = filter_response($response, $with_handler);
     my $success = HTML::Mason::Tests->check_output( actual => $actual,
 						    expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -215,8 +227,11 @@ EOF
 						  );
     ok($success);
 
-    $response = Apache::test->fetch( "/ah=0/comps/headers" );
-    $actual = filter_response($response);
+    $path = '/comps/headers';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
 X-Mason-Test: New value 3
@@ -229,10 +244,12 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/ah=1/comps/headers" );
-    $actual = filter_response($response);
-    $success = HTML::Mason::Tests->check_output( actual => $actual,
-						 expect => <<'EOF',
+    if ($with_handler)
+    {
+	$response = Apache::test->fetch( "/ah=1/comps/headers" );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
 X-Mason-Test: New value 2
 
 
@@ -240,11 +257,15 @@ Blah blah
 blah
 Status code: 0
 EOF
-					       );
-    ok($success);
+						   );
+	ok($success);
+    }
 
-    $response = Apache::test->fetch( "/ah=0/comps/headers?blank=1" );
-    $actual = filter_response($response);
+    $path = '/comps/headers?blank=1';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
 X-Mason-Test: New value 1
@@ -253,18 +274,24 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/ah=1/comps/headers?blank=1" );
-    $actual = filter_response($response);
-    $success = HTML::Mason::Tests->check_output( actual => $actual,
-						 expect => <<'EOF',
+    if ($with_handler)
+    {
+	$response = Apache::test->fetch( "/ah=1/comps/headers?blank=1" );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
 X-Mason-Test: New value 1
 Status code: 0
 EOF
-					       );
-    ok($success);
+						   );
+	ok($success);
+    }
 
-    $response = Apache::test->fetch( "/ah=0/comps/_underscore" );
-    $actual = filter_response($response);
+    $path = '/comps/_underscore';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -274,31 +301,42 @@ EOF
 					       );
     ok($success);
 
-    # top_level_predicate should reject this request.
-    $response = Apache::test->fetch( "/ah=2/comps/_underscore" );
-    $actual = filter_response($response);
-    $success = HTML::Mason::Tests->check_output( actual => $actual,
-						 expect => <<'EOF',
+    if ($with_handler)
+    {
+	# top_level_predicate should reject this request.
+	$response = Apache::test->fetch( "/ah=2/comps/_underscore" );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
 X-Mason-Test: 
 Status code: 404
 EOF
-					       );
-    ok($success);
+						   );
+	ok($success);
+    }
 
+    $path = '/comps/die';
+    $path = "/ah=0$path" if $with_handler;
 
     # error_mode is html so we get lots of stuff
-    $response = Apache::test->fetch( "/ah=0/comps/die" );
-    $actual = filter_response($response);
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
     ok( $actual =~ m,error while executing /die:\s+Mine heart is pierced, );
 
-    # error_mode is fatal so we just get a 500
-    $response = Apache::test->fetch( "/ah=4/comps/die" );
-    $actual = filter_response($response);
-    ok( $actual =~ m,500 Internal Server Error, );
+    if ($with_handler)
+    {
+	# error_mode is fatal so we just get a 500
+	$response = Apache::test->fetch( "/ah=4/comps/die" );
+	$actual = filter_response($response, $with_handler);
+	ok( $actual =~ m,500 Internal Server Error, );
+    }
+
+    $path = '/comps/params?qs1=foo&qs2=bar&foo=A&foo=B';
+    $path = "/ah=0$path" if $with_handler;
 
     # params in query string only
-    $response = Apache::test->fetch( '/ah=0/comps/params?qs1=foo&qs2=bar&foo=A&foo=B' );
-    $actual = filter_response($response);
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -310,12 +348,15 @@ EOF
 						  );
     ok($success);
 
+    $path = '/comps/params';
+    $path = "/ah=0$path" if $with_handler;
+
     # params as POST only
-    $response = Apache::test->fetch( { uri =>  '/ah=0/comps/params',
+    $response = Apache::test->fetch( { uri => $path,
 				       method => 'POST',
 				       content => 'post1=foo&post2=bar&foo=A&foo=B',
 				     } );
-    $actual = filter_response($response);
+    $actual = filter_response($response, $with_handler);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -327,12 +368,15 @@ EOF
 						  );
     ok($success);
 
+    $path = '/comps/params?qs1=foo&qs2=bar&mixed=A';
+    $path = "/ah=0$path" if $with_handler;
+
     # params mixed in query string and POST
-    $response = Apache::test->fetch( { uri =>  '/ah=0/comps/params?qs1=foo&qs2=bar&mixed=A',
+    $response = Apache::test->fetch( { uri => $path,
 				       method => 'POST',
 				       content => 'post1=a&post2=b&mixed=B',
 				     } );
-    $actual = filter_response($response);
+    $actual = filter_response($response, $with_handler);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
 X-Mason-Test: Initial value
@@ -353,10 +397,23 @@ sub filter_response
 {
     my $response = shift;
 
+    my $with_handler = shift;
+
     # because the header or content may be undef
     local $^W = 0;
-    my $actual = join "\n", ( 'X-Mason-Test: ' . $response->headers->header('X-Mason-Test'),
+    my $actual = join "\n", ( 'X-Mason-Test: ' .
+			      # hack until I make a separate test
+			      # suite for the httpd.conf configuration
+			      # stuff
+			      ( $with_handler ?
+				$response->headers->header('X-Mason-Test') :
+				( $response->headers->header('X-Mason-Test') ?
+				  $response->headers->header('X-Mason-Test') :
+				  'Initial value' ) ),
 			      $response->content );
+
+    my $code = $response->code == 200 ? 0 : $response->code;
+    $actual .= "Status code: $code" unless $with_handler;
 
     return $actual;
 }
@@ -385,6 +442,8 @@ sub start_httpd
 
 sub kill_httpd
 {
+    my $wait = shift;
+
     open PID, "$ENV{APACHE_DIR}/httpd.pid"
 	or die "Can't open '$ENV{APACHE_DIR}/httpd.pid': $!";
     my $pid = <PID>;
@@ -394,6 +453,21 @@ sub kill_httpd
     print STDERR "Killing httpd process ($pid)\n";
     kill 15, $pid
 	or die "Can't kill process $pid: $!";
+
+    if ($wait)
+    {
+	print STDERR "Waiting for previous httpd to shut down\n";
+	my $x = 0;
+	while ( -e "$ENV{APACHE_DIR}/httpd.pid" )
+	{
+	    sleep (1);
+	    $x++;
+	    if ( $x > 10 )
+	    {
+		die "$ENV{APACHE_DIR}t/httpd.pid file still exists after 10 seconds.  Exiting.";
+	    }
+	}
+    }
 }
 
 use vars qw($TESTS);
