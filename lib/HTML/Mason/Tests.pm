@@ -478,10 +478,10 @@ sub check_output
     }
     elsif (@expect < @actual)
     {
-	$diff = @expect - @actual;
+	$diff = @actual - @expect;
 	if ($VERBOSE)
 	{
-	    print "Actual result contained $diff too few lines.\n";
+	    print "Actual result contained $diff too many lines.\n";
 	}
     }
 
@@ -505,7 +505,7 @@ sub check_output
 		my $expect = join "\n", ( @expect_prev,
 					  $expect[$x],
 					  $expect[$x + 1] ? $expect[$x + 1] : () );
-		print "Got ...\n<<<<<\n$actual\n>>>>>\n... but expected ...\n<<<<<\n$expect\n>>>>>\n";
+		print "Got ...\n-----\n$actual\n-----\n   ... but expected ...\n-----\n$expect\n-----\n";
 	    }
 	    $diff = 1;
 	    last;
