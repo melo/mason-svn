@@ -43,7 +43,7 @@ local $| = 1;
     my $both_no_handler_tests = 8;
     my $cgi_only_no_handler_tests = 2;
     my $apr_only_no_handler_tests = 2;
-    my $multi_conf_tests = 5;
+    my $multi_conf_tests = 4;
 
     my $total = $both_tests + $both_no_handler_tests;
     $total += $cgi_only_tests + $cgi_only_no_handler_tests;
@@ -196,11 +196,6 @@ EOF
 
     write_comp( '__top_level_predicate', <<'EOF',
 Shouldn't ever run
-EOF
-	      );
-
-    write_comp( 'multiconf3/use_reload_file', <<'EOF',
-use_reload_file is <% $m->interp->use_reload_file %>
 EOF
 	      );
 }
@@ -547,17 +542,6 @@ EOF
     $actual = filter_response($response, 0);
     ok( $actual =~ /404 not found/i,
 	"Attempt to request a non-existent component should not work with dhandlers turned off" );
-
-    $response = Apache::test->fetch('/comps/multiconf3/use_reload_file');
-    $actual = filter_response($response, 0);
-    $success = HTML::Mason::Tests->check_output( actual => $actual,
-						 expect => <<'EOF',
-X-Mason-Test: Initial value
-use_reload_file is 1
-Status code: 0
-EOF
-					       );
-    ok($success);
 
     kill_httpd(1);
 }
