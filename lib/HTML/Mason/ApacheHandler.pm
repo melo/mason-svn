@@ -531,7 +531,14 @@ sub handle_request_1
     # If filename is a directory, then either decline or simply reset
     # the content type, depending on the value of decline_dirs.
     #
-    if (-d $r->finfo) {
+    # ** We should be able to use $r->finfo here, but finfo is broken
+    # in some versions of mod_perl (e.g. see Shane Adams message on
+    # mod_perl list on 9/10/00)
+    #
+    my $is_dir = -d $r->filename;
+    my $is_file = -f _;
+
+    if ($is_dir) {
 	if ($self->decline_dirs) {
 	    return DECLINED;
 	} else {
@@ -544,7 +551,7 @@ sub handle_request_1
     # (mainly for dhandlers).
     #
     my $pathname = $r->filename;
-    $pathname .= $r->path_info unless -f $r->finfo;
+    $pathname .= $r->path_info unless $is_file;
 
     #
     # Compute the component path via the resolver.
@@ -555,7 +562,7 @@ sub handle_request_1
     #
     # Decline if file does not pass top level predicate.
     #
-    if (-f $r->finfo and defined($self->{top_level_predicate})) {
+    if ($is_file and defined($self->{top_level_predicate})) {
 	return NOT_FOUND unless $self->{top_level_predicate}->($r->filename);
     }
 
