@@ -317,13 +317,14 @@ sub setup_handler
     open F, ">$handler_file"
 	or die "Can't write to '$handler_file': $!";
 
-    my $libs = '';
+    my $cwd = cwd();
+    my $libs = 'use lib qw( ';
+    $libs .= join ' ', "$cwd/blib/lib", "$cwd/t/lib";
     if ($ENV{PERL5LIB})
     {
-	$libs = 'use lib qw( ';
 	$libs .= join ' ', (split /:|;/, $ENV{PERL5LIB});
-	$libs .= ' );';
     }
+    $libs .= ' );';
 
     print F <<"EOF";
 package HTML::Mason;
