@@ -30,7 +30,7 @@ skip_test unless have_httpd;
 kill_httpd(1);
 test_load_apache();
 
-plan(tests => 9);
+plan(tests => 12);
 
 write_test_comps();
 run_tests();
@@ -74,7 +74,28 @@ EOF
 EOF
 	      );
 
+    write_comp( 'abort_with_ok', <<'EOF',
+All is well
+% $m->abort(200);
+Will not be seen
+EOF
+	      );
+
+    write_comp( 'abort_with_not_ok', <<'EOF',
+All is well
+% $m->abort(500);
+Will not be seen
+EOF
+	      );
+
+    write_comp( 'foo/dhandler', <<'EOF',
+dhandler
+% $m->decline;
+EOF
+	      );
+
 }
+
 
 sub run_tests
 {
@@ -166,6 +187,31 @@ EOF
         my $path = '/comps/error_as_html';
         my $response = Apache::test->fetch($path);
         ok $response->content, qr{<b>error:</b>.*Error during compilation}s;
+    }
+
+    {
+        my $path = '/comps/abort_with_ok';
+        my $response = Apache::test->fetch($path);
+        ok $response->content, <<'EOF';
+All is well
+EOF
+    }
+
+    {
+        my $path = '/comps/abort_with_not_ok';
+        my $response = Apache::test->fetch($path);
+        ok $response->content, <<'EOF';
+All is well
+EOF
+    }
+
+    # Having decline generate an error like this is bad, but there's
+    # not much else we can do without rewriting more of CGIHandler,
+    # which isn't a good idea for stable, methinks.
+    {
+        my $path = '/comps/foo/will_decline';
+        my $response = Apache::test->fetch($path);
+        ok $response->content, qr{could not find component for initial path}is;
     }
 
     kill_httpd();
