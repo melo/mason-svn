@@ -1144,6 +1144,7 @@ sub write_object_file
     }
     
     my $fh = make_fh();
+    ($object_file) = $object_file =~ /^(.*)/s if $self->taint_check;
     open $fh, ">$object_file" or die "Couldn't write object file $object_file: $!";
     print $fh $object_text;
     close $fh or die "Couldn't close object file $object_file: $!";
@@ -1172,10 +1173,10 @@ sub eval_object_text
 	local $^W = 1;
 	local $SIG{__WARN__} = $ignore_expr ? sub { $warnstr .= $_[0] if $_[0] !~ /$ignore_expr/ } : sub { $warnstr .= $_[0] };
 	if ($object_file) {
-	    ($object_file) = ($object_file =~ /^(.*)$/s) if $self->taint_check;
+	    ($object_file) = ($object_file =~ /^(.*)/s) if $self->taint_check;
 	    $comp = do($object_file);
 	} else {
-	    ($object_text) = ($object_text =~ /^(.*)$/s) if $self->taint_check;
+	    ($object_text) = ($object_text =~ /^(.*)/s) if $self->taint_check;
 	    $comp = eval($object_text);
 	}
 	$err = $warnstr . $@;
