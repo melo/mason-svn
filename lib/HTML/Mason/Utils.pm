@@ -18,7 +18,7 @@ require Exporter;
 use vars qw(@ISA @EXPORT_OK);
 
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(access_data_cache);
+@EXPORT_OK = qw(access_data_cache cgi_request_args);
 
 sub access_data_cache
 {
@@ -308,6 +308,35 @@ sub access_data_cache
     } else {
 	die "cache: bad action '$options{action}': must be one of 'store', 'retrieve', 'expire', or 'keys'\n";
     }
+}
+
+#
+# Given an initialized CGI object, return a hash of arguments for
+# passing to a top-level component. Used by both ApacheHandler.pm
+# and pure CGI Mason implementations.
+#
+sub cgi_request_args
+{
+    my ($q, $method) = @_;
+
+    my %args;
+    my $param_methods = $method eq 'GET' ? [ 'param' ] : [ 'param', 'url_param' ];
+    foreach my $method (@$param_methods) {
+	foreach my $key ( $q->$method() ) {
+	    foreach my $value ( $q->$method($key) ) {
+		if (exists($args{$key})) {
+		    if (ref($args{$key}) eq 'ARRAY') {
+			push @{ $args{$key} }, $value;
+		    } else {
+			$args{$key} = [$args{$key}, $value];
+		    }
+		} else {
+		    $args{$key} = $value;
+		}
+	    }
+	}
+    }
+    return %args;
 }
 
 #
