@@ -105,7 +105,11 @@ sub headers_in {
     $self->{headers_in} ||= HTML::Mason::FakeTable->new
       ( 'Authorization'       => $self->{query}->auth_type, # No credentials though.
         'Content-Length'      => $ENV{CONTENT_LENGTH},
-        'Content-Type'        => $ENV{CONTENT_TYPE},
+        'Content-Type'        =>
+        ( $self->{query}->can('content_type') ?
+          $self->{query}->content_type :
+          $ENV{CONTENT_TYPE}
+        ),
         # Convert HTTP environment variables back into their header names.
         map {
             my $k = ucfirst lc;
