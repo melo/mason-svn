@@ -59,19 +59,36 @@ local $| = 1;
     print "1..$total\n";
 }
 
-write_test_comps();
-
 print STDERR "\n";
 
+write_test_comps();
+
+cleanup_data_dir();
 cgi_tests(1);
+
+cleanup_data_dir();
 cgi_tests(0);
+
 
 if ($has_apache_request)
 {
+    cleanup_data_dir();
     apache_request_tests(1);
+
+    cleanup_data_dir();
     apache_request_tests(0);
 }
 
+cleanup_data_dir();
+
+# This is a hack but otherwise the following tests fail if the Apache
+# server runs as any user other than root.  In real life, a user using
+# the multi-config option with httpd.conf must handle the file
+# permissions manually.
+if ( $> == 0 || $< == 0 )
+{
+    chmod 0777, "$ENV{APACHE_DIR}/data";
+}
 multi_conf_tests();
 
 sub write_test_comps
@@ -168,6 +185,19 @@ sub write_comp
     close F;
 }
 
+# by wiping out the subdirectories here we can catch permissions
+# issues if some of the tests can't write to the data dir.
+sub cleanup_data_dir
+{
+    local *DIR;
+    opendir DIR, "$ENV{APACHE_DIR}/data"
+	or die "Can't open $ENV{APACHE_DIR}/data dir: $!";
+    foreach ( grep { -d "$ENV{APACHE_DIR}/data/$_" && $_ !~ /^\./ } readdir DIR )
+    {
+	rmtree("$ENV{APACHE_DIR}/data/$_");
+    }
+    closedir DIR;
+}
 
 sub cgi_tests
 {
