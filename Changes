@@ -14,11 +14,12 @@ CGIHandler module.  Implemented by David Wheeler.
 - The fact that autohandlers or dhandlers can be turned off by setting
 autohandler_name or dhandler_name to "" has now been documented, and
 we explicitly check for this in the code.  Task id #499.
-- The ApacheHandler module now catches exceptions thrown from the
-Interp class's make_request method.  With the default Mason Interp &
-Request classes, this will never happen.  However, subclasses may want
-to throw exceptions when constructing a request.  Implemented by David
-Wheeler.
+- The ApacheHandler module now handles certain exceptions
+(TopLevelNotFound, Abort, Decline) thrown from the Interp class's
+make_request method by returning the desired error code.  With the
+default Mason Interp & Request classes, this will never happen.
+However, subclasses may want to throw exceptions when constructing a
+request.  Implemented by David Wheeler.
 
 [ BUG FIXES ]
 
