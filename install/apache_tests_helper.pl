@@ -221,12 +221,7 @@ EOF
 </IfDefine>
 
 <IfDefine CGIHandler>
-  AddHandler cgi-script .cgi
-  Action html-mason /CGIHandler.cgi
-  <Location /comps>
-    Options +ExecCGI
-    SetHandler html-mason
-  </Location>
+  ScriptAlias /comps $APACHE{apache_dir}/CGIHandler.cgi/comps
 </IfDefine>
 EOF
 
