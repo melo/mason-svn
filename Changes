@@ -22,7 +22,7 @@ whose code relied on the arguments missing.
 - Added basic validation of arguments to Parser, Interp,
 and ApacheHandler constructors.
 - Added interp->die_handler, allowing you to install your own
-subroutine as $SIG{__DIE__} to catch errors during components
+subroutine as $SIG{__DIE__} to catch errors during component
 execution.  Alternately, you can simply turn the special error
 handling off.  L{Interp/die_handler}
 - Added interp->use_dhandlers and interp->use_autohandlers, more
