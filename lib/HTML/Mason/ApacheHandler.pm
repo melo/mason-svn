@@ -148,7 +148,7 @@ sub _initialize {
 
 	return \@strings;     #return an array ref
     };
-    Apache::Status->menu_item ($name,$title,$statsub);
+    Apache::Status->menu_item ($name,$title,$statsub) if $Apache::Status::VERSION;
     
     #
     # Create data subdirectories if necessary. mkpath will die on error.
@@ -442,7 +442,7 @@ sub handle_request_1
     # If filename is a directory, then either decline or simply reset
     # the content type, depending on the value of decline_dirs.
     #
-    if (-d $r->filename) {
+    if (-d $r->finfo) {
 	if ($self->decline_dirs) {
 	    return DECLINED;
 	} else {
@@ -543,28 +543,43 @@ sub handle_request_1
     }
 
     #
+    # Set up interpreter global variables.
+    #
+    $interp->set_global(r=>$r);
+
+    #
     # Craft the out method for this request to handle automatic http
     # headers.
     #
+    my $retval;
     if ($self->auto_send_headers) {
 	my $headers_sent = 0;
 	my $delay_buf = '';
 	my $out_method = sub {
-	    # Check to see if the header has been sent, first via a fast
-	    # flag, then via a slightly slower $r test.
+	    # Check to see if the headers have been sent, first by fast
+	    # variable check, then by slightly slower $r check.
 	    unless ($headers_sent) {
 		unless (http_header_sent($r)) {
-		    # If the header has not been sent, buffer initial
-		    # whitespace so as to delay headers.
+		    # If header has not been sent, buffer initial whitespace
+		    # so as to delay headers.
 		    if ($_[0] !~ /\S/) {
 			$delay_buf .= $_[0];
 			return;
 		    } else {
 			$r->send_http_header();
-			$request->abort() if $r->header_only;
+			
+			# If this is a HEAD request and our Mason request is
+			# still active, abort it.
+			if ($r->header_only) {
+			    $request->abort if $request->depth > 0;
+			    return;
+			}
 		    }
 		}
-		$interp->out_method->($delay_buf) if $delay_buf ne '';
+		unless ($delay_buf eq '') {
+		    $interp->out_method->($delay_buf);
+		    $delay_buf = '';
+		}
 		$headers_sent = 1;
 	    }
 	    $interp->out_method->($_[0]);
@@ -575,17 +590,21 @@ sub handle_request_1
 	    $request->top_stack->{sink} = $interp->out_method if $request->out_mode eq 'stream' and $request->top_stack->{sink} eq $request->out_method;
 	};
 	$request->{out_method} = $out_method;
-    }
-    
-    #
-    # Set up interpreter global variables.
-    #
-    $interp->set_global(r=>$r);
 
-    #
-    # Finally, execute request.
-    #
-    return $request->exec($comp, %args);
+	$retval = $request->exec($comp, %args);
+
+	# On a success code, send headers and any buffered whitespace
+	# if it has not already been sent. On an error code, leave it
+	# to Apache to send the headers.
+	if (!$headers_sent and (!$retval or $retval==200)) {
+	    $r->send_http_header() unless http_header_sent($r);
+	    $interp->out_method->($delay_buf) unless $delay_buf eq '';
+	}
+    } else {
+	$retval = $request->exec($comp, %args);
+    }
+    undef $request; # ward off leak
+    return $retval;
 }
 
 sub simulate_debug_request

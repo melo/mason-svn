@@ -14,7 +14,7 @@ use HTML::Mason::Tools qw(is_absolute_path read_file);
 use Carp;
 use strict;
 use vars qw($REQ $REQ_DEPTH %REQ_DEPTHS);
-my @_used = ($HTML::Mason::CODEREF_NAME,$::opt_P,$HTML::Mason::Commands::REQ);
+my @_used = ($HTML::Mason::CODEREF_NAME,$::opt_P,$HTML::Mason::Commands::m);
 
 my %fields =
     (aborted => undef,
@@ -667,9 +667,10 @@ sub process_comp_path
     if ($compPath !~ /\S/) {
 	return $self->current_comp->path;
     }
-    if ($compPath !~ m@^/@) {
-	die "relative component path ($compPath) used from component with no current directory" if !defined($self->current_comp->dir_path);
-	$compPath = $self->current_comp->dir_path . "/" . $compPath;
+    if ($comp_path !~ m@^/@) {
+	$dir_path = $self->current_comp->dir_path unless defined($dir_path);
+	die "relative component path ($comp_path) used from component with no current directory" unless $dir_path;
+	$comp_path = $dir_path . ($dir_path eq "/" ? "" : "/") . $comp_path;
     }
     while ($compPath =~ s@/[^/]+/\.\.@@) {}
     while ($compPath =~ s@/\./@/@) {}
