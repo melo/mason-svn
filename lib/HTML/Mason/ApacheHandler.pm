@@ -282,7 +282,7 @@ unless ( APACHE2 )
 
 use vars qw($VERSION);
 
-$VERSION = 1.70;
+$VERSION = 1.69;
 
 use Class::Container;
 use base qw(Class::Container);
