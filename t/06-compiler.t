@@ -483,6 +483,20 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_test( name => 'line_nums_off_by_one_2',
+		      description => 'make sure that line number reporting is not off by one (another buggy case)',
+		      component => <<'EOF',
+<%flags>
+    inherit => undef
+</%flags>
+% die "really #4";
+EOF
+		      expect_error => qr/died .* line 4/,
+                    );
+
+#------------------------------------------------------------
+
+
     $group->add_test( name => 'attr_block_zero',
 		      description => 'test proper handling of zero in <%attr> block values',
 		      component => <<'EOF',
