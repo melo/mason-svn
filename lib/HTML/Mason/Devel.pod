@@ -587,6 +587,12 @@ optional arguments; they are assigned the specified default values if
 unspecified.  All the arguments are available as lexically scoped ("my")
 variables in the rest of the component.
 
+Only valid Perl variable names may be used in C<E<lt>%args%E<gt>>
+sections.  Parameters with non-valid variable names cannot be
+pre-declared and must be fetched manually out of the %ARGS hash (see
+below).  One common example of undeclarable parameters are the
+"button.x/button.y" parameters sent for a form submit.
+
 2. %ARGS hash: This variable, always available, contains all of the
 parameters passed to the component.  It is especially handy when
 there are many parameters or when parameter names are determined at
@@ -596,6 +602,8 @@ section.
 Here's how to pass all of a component's parameters to another component:
 
     <& template, %ARGS &>
+
+
 
 =head2 Parameter Passing Examples
 
