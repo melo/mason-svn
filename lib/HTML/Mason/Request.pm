@@ -110,6 +110,7 @@ sub exec {
     # load into object. If not found, check for dhandler.
     my ($path, $orig_path);
     if (!ref($comp) && substr($comp,0,1) eq '/') {
+	$comp =~ s,/+,/,g;
 	$orig_path = $path = $comp;
 	{
 	    local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
