@@ -160,6 +160,15 @@ maximize shared memory.
 
 Defaults to false.
 
+B<Important>: If you set this option, you must make sure that whatever
+directories you are using as data directories (set via
+C<MasonDataDir>) are writeable by the user that Apache runs as.
+Similarly, your component roots must be readable by the user Apache
+runs as.
+
+This is only relevant when the C<MasonMultipleConfig> option is set as
+true.
+
 =back
 
 =head2 Parser Parameters
