@@ -297,15 +297,6 @@ sub write_apache_conf
     PerlHandler HTML::Mason::ApacheHandler
   </Location>
 
-  <Location /comps/multiconf3>
-    PerlSetVar  MasonCompRoot "$APACHE{comp_root}/multiconf3"
-    PerlSetVar  MasonDataDir  "$APACHE{data_dir}/multiconf3"
-    PerlSetVar  MasonVerboseCompileError 1
-    SetHandler  perl-script
-    PerlModule  HTML::Mason::ApacheHandler
-    PerlHandler HTML::Mason::ApacheHandler
-  </Location>
-
 </IfDefine>
 
 EOF

@@ -199,8 +199,8 @@ Shouldn't ever run
 EOF
 	      );
 
-    write_comp( 'multiconf3/compile_error', <<'EOF',
-<% if { %>
+    write_comp( 'multiconf3/use_reload_file', <<'EOF',
+use_reload_file is <% $m->interp->use_reload_file %>
 EOF
 	      );
 }
@@ -548,10 +548,16 @@ EOF
     ok( $actual =~ /404 not found/i,
 	"Attempt to request a non-existent component should not work with dhandlers turned off" );
 
-    $response = Apache::test->fetch('/comps/multiconf3/compile_error');
+    $response = Apache::test->fetch('/comps/multiconf3/use_reload_file');
     $actual = filter_response($response, 0);
-    ok( $actual =~ /1: &lt;% if { %&gt;/,
-	"A compile error occurred but the component file's source wasn't shown" );
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+use_reload_file is 1
+Status code: 0
+EOF
+					       );
+    ok($success);
 
     kill_httpd(1);
 }
