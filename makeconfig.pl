@@ -243,14 +243,34 @@ sub write_apache_conf
 
 <IfDefine CGI>
   PerlRequire $APACHE{apache_dir}/mason_handler_CGI.pl
+  SetHandler  perl-script
+  PerlHandler HTML::Mason
+</IfDefine>
+
+<IfDefine CGI_no_handler>
+  PerlSetVar  MasonCompRoot "$APACHE{comp_root}"
+  PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
+  PerlSetVar  MasonArgsMethod CGI
+  SetHandler  perl-script
+  PerlModule  HTML::Mason::ApacheHandler
+  PerlHandler HTML::Mason::ApacheHandler
 </IfDefine>
 
 <IfDefine mod_perl>
   PerlRequire $APACHE{apache_dir}/mason_handler_mod_perl.pl
+  SetHandler  perl-script
+  PerlHandler HTML::Mason
 </IfDefine>
 
-SetHandler perl-script
-PerlHandler HTML::Mason
+<IfDefine mod_perl_no_handler>
+  PerlSetVar  MasonArgsMethod mod_perl
+  PerlSetVar  MasonCompRoot "$APACHE{comp_root}"
+  PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
+  SetHandler  perl-script
+  PerlModule  HTML::Mason::ApacheHandler
+  PerlHandler HTML::Mason::ApacheHandler
+</IfDefine>
+
 EOF
 
     local $^W;
