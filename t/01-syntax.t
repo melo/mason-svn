@@ -31,7 +31,15 @@ EOF
 
 #------------------------------------------------------------
 
-    $group->add_test( name => 'ampersand syntax',
+    $group->add_support( path => '/support/funny_-+=@~~~._name',
+			 component => <<'EOF',
+foo is <% $ARGS{foo} %>
+EOF
+		       );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'ampersand_syntax',
 		      description => 'tests all variations of component call path syntax and arg passing',
 		      component => <<'EOF',
 <HTML>
@@ -41,13 +49,24 @@ amper Test
 </TITLE>
 </HEAD>
 <BODY>
+<&support/amper_test&>
 <& support/amper_test &>
+<&  support/amper_test, &>
+<& support/amper_test
+&>
+<&
+support/amper_test &>
+<&
+support/amper_test
+&>
 <& /syntax/support/amper_test, message=>'Hello World!'  &>
-<& support/amper_test, message=>'Hello World!', to=>'Joe' &>
+<& support/amper_test, message=>'Hello World!',
+   to=>'Joe' &>
 <& "support/amper_test" &>
 % my $dir = "support";
 % my %args = (a=>17, b=>32);
 <& $dir . "/amper_test", %args &>
+<& support/funny_-+=@~~~._name, foo => 5 &>
 </BODY>
 </HTML>
 EOF
@@ -59,6 +78,16 @@ amper Test
 </TITLE>
 </HEAD>
 <BODY>
+amper_test.<p>
+
+amper_test.<p>
+
+amper_test.<p>
+
+amper_test.<p>
+
+amper_test.<p>
+
 amper_test.<p>
 
 amper_test.<p>
@@ -76,6 +105,8 @@ amper_test.<p>
 Arguments:<p>
 <b>a</b>: 17<br>
 <b>b</b>: 32<br>
+
+foo is 5
 
 </BODY>
 </HTML>
@@ -277,6 +308,65 @@ a is 1
 b
 EOF
 			);
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'comment_in_call',
+		      description => 'make a comp call with a commented line',
+		      component => <<'EOF',
+<& .foo,
+   foo => 1,
+#   bar => 2,
+ &>
+<& .foo,
+#   foo => 1,
+   bar => 2,
+ &>
+<%def .foo>foo! args are <% join(", ", %ARGS) %></%def>
+EOF
+		      expect => <<'EOF',
+foo! args are foo, 1
+foo! args are bar, 2
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'comment_in_call2',
+		      description => 'make a comp call with content with a commented line',
+		      component => <<'EOF',
+<&| .show_content,
+   foo => 1,
+#   bar => 2,
+ &>\
+This is the content\
+</&>
+<%def .show_content>\
+<% $m->content %>\
+</%def>
+EOF
+		      expect => <<'EOF',
+This is the content
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'call_starts_with_newline',
+		      description => 'make a comp call where the tag starts with a newline',
+		      component => <<'EOF',
+<&
+ .foo,
+ x => 1
+ &>\
+<%def .foo>\
+x is <% $ARGS{x} %>
+</%def>
+EOF
+		      expect => <<'EOF',
+x is 1
+EOF
+		    );
 
 #------------------------------------------------------------
 

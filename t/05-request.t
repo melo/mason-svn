@@ -571,6 +571,22 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_test( name => 'abort_and_scomp',
+		      description => 'Test that an abort in an scomp generates no output (it cannot, unfortunately)',
+		      component => <<'EOF',
+filter
+
+% my $foo = eval { $m->scomp('support/abort_test') };
+<% $foo %>
+EOF
+		      expect => <<'EOF',
+filter
+
+EOF
+		    );
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'reexec',
 		      description => 'test that $m cannot be reexecuted',
 		      component => <<'EOF',
@@ -594,6 +610,23 @@ EOF
 		      expect => <<'EOF',
 
  caller_in_subcomp
+EOF
+		    );
+
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'caller_at_top_level',
+		      description => 'tests $m->caller() from top component',
+		      component => <<'EOF',
+caller is <% defined($m->caller) ? "defined" : "undefined" %>
+callers(5) is <% defined($m->callers(5)) ? "defined" : "undefined" %>
+caller_args(7) is <% defined($m->callers(7)) ? "defined" : "undefined" %>
+EOF
+		      expect => <<'EOF',
+caller is undefined
+callers(5) is undefined
+caller_args(7) is undefined
 EOF
 		    );
 

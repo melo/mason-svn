@@ -165,7 +165,9 @@ B<% lines>
 Most useful for conditional and loop structures - if, while, foreach,
 , etc. - as well as side-effect commands like assignments. Examples:
 
-o Conditional code
+=over 4
+
+=item * Conditional code
 
     % my $ua = $r->header_in('User-Agent');
     % if ($ua =~ /msie/i) {
@@ -176,34 +178,37 @@ o Conditional code
     ...
     % }
 
-o HTML list formed from array
+=item * HTML list formed from array
 
     <ul>
     % foreach $item (@list) {
-    <li><% $item %>
+    <li><% $item %></li>
     % }
     </ul>
 
-o HTML list formed from hash
+=item * HTML list formed from hash
 
     <ul>
     % while (my ($key,$value) = each(%ENV)) {
     <li>
     <b><% $key %></b>: <% $value %>
+    </li>
     % }
     </ul>
 
-o HTML table formed from list of hashes
+=item * HTML table formed from list of hashes
 
     <table>
     % foreach my $h (@loh) {
     <tr>
     <td><% $h->{foo} %></td>
-    <td bgcolor=#ee0000><% $h->{bar} %></td>
+    <td class="highlight"><% $h->{bar} %></td>
     <td><% $h->{baz} %></td>
     </tr>
     % }
     </table>
+
+=back
 
 B<< <% xxx %> >>
 
@@ -229,10 +234,10 @@ are the request objects.
 
 =head2 Request Objects
 
-Two global per-request objects are available to all components: $r and
-$m.
+Two global per-request objects are available to all components: C<$r> and
+C<$m>.
 
-$r, the mod_perl request object, provides a Perl API to the current
+C<$r>, the mod_perl request object, provides a Perl API to the current
 Apache request.  It is fully described in Apache.pod. Here is a
 sampling of methods useful to component developers:
 
@@ -243,9 +248,9 @@ sampling of methods useful to component developers:
 
     $r->content         # don't use this one! (see Tips and Traps)
 
-$m, the Mason request object, provides an analogous API for
+C<$m>, the Mason request object, provides an analogous API for
 Mason. Almost all Mason features not activated by syntactic tags are
-accessed via $m methods.  You'll be introduced to these methods
+accessed via C<$m> methods.  You'll be introduced to these methods
 throughout this document as they are needed.  For a description of all
 methods see B<L<HTML::Mason::Request|HTML::Mason::Request>>.
 
@@ -259,8 +264,7 @@ Mason provides an object API for components, allowing you to query a
 component's various asociated files, arguments, etc. For a description
 of all methods see
 B<L<HTML::Mason::Component|HTML::Mason::Component>>.  Typically you
-get a handle on a component object from request methods like C<<
-$m->current_comp >> and C<< $m->fetch_comp >>.
+get a handle on a component object from request methods like C<< $m->current_comp >> and C<< $m->fetch_comp >>.
 
 Note that for many basic applications all you'll want to do with
 components is call them, for which no object method is needed. See
@@ -284,7 +288,7 @@ relevant parameter.
 Mason pages often are built not from a single component, but from
 multiple components that call each other in a hierarchical fashion.
 
-=head2 Components that output HTML
+=head2 Components that Output HTML
 
 To call one component from another, use the <& &> tag:
 
@@ -486,17 +490,47 @@ list_items component:
     <% $m->content %>
     % }
 
-=head2 Components that compute values
+=head2 Components that Return Values
 
 So far you have seen components used solely to output HTML.  However,
-components may also be used to compute a value. For example, you might
-have a component C<is_netscape> that analyzes the user agent to
-determine whether it is a Netscape browser:
+components may also be used to return values.
 
-    <%perl>
+While we will demonstrate how this is done, we strongly encourage you
+to put code like this in modules instead.  There are several reasons
+why this is a good idea:
+
+=over 4
+
+=item *
+
+You can re-use this code outside of Mason.
+
+=item *
+
+It is easy to preload module code when running under mod_perl, which
+can lower memory usage.
+
+=item *
+
+Using Mason components as subroutines is slower than just using
+modules to do the same thing.
+
+=item *
+
+It's easier to regression test module code.
+
+=back
+
+With that being said, there are times when you may want to write a
+component which returns a value.
+
+As an example, you might have a component C<is_netscape> that analyzes
+the user agent to determine whether it is a Netscape browser:
+
+    <%init>
     my $ua = $r->header_in('User-Agent');
     return ($ua =~ /Mozilla/i && $ua !~ /MSIE/i) ? 1 : 0;
-    </%perl>
+    </%init>
 
 Because components are implemented underneath with Perl subroutines,
 they can return values and even understand scalar/list
@@ -516,12 +550,12 @@ provide an empty default return value. To return your own value from a
 component, you I<must> use an explicit C<return> statement. You cannot
 rely on the usual Perl trick of letting return values "fall through".
 
-Generally components are divided into two types: those that output
-HTML, and those that return a value. There is very little reason for
-a component to do both. For example, it would not be very friendly
-for C<is_netscape> to output "hi Mom" while it was computing its value,
-thereby surprising the C<if> statement! Conversely, any value returned
-by an HTML component would typically be discarded by the <& &> tag
+While it is possible for a component to generate output B<and> return
+values, there is very little reason for a component to do both. For
+example, it would not be very friendly for C<is_netscape> to output
+"hi Mom" while it was computing its value, thereby surprising the
+C<if> statement! Conversely, any value returned by an output
+generating component would typically be discarded by the <& &> tag
 that invoked it.
 
 =head2 Subrequests
@@ -653,16 +687,14 @@ can let in directory requests as well; see ADMIN<allowing directory
 requests>.
 
 A component or dhandler that does not want to handle a particular
-request may defer control to the next dhandler by calling C<<
-$m->decline >>.
+request may defer control to the next dhandler by calling C<< $m->decline >>.
 
 When using dhandlers under mod_perl, you may find that sometimes
 Apache will not set a content type for a response.  This usually
 happens when a dhandler handles a request for a non-existent file or
 directory.  You can add a C<< <Location> >> or C<< <LocationMatch> >>
 block containing a C<SetType> directive to your Apache config file, or
-you can just set the content type dynamically by calling C<<
-$r->content_type >>.
+you can just set the content type dynamically by calling C<< $r->content_type >>.
 
 The administrator can customize the file name used for dhandlers with
 the P<dhandler_name> parameter.
@@ -872,7 +904,7 @@ The following examples illustrate the different ways to pass and receive paramet
     query string, there is no detectable difference between a list or
     hash.)
 
-=head2 Using @_ instead
+=head2 Using @_ Instead
 
 If you don't like named parameters, you can pass a traditional
 list of ordered parameters:
@@ -964,6 +996,12 @@ subroutine block, and since Perl is so darned good at cleaning up
 stuff at the end of blocks, C<< <%cleanup> >> sections are rarely
 needed.
 
+The C<< <%cleanup> >> block is not executed if the component returns
+(via an explicit C<return> statement) or if an error or abort occurs
+in this component or one of its children. This makes C<< <%cleanup> >> 
+useless for real cleanup code that needs a guarantee of execution.
+We hope to remedy this in the next major release.
+
 =head2 <%once>
 
 This code executes once when the component is loaded. Variables
@@ -1032,8 +1070,8 @@ In the current implementation, the scope sharing is done with
 closures, so variables will only be shared if they are visible at
 compile-time in the other parts of the component.  In addition, you
 can't rely on the specific destruction time of the shared variables,
-because they may not be destroyed until the first time the C<<
-<%shared> >> section executes in a future request.  C<< <%init> >>
+because they may not be destroyed until the first time the C<< <%shared> >>
+section executes in a future request.  C<< <%init> >>
 offers a more predictable execution and destruction time.
 
 Currently any component with a C<< <%shared> >> section incurs an
@@ -1257,7 +1295,7 @@ C<< </%text> >> itself! When all else fails, use C<< $m->print >>:
 
     % $m->print('The tags are <%text> and </%text>.');
 
-=head2 Escaping expressions
+=head2 Escaping Expressions
 
 Mason has facilities for I<escaping> the output from C<< <% %> >>
 tags, on either a site-wide or a per-expression basis.
@@ -1274,9 +1312,10 @@ The current valid flags are:
 =item * h
 
 Escape HTML ('<' => '&lt;', etc.) using C<HTML::Entities::encode()>.
-The C<HTML::Entities> module assumes that text is in the ISO-8859-1
-character set with all version of Perl before 5.8.0, and Unicode for
-version 5.8.0 and greater.
+Before Perl 5.8.0 this module assumes that text is in the ISO-8859-1
+character set; see L<the next section|HTML::Mason::Devel/"User-defined
+Escapes"> for how to override this escaping. After 5.8.0, the encoding
+assumes that text is in Unicode.
 
 =item * u
 
@@ -1318,10 +1357,11 @@ Besides the default escapes mentioned above, it is possible for the
 user to define their own escapes or to override the built-in 'h' and
 'u' escapes.
 
-This is done via the L<Interp object's C<set_escape()>
-method|HTML::Mason::Interp/item_set_escape>.  Escape names may be any
-number of characters as long as it matches the regex C</^[\w-]+$/>.
-The one exception is that you cannot override the 'n' flag.
+This is done via the Interp object's P<escape_flags> parameter or
+L<set_escape()|HTML::Mason::Interp/item_set_escape> method.  Escape
+names may be any number of characters as long as it matches the regex
+C</^[\w-]+$/>.  The one exception is that you cannot override the 'n'
+flag.
 
 Each escape flag is associated with a subroutine reference.  The
 subroutine should expect to receive a scalar reference, which should
@@ -1331,24 +1371,26 @@ ignored.
 Escapes can be defined at any time but using an escape that is not
 defined will cause an error when executing that component.
 
-One possible use for this feature is to override the built-in HTML
-escaping's assumption of the ISO-8859-1 character set.  You could
-override the 'h' flag in a top-level autohandler or L<custom wrapper
-code|HTML::Mason::Admin/"ADVANCED CONFIGURATION"> like this:
+A common use for this feature is to override the built-in HTML
+escaping, which will not work with non-ISO-8559-1 encodings.  If
+you are using such an encoding and want to switch the 'h' flag to do
+escape just the minimal set of characters (C<E<lt>>, C<E<gt>>, C<&>,
+C<">), put this in your Apache configuration:
 
-  $ah->interp->set_escape( h => \&escape_ISO_8859_2 );
+   PerlSetVar  MasonEscapeFlags  "h => \&HTML::Mason::Escapes::basic_html_escape"
 
-where C<$ah> is an ApacheHandler object.
+Or, in a top-level autohandler:
 
-Inside components, the Interpreter object is available via C<<
-$m->interp() >> so you would do this instead:
+    $m->interp->set_escape( h => \&HTML::Mason::Escapes::basic_html_escape );
 
-  $m->interp->set_escape( h => \&escape_ISO_8859_2 );
+Or you could write your own escape function for a particular encoding:
+
+    $ah->interp->set_escape( h => \&my_html_escape );
 
 And of course this can be used for all sorts of other things, like a
 naughty words filter for the easily offended:
 
-  $interp->set_escape( 'no-naughty' => \&remove_naughty_words );
+    $interp->set_escape( 'no-naughty' => \&remove_naughty_words );
 
 =head3 Manually applying escapes
 
@@ -1356,9 +1398,9 @@ You can manually apply one or more escapes to text using the L<Interp
 object's C<apply_escapes()>
 method|HTML::Mason::Interp/item_apply_escapes>. e.g.
 
-  $m->interp->apply_escapes( 'some html content', 'h' );
+    $m->interp->apply_escapes( 'some html content', 'h' );
 
-=head2 Backslash at end of line
+=head2 Backslash at End of Line
 
 A backslash (\) at the end of a line suppresses the newline. In HTML
 components, this is mostly useful for fixed width areas like C<< <pre> >>
@@ -1436,7 +1478,7 @@ arbitrary complex list or hash reference:
 
     $m->cache->set(name => $string);
     $m->cache->set(friends => \@list);
-    $m->cache->set(map => %hash);
+    $m->cache->set(map => \%hash);
 
 You can fetch all the keys in a cache with
 
@@ -1500,9 +1542,11 @@ In this case, when the value cannot be retrieved, C<get()> sets
 the expiration time of the value 30 seconds in the future before
 returning C<undef>.  This tells the first process to compute the new
 value while causing subsequent processes to use the old value for 30
-seconds.  In general, the duration passed to I<busy_lock> indicates
-how long you're willing to allow this component to use an expired
-cache value.
+seconds. 
+
+Should the 30 seconds expire before the first process is done, a second
+process will start computing the new value while setting the expiration
+time yet another 30 seconds in the future, and so on.
 
 =head2 Caching All Output
 
@@ -1593,7 +1637,11 @@ and the cache subclass is C<FileCache>:
         ( { namespace => data_cache_namespace("/foo/bar"),
 	    cache_root => "/usr/local/www/mason/cache" } );
 
+    # Remove one key
     $cache->remove('key1');
+
+    # Remove all keys
+    $cache->clear;
 
 =head2 Mason 1.0x Cache API
 
@@ -1613,8 +1661,10 @@ Externally>.
 
 =head2 Sending HTTP Headers
 
-Mason automatically sends HTTP headers via C<< $r->send_http_header >>
-but it will not send headers if they've already been sent manually.
+Under ApacheHandler and CGIHandler, Mason automatically sends HTTP
+headers, via C<< $r->send_http_header() >> with ApacheHandler, and via
+C<< CGI->header() >> with CGIHandler, but it will not send headers if
+they've already been sent manually.
 
 To determine the exact header behavior on your system, you need to
 know whether your server's default is to have P<autoflush> on or off.
@@ -1648,14 +1698,17 @@ With autoflush off this code will always work.  Turn autoflush on and
 this code will only work as long as F</shared/get_user_cookie> doesn't
 output anything (given its functional nature, it shouldn't).
 
-The administrator can turn off automatic header sending via the
-P<auto_send_headers> parameter.
+The administrator can change the default automatic header behavior via
+the P<auto_send_headers> parameter. You can also turn it off on
+individual pages with
+
+    $m->auto_send_headers(0);
 
 =head2 Returning HTTP Status
 
-The value returned from the top-most component becomes the status code
-of the request. If no value is explicitly returned, it defaults to OK
-(0).
+When running under ApacheHandler, the value returned from the top-most
+component becomes the status code of the request. If no value is
+explicitly returned, it defaults to OK (0).
 
 Simply returning an error status (such as 404) from the top-most
 component has two problems in practice. First, the decision to return
@@ -1676,13 +1729,17 @@ indirectly) in an eval, you must take care to rethrow the exception,
 or the status will not make it out:
 
    eval { $m->comp('...') };
-   if ($@) {
+   if (my $err = $@) {
       if ($m->aborted) {
-          die $@;
+          die $err;
       } else {
           # deal with non-abort exceptions
       }
    }
+
+Note that when running under CGIHandler, the value you return from
+your components, or via C<< $m->abort() >>, is not able to affect the
+status code of the request.
 
 =head3 Filters and $m->abort
 
@@ -1698,8 +1755,8 @@ C<< <%filter> >> block if you don't want to run the filter after an abort.
 
 =head2 External Redirects
 
-Because it is so commonly needed, Mason provides an external redirect
-method:
+Because it is so commonly needed, Mason 1.1x and on provides an
+external redirect method:
 
     $m->redirect($url);    # Redirects with 302 status
 
@@ -1726,8 +1783,9 @@ client.
 First, you can use a Mason subrequest (see L</Subrequests>). This only
 works if you are redirecting to another Mason page.
 
-Second, you can use Apache's internal_redirect method, which works
-whether or not the new URL will be handled by Mason.  Use it this way:
+Second, if you're running under mod_perl with ApacheHandler, you can
+use Apache's internal_redirect method, which works whether or not the
+new URL will be handled by Mason.  Use it this way:
 
     $r->internal_redirect($url);
     $m->auto_send_headers(0);
@@ -1799,7 +1857,7 @@ implements them in a shallow way to solve a particular set of
 problems. Future redesigns may incorporate a deeper object
 architecture if the current prototype proves successful.
 
-=head2 Determining inheritance
+=head2 Determining Inheritance
 
 Every component may have a single I<parent>. The default parent is a
 component named C<autohandler> in the closest parent directory.  This
@@ -1819,7 +1877,7 @@ no one.  This is how to suppress templates.
 Currently there is no way to specify a parent dynamically at run-time,
 or to specify multiple parents.
 
-=head2 Content wrapping
+=head2 Content Wrapping
 
 At page execution time, Mason builds a chain of components from the
 called component, its parent, its parent's parent, and so
@@ -1828,7 +1886,7 @@ C<< $m->call_next >> passes control to the next component in the chain.  This
 is the familiar autohandler "wrapping" behavior, generalized for any
 number of arbitrarily named templates.
 
-=head2 Accessing methods and attributes
+=head2 Accessing Methods and Attributes
 
 A template can access methods and/or attributes of the requested
 page. First, use C<< $m->request_comp >> to get a handle on the
@@ -1917,7 +1975,7 @@ questionable attributes:
 
     my $color = $self->attr_if_exists('color'); # if it doesn't exist $color is undef
 
-=head2 Sharing data
+=head2 Sharing Data
 
 A component's main body and its methods occupy separate lexical
 scopes. Variables declared, say, in the C<< <%init> >> section of the main

@@ -3,6 +3,8 @@ use strict;
 use File::Basename;
 use File::Path;
 use File::Spec;
+use HTML::Mason::Tests;
+*diag = \&HTML::Mason::Tests::diag;
 
 sub write_comp
 {
@@ -41,7 +43,7 @@ sub cleanup_data_dir
 sub get_pid
 {
     local *PID;
-    my $pid_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd.pid' );
+    my $pid_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'logs', 'httpd.pid' );
     open PID, "<$pid_file"
 	or die "Can't open $pid_file: $!";
     my $pid = <PID>;
@@ -52,7 +54,7 @@ sub get_pid
 
 sub test_load_apache
 {
-    print STDERR "\nTesting whether Apache can be started\n";
+    diag("\nTesting whether Apache can be started\n");
     start_httpd('');
     kill_httpd(1);
 }
@@ -63,21 +65,22 @@ sub start_httpd
     $def = "-D$def" if $def;
 
     my $httpd = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd' );
-    my $conf_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd.conf' );
-    my $cmd ="$httpd $def -f $conf_file";
-    print STDERR "Executing $cmd\n";
+    my $conf_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'conf', 'httpd.conf' );
+    my $pid_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'logs', 'httpd.pid' );
+    my $cmd ="$httpd $def -d $ENV{APACHE_DIR} -f $conf_file";
+    diag("Executing $cmd\n");
     system ($cmd)
 	and die "Can't start httpd server as '$cmd': $!";
 
     my $x = 0;
-    print STDERR "Waiting for httpd to start.\n";
-    until ( -e 't/httpd.pid' )
+    diag("Waiting for httpd to start.\n");
+    until ( -e $pid_file )
     {
 	sleep (1);
 	$x++;
 	if ( $x > 10 )
 	{
-	    die "No t/httpd.pid file has appeared after 10 seconds.  ",
+	    die "No $pid_file file has appeared after 10 seconds.  ",
 		"There is probably a problem with the configuration file that was generated for these tests.";
 	}
     }
@@ -86,11 +89,11 @@ sub start_httpd
 sub kill_httpd
 {
     my $wait = shift;
-    my $pid_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd.pid' );
+    my $pid_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'logs', 'httpd.pid' );
     return unless -e $pid_file;
     my $pid = get_pid();
 
-    print STDERR "\nKilling httpd process ($pid)\n";
+    diag("\nKilling httpd process ($pid)\n");
     my $result = kill 'TERM', $pid;
     if ( ! $result and $! =~ /no such (?:file|proc)/i )
     {
@@ -103,7 +106,7 @@ sub kill_httpd
 
     if ($wait)
     {
-	print STDERR "Waiting for httpd to shut down\n";
+	diag("Waiting for httpd to shut down\n");
 	my $x = 0;
 	while ( -e $pid_file )
 	{

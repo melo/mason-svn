@@ -40,7 +40,7 @@ EOF
 # These are required modules.
 my %prereq = ( 'File::Spec' => {version => 0.8,
 				where => "CPAN/modules/by-module/File/File-Spec-x.x.tar.gz"},
-	       'Params::Validate' => {version => 0.59,
+	       'Params::Validate' => {version => 0.70,
 				      where => "CPAN/modules/by-authors/id/D/DR/DROLSKY/Params-Validate-x.x.tar.gz"},
 	       'Exception::Class' => {version => 1.14,
 				      where => "CPAN/modules/by-module/Exception/Exception-Class-x.x.tar.gz"},
@@ -51,7 +51,9 @@ my %prereq = ( 'File::Spec' => {version => 0.8,
                'Scalar::Util' => {version => 1.01,
                                   where => "CPAN/modules/by-authors/id/G/GB/GBARR/Scalar-List-Utils-x.x.tar.gz"},
                'CGI' => {version => 2.46,
-                         where => "CPAN/modules/by-authors/id/G/GB/GBARR/CGI.pm-x.x.tar.gz"},
+                         where => "CPAN/modules/by-authors/id/L/LD/LDS/CGI.pm-x.x.tar.gz"},
+               'Test::More' => {version => 0,
+                                where => "CPAN/modules/by-authors/id/M/MS/MSCHWERN/Test-More-x.x.tar.gz"},
 	     );
 
 foreach (keys %prereq) {
@@ -112,7 +114,7 @@ WriteMakefile(
     # %APACHE is created when setup_mod_perl_tests() is called.  The
     # code that does this creation is in apache_tests_helper.pl.
     clean => {
-	'FILES' => "apache_install.txt lib/HTML/Mason/Config.pm mason_tests $APACHE{comp_root} $APACHE{data_dir} $more_clean_files",
+	'FILES' => "apache_install.txt lib/HTML/Mason/Config.pm mason_tests $APACHE{comp_root} $APACHE{data_dir} $APACHE{conf_dir} $APACHE{log_dir} $more_clean_files",
     }
 );
 
