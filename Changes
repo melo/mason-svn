@@ -5,24 +5,29 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
-0.895
+0.895  Mon Dec 11 21:27:15 PST 2000
 
-- Mason now works under Perl's tainting mode again.  Thanks to John
+- ** Removed ApacheHandler from Mason.pm. It is now necessary to
+explicitly 'use' the HTML::Mason::ApacheHandler module in your
+handler.pl file (or elsewhere).  This fixes an intermittent
+args_method bug and cleans up Mason.pod.
+- ** Changed $m->caller_args to return a hash reference in scalar
+context and a list/hash in list context. Older calls expecting a list
+reference will need to be changed. L{Request/item_caller_args}
+- Fixed Mason to work under Perl's tainting mode again.  Thanks to John
 Tobey for pointing us in the right direction.
-- ** It is now necessary to explicitly 'use' the
-HTML::Mason::ApacheHandler module in your handler.pl file (or
-elsewhere).  Formerly, simply loading the HTML::Mason module was
-sufficient. This fixes an intermittent args_method bug and is cleaner
-besides.
-- Modified the definition of "next component" to not merely rely on
-the number of times $m->call_next has been called.  This allows
-$m->fetch_next to work as documented.
+- Modified the definition of "next component" to depend on the current
+component, not merely the number of times $m->call_next has been
+called.  This allows $m->fetch_next to work as documented. In list
+context, $m->fetch_next now returns the rest of the wrapper chain.
+L{Request/item_fetch_next}
 - Fixed bug with ../.. in component paths.  Versions 0.88 and 0.89
 would create multiple object files for a single component and would
-allow any filename to be treated as a component.  This was _not_
-exploitable externally via Apache.  (reported by Pascal Eeftinck)
+allow any filename to be treated as an internal component.  This was
+_not_ exploitable externally via Apache, however.  (reported by Pascal
+Eeftinck)
 - Implemented $m->top_comp and $m->top_args, and fixed documentation
-for $m->callers(-1).  (suggested by Kees Vonk)
+for $m->callers(-1).  (suggested by Kees Vonk) L{Request/item_top_args}
 - Added full line comments to <%args> sections. (suggested by Matthew
 Lewinski)
 - Revamped test harness system with HTML::Mason::Tests, greatly
@@ -30,6 +35,7 @@ simplifying the new test creation process.
 - Implemented logging of NOT FOUND errors to match plain Apache. Also
 issue special warnings for Mason-specific causes of NOT FOUND.
 - Documented Mason request object's aborted and aborted_value methods.
+L{Request/item_aborted}
 - Documented the fact that any variable declared in the <%args>
 section must be a valid Perl variable name.  The parser will now give
 an error if it encounters an invalid name (such as $foo.x).
