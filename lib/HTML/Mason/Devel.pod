@@ -19,11 +19,6 @@ the C<samples/> directory.
 
 =head1 HOW TO USE THIS MANUAL
 
-This manual has grown a bit too large over time. It will eventually
-split into at least two documents (tutorial and reference manual).
-I've tried to keep related sections together, but this creates a
-non-optimal order for beginners.
-
 If you are just learning Mason and want to get started quickly, I
 recommend the following sections:
 
