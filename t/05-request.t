@@ -334,7 +334,7 @@ EOF
 
 Calling helper
 
-Error: Mason error (while executing /request/support/subrequest_error_test)
+Error: error while executing /request/support/subrequest_error_test:
 
 
 Back from error, checking request state:
