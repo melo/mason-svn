@@ -13,17 +13,15 @@ use strict;
 
 require Exporter;
 
-use vars qw(@ISA @EXPORT_OK $ACTIVE);
+use vars qw(@ISA @EXPORT_OK);
 
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(error_process error_display_html);
-$ACTIVE = 1;  # hack to turn off error processing during development
 
 use HTML::Mason::Tools qw(html_escape make_fh);
 
 sub error_process {
     my ($error, $req) = @_;
-    return $error unless $ACTIVE;
     
     my %conf = (
 		'runtime_error' => 'runtime error',
@@ -217,8 +215,6 @@ sub error_process {
 
 sub error_display_html {
     my ($error) = @_;
-
-    return "<pre>$error</pre>" unless $ACTIVE;
 
     my $out = '';
 

@@ -147,7 +147,7 @@ sub exec {
      $self->{wrapper_index} = {map(($wrapper_chain[$_]->path => $_),(0..$#wrapper_chain))}; }
 
     # Fill top_level slots for introspection.
-    $self->{top_comp} = $first_comp;
+    $self->{top_comp} = $comp;
     $self->{top_args} = \@args;
 
     # Call the first component.
@@ -198,7 +198,6 @@ sub exec {
 	    my $title = $self->{error_backtrace}->[0]->title;
 	    $err = "error while executing $title:\n$err";
 	}
-	$err = error_process ($err, $self);
     }
     die $err;
 }

@@ -78,7 +78,7 @@ sub SERVER_ERROR { return 500 }
 sub NOT_FOUND { return 404 }
 use Data::Dumper;
 use File::Path;
-use HTML::Mason::Error qw(error_display_html);
+use HTML::Mason::Error qw(error_process error_display_html);
 use HTML::Mason;
 use HTML::Mason::Commands;
 use HTML::Mason::FakeApache;
@@ -401,8 +401,8 @@ sub new
 
     my (%options) = @_;
 
-    die "error_mode parameter must be either 'html' or 'fatal'\n"
-	if exists $options{error_mode} && $options{error_mode} ne 'html' && $options{error_mode} ne 'fatal';
+    die "error_mode parameter must be one of 'html', 'fatal', 'raw_html', or 'raw_fatal'\n"
+	if exists $options{error_mode} && $options{error_mode} !~ /^(?:html|fatal|raw_html|raw_fatal)$/;
 
     while (my ($key,$value) = each(%options)) {
 	$self->{$key} = $value;
@@ -560,7 +560,6 @@ sub handle_request {
     eval { $retval = $self->handle_request_1($apreq, $request, $debug_state) };
     my $err = $@;
     my $err_code = $request->error_code;
-    undef $request;  # ward off memory leak
     my $err_status = $err ? 1 : 0;
 
     if ($err) {
@@ -584,9 +583,19 @@ sub handle_request {
 	}
 
 	#
-	# If fatal mode, compress error to one line (for Apache logs) and die.
-	# If html mode, call error_display_html and print result.
-	# Do not process error at all if die handler was overriden.
+	# Do not process error at all in raw mode or if die handler was overriden.
+	#
+	unless ($self->error_mode =~ /^raw_/ or $interp->die_handler_overridden) {
+	    $err = error_process ($err, $request);
+	}
+
+	#
+	# In fatal/raw_fatal mode, compress error to one line (for Apache logs) and die.
+	# In html/raw_html mode, call error_display_html and print result.
+	# The raw_ modes correspond to pre-1.02 error formats.
+	#
+	# [This is a load of spaghetti. It will be cleaned up in 1.2 when we lose
+	# debug mode and standardize error handling.]
 	#
 	if ($self->error_mode eq 'fatal') {
 	    unless ($interp->die_handler_overridden) {
@@ -595,13 +604,21 @@ sub handle_request {
 		$err .= "\n" if $err !~ /\n$/;
 	    }
 	    die $err;
-	} elsif ($self->error_mode eq 'html') {
+	} elsif ($self->error_mode eq 'raw_fatal') {
+	    die ("System error:\n$err\n");	    
+	} elsif ($self->error_mode =~ /html$/) {
 	    unless ($interp->die_handler_overridden) {
+		my $debug_msg;
 		if ($debugMode eq 'error' or $debugMode eq 'all') {
-		    my $debug_msg = $self->write_debug_file($apreq,$debug_state);
-		    $err .= "Debug info: $debug_msg\n";
+		    $debug_msg = $self->write_debug_file($apreq,$debug_state);
 		}
-		$err = error_display_html($err);
+		if ($self->error_mode =~ /^raw_/) {
+		    $err .= "$debug_msg\n" if $debug_msg;
+		    $err = "<h3>System error</h3><p><pre><font size=-1>$err</font></pre>\n";
+		} else {
+		    $err .= "Debug info: $debug_msg\n" if $debug_msg;
+		    $err = error_display_html($err);
+		}
 	    }
 	    # Send HTTP headers if they have not been sent.
 	    if (!http_header_sent($apreq)) {
@@ -616,6 +633,7 @@ sub handle_request {
 	    print "\n<!--\n$debug_msg\n-->\n" if (http_header_sent($apreq) && !$apreq->header_only && $apreq->header_out("Content-type") =~ /text\/html/);
 	}
     }
+    undef $request;  # ward off memory leak
 
     $interp->write_system_log('REQ_END', $self->{request_number}, $err_status);
     return ($err) ? &OK : (defined($retval)) ? $retval : &OK;
