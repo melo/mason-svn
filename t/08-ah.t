@@ -44,7 +44,7 @@ local $| = 1;
     my $both_no_handler_tests = 8;
     my $cgi_only_no_handler_tests = 1;
     $cgi_only_no_handler_tests++ if $mod_perl::VERSION >= 1.24;
-    my $apr_only_no_handler_tests = 2;
+    my $apr_only_no_handler_tests = 3;
     my $multi_conf_tests = 4;
 
     my $total = $both_tests + $both_no_handler_tests;
@@ -200,6 +200,11 @@ EOF
 Shouldn't ever run
 EOF
 	      );
+
+    write_comp( 'decline_dirs', <<'EOF',
+decline_dirs is <% $HTML::Mason::ApacheHandler::AH->decline_dirs %>
+EOF
+	      );
 }
 
 sub write_comp
@@ -307,6 +312,17 @@ EOF
 	my $actual = filter_response($response, 0);
 	ok( $actual =~ /404 not found/,
 	    'top level predicate should have refused request' );
+
+	$response = Apache::test->fetch('/comps/decline_dirs');
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
+X-Mason-Test: Initial value
+decline_dirs is 0
+Status code: 0
+EOF
+						   );
+	ok($success);
     }
 
     kill_httpd(1);
