@@ -163,8 +163,7 @@ sub _initialize
 	my $fh = do { local *FH; *FH; };  # double *FH avoids warning
 	open $fh, ">>".$self->system_log_file
 	    or die "Couldn't open system log file ".$self->{system_log_file}." for append";
-	my $oldfh;
-	select $fh;
+	my $oldfh = select $fh;
 	$| = 1;
 	select $oldfh;
 	$self->{system_log_fh} = $fh;
