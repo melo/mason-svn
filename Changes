@@ -30,6 +30,10 @@ parameters was wrong.  Reported by Michael Gray.  Task id #528.
 happened in code after an <%args>, <%attr>, or <%flags> block.
 Reported by Tony Clayton.  Task id #552.
 
+- The Apache handler now only sends headers once if make_request()
+aborts, such as when a redirect is executed in a
+MasonX::Interp::WithCallbacks callback.
+
 
 1.26  April 5, 2004
 
