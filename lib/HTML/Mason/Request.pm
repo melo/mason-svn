@@ -21,6 +21,7 @@ my %fields =
      aborted_value => undef,
      count => 0,
      declined => undef,
+     error_code => undef,
      interp => undef,
      out_method => undef,
      out_mode => undef,
@@ -109,7 +110,10 @@ sub exec {
 		($self->{dhandler_arg} = $path) =~ s{^$parent/}{};
 	    }
 	}
-	die "could not find component for path '$path'\n" if !$comp;
+	unless ($comp) {
+	    $self->{error_code} = 'top_not_found';
+	    die "could not find component for initial path '$path'\n";
+	}
     } elsif (ref($comp) !~ /Component/) {
 	die "exec: first argument ($comp) must be an absolute component path or a component object";
     }
@@ -659,12 +663,13 @@ sub current_sink { return $_[0]->top_stack->{sink} }
 
 #
 # Return the absolute version of a component path. Handles . and ..
-# Empty string resolves to current component path.
+# Empty string resolves to current component path. Optional second
+# argument is directory path to resolve relative paths against.
 #
 sub process_comp_path
 {
-    my ($self,$compPath) = @_;
-    if ($compPath !~ /\S/) {
+    my ($self,$comp_path,$dir_path) = @_;
+    if ($comp_path !~ /\S/) {
 	return $self->current_comp->path;
     }
     if ($comp_path !~ m@^/@) {
@@ -672,9 +677,9 @@ sub process_comp_path
 	die "relative component path ($comp_path) used from component with no current directory" unless $dir_path;
 	$comp_path = $dir_path . ($dir_path eq "/" ? "" : "/") . $comp_path;
     }
-    while ($compPath =~ s@/[^/]+/\.\.@@) {}
-    while ($compPath =~ s@/\./@/@) {}
-    return $compPath;    
+    while ($comp_path =~ s@/[^/]+/\.\.@@) {}
+    while ($comp_path =~ s@/\./@/@) {}
+    return $comp_path;    
 }
 
 1;

@@ -1,0 +1,3 @@
+<%init>
+$r->headers_out('X-Mason-Test' => 'New value 4');
+</%init>

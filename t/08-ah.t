@@ -85,12 +85,19 @@ sub try_exec_with_ah {
     compare_results ($test_name, $buf);
 }
 
-print "1..4\n";
+print "1..9\n";
 
 try_exec_with_ah('/basic','basic',{},{});
+try_exec_with_ah('/notfound','notfound',{},{});
 
 try_exec_with_ah('/headers','headers-batch',{output_mode=>'batch'},{});
 try_exec_with_ah('/headers','headers-stream',{output_mode=>'stream'},{});
+
+try_exec_with_ah('/headers-blank','headers-blank-batch',{output_mode=>'batch'},{});
+try_exec_with_ah('/headers-blank','headers-blank-stream',{output_mode=>'stream'},{});
+
+try_exec_with_ah('/basic','basic-with-true-predicate',{top_level_predicate=>sub {$_[0] =~ /basic/}},{});
+try_exec_with_ah('/basic','basic-with-false-predicate',{top_level_predicate=>sub {$_[0] =~ /notbasic/}},{});
 
 { my $qs = 'scalar=5&list=a&list=b&hash=key&hash=value';
   local $ENV{QUERY_STRING} = $qs;

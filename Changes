@@ -7,15 +7,17 @@ available at http://www.masonhq.com/changes.html.
 
 0.81
 
-- Fixed bug with paths displaying with two leading slashes
-- Fixed bug with default system log file (submitted by Renzo Toma <renzo.toma@veronica.nl>)
-- Fixed buglet with $comp->source_file not returning correct value when multiple comp roots
 - Fixed several small 0.8 bugs with automatic header sending and
-batch/stream mode. Headers are now sent properly for blank pages
-and not sent for error status code.
-- Replaced $r->filename with $r->finfo in ApacheHandler
+batch/stream mode. Headers are now sent properly for blank pages and
+not sent for error status code.
+- Fixed bug with default system log file. (submitted by Renzo Toma
+<renzo.toma@veronica.nl>)
+- Fixed bug with component paths displaying two leading slashes.
+- Fixed $comp->source_file when multiple comp roots declared.
+- Removed legacy dhandler code from ApacheHandler.
+- Replaced $r->filename with $r->finfo in ApacheHandler.
 (submitted by Dennis Watson)
-- Added dynamic virtual server configuration example to Admin.pod
+- Added dynamic virtual server configuration example to Admin.pod.
 (submitted by Caleb Crome <ccrome@yahoo.com>)
 
 0.8  Sun Jan 23 16:48:46 PST 2000
