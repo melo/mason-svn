@@ -362,7 +362,7 @@ provide more information than necessary). Use either an Apache directive
 
 or a handler.pl directive:
 
-    return 404 if $r->filename =~ m{_[^/]+$};
+    return 404 if $r->filename =~ m{^_[^/]+$};
 
 Even after you've safely protected internal components, top-level
 components that process arguments (such as form handlers) still
