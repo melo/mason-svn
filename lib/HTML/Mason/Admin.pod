@@ -83,9 +83,10 @@ according to the web server User/Group.
 =head1 CONFIGURATION VIA httpd.conf DIRECTIVES
 
 Mason's configuration parameters are set via mod_perl's C<PerlSetVar>
-and C<PerlAddVar> directives.  Though these parameters are all strings,
-Mason treats them in different ways.  The different parameter types
-are:
+and C<PerlAddVar> directives.  The latter directive is only available
+in mod_perl version 1.24 and greater.  Though these parameters are all
+strings, Mason treats them in different ways.  The different parameter
+types are:
 
 =over 4
 
@@ -118,6 +119,10 @@ To set a list parameter, use C<PerlAddVar> for the values, like this:
 
  PerlAddVar  MasonPreloads  /foo/bar/baz.comp
  PerlAddVar  MasonPreloads  /foo/bar/quux.comp
+
+As noted above, C<PerlAddVar> is only available in mod_perl 1.24 and
+up.  This means that it is only possible to assign a single value to
+list parameters if you are using a mod_perl older than 1.24.
 
 =back
 
@@ -348,6 +353,10 @@ the proper permissions to create the data directories.
 To maximize shared memory, you should put your Mason configuration
 directives in the configuration file B<before> you load the
 C<HTML::Mason::ApacheHandler> module via a C<PerlModule> directive.
+
+Because certain features were not available in mod_perl before
+1.21_01, Mason will be less memory efficient when using those older
+versions.
 
 =head1 CONFIGURING VIA A HANDLER SCRIPT
 
