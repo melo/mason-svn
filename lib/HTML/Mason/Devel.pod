@@ -570,13 +570,15 @@ component, can be accessed in two ways.
 
 1.  Declared named arguments: Components can define an
 C<E<lt>%argsE<gt>> section listing argument names, types, and
-default values, with optional comments. For example:
+default values. For example:
 
     <%args>
     $a       
     @b       # a comment
     %c
-    $d=>5    # another comment
+
+    # another comment
+    $d=>5
     @e=>('foo','baz')
     %f=>(joe=>1,bob=>2)
     </%args>
@@ -587,6 +589,9 @@ optional arguments; they are assigned the specified default values if
 unspecified.  All the arguments are available as lexically scoped ("my")
 variables in the rest of the component.
 
+Arguments are separated by one or more newlines. Comments may be used at
+the end of a line or on their own line.
+
 Only valid Perl variable names may be used in C<E<lt>%args%E<gt>>
 sections.  Parameters with non-valid variable names cannot be
 pre-declared and must be fetched manually out of the %ARGS hash (see
@@ -594,16 +599,16 @@ below).  One common example of undeclarable parameters are the
 "button.x/button.y" parameters sent for a form submit.
 
 2. %ARGS hash: This variable, always available, contains all of the
-parameters passed to the component.  It is especially handy when
-there are many parameters or when parameter names are determined at
-run-time. %ARGS can be used whether or not you have a <%args> ... </%args>
-section.
+parameters passed to the component.  It is especially handy for
+dealing with large numbers of parameters, dynamically named
+parameters, or parameters with non-valid variable names. %ARGS can be
+used whether or not you have a C<E<lt>%args%E<gt>> section, and its
+contents are unrelated to what you have and have not declared in
+C<E<lt>%args%E<gt>>.
 
 Here's how to pass all of a component's parameters to another component:
 
     <& template, %ARGS &>
-
-
 
 =head2 Parameter Passing Examples
 
