@@ -65,7 +65,9 @@ A simple configuration looks like:
 
 C<MasonCompRoot> specifies the I<component root>, the top of your
 component source tree. In simple configurations the component root is
-the same as the server's C<DocumentRoot>.
+the same as the server's C<DocumentRoot>. (See L<CONFIGURING VIRTUAL
+SITES> to understand why the component root and C<DocumentRoot> might
+differ.)
 
 When Mason handles a request, the requested filename must be
 underneath your component root -- that gives Mason a legitimate
@@ -1250,7 +1252,7 @@ dynamically, you need to maintain separate Mason objects for each
 site in your handler.pl:
 
     my (%interp,%ah);
-    foreach my $site qw(site1 site2 site3) {
+    foreach my $site (qw(site1 site2 site3)) {
         $interp{$site} = new HTML::Mason::Interp
             (comp_root => "/usr/local/www/$site",
              data_dir => "/usr/local/mason/$site");
@@ -1261,6 +1263,7 @@ site in your handler.pl:
     ...
 
     sub handler {
+        my ($r) = @_;
         my $site = $r->dir_config('site');
         $ah{$site}->handle_request($r);
     }
@@ -1277,6 +1280,7 @@ create objects on demand in the child:
     ...
 
     sub handler {
+        my ($r) = @_;        
         my $site = $r->dir_config('site');
         unless exists($interp{$site}) {
             # get comp_root from PerlSetVar as well
