@@ -27,6 +27,11 @@ Reported by Harmen and Oleg Bartunov respectively.
 $m->scomp, and that other component called $m->redirect, the redirect
 failed.  Task id #498.  Reported by Kim Alexander Hansen.
 
+[ IMPROVEMENTS ]
+
+- Lots of enhancements to the Apache.pm emulation when using the
+CGIHandler module.  Implemented by David Wheeler.
+
 
 1.22  July 14, 2003
 
