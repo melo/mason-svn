@@ -21,9 +21,9 @@ Task id #530.
 - The various request handling methods in CGIHandler once again return
 the value of calling the Interp object's exec() method.
 
-- Explicitly handle redirect statuses when an abort exception is
-thrown from the Interp object's exec() method.  This fixes some
-problems when this module was used with David Wheeler's
+- CGIHandler now explicitly handles redirect statuses when an abort
+exception is thrown from the Interp object's exec() method.  This
+fixes some problems when this module was used with David Wheeler's
 MasonX::Interp::WithCallbacks module.
 
 - Using a <%shared> block when "in_package" was set to something other
