@@ -69,14 +69,6 @@ sub new
     return $self;
 }
 
-# Override flush_buffer to also call $r->rflush
-sub flush_buffer
-{
-    my ($self) = @_;
-    $self->SUPER::flush_buffer;
-    $self->apache_req->rflush;
-}
-
 sub cgi_object
 {
     my ($self) = @_;
@@ -938,7 +930,18 @@ sub prepare_request
     # Craft the request's out method to handle http headers, content
     # length, and HEAD requests.
     my $sent_headers = 0;
-    my $out_method = sub {
+    my $out_method;
+    if (APACHE2) {
+
+	# mod_perl-2 does not need to call $r->send_httpd_headers
+	$out_method = sub {
+  	    $r->$final_output_method( grep { defined } @_ );
+  	    $r->rflush;
+  	};
+  	 
+    } else {
+
+	$out_method = sub {
 
 	# Send headers if they have not been sent by us or by user.
         # We use instance here because if we store $request we get a
@@ -959,7 +962,10 @@ sub prepare_request
 	# Call $r->print (using the real Apache method, not our
 	# overriden method).
 	$r->$final_output_method(grep {defined} @_);
-    };
+	$r->rflush;
+	};
+
+    }
 
     $request->out_method($out_method);
 

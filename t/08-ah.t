@@ -226,9 +226,15 @@ EOF
 	      );
 
     write_comp( 'redirect', <<'EOF',
-<%init>
+% $m->print("\n");  # leading whitespace
+
+<%perl>
+$m->scomp('foo');
 $m->redirect('/comps/basic');
-</%init>
+</%perl>
+<%def foo>
+fum
+</%def>
 EOF
 	      );
 
