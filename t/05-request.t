@@ -571,6 +571,22 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_test( name => 'abort_and_scomp',
+		      description => 'Test that an abort in an scomp generates no output (it cannot, unfortunately)',
+		      component => <<'EOF',
+filter
+
+% my $foo = eval { $m->scomp('support/abort_test') };
+<% $foo %>
+EOF
+		      expect => <<'EOF',
+filter
+
+EOF
+		    );
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'reexec',
 		      description => 'test that $m cannot be reexecuted',
 		      component => <<'EOF',
