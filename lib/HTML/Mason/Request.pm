@@ -361,6 +361,7 @@ sub call_self
     }
     $self->top_stack({%save_locals});
     $$cref = $content if ref($cref) eq 'SCALAR';
+    undef $content;
 
     return 1;
 }
