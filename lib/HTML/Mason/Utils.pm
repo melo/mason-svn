@@ -40,8 +40,23 @@ sub access_data_cache
 	$lockdir .= "locks";
 	mkpath($lockdir,0,0755) if (!-d $lockdir);
 	my $lockfile = "$lockdir/$base.lock";
-	my $lockfh = new IO::File ">>$lockfile"
-	   or die "cache: cannot open lockfile '$lockfile' for locking\n";
+
+	# Open file in correct mode for lock type (Tom Hughes)
+	my $lockfh;
+	if ($lockargs & LOCK_EX) {
+	    $lockfh = new IO::File ">>$lockfile"
+		or die "cache: cannot open lockfile '$lockfile' for exclusive lock\n";
+	} elsif ($lockargs & LOCK_SH) {
+	    $lockfh = new IO::File "<$lockfile";
+	    if (!$lockfh && !-e $lockfile) {
+		$lockfh = new IO::File ">$lockfile";
+		$lockfh->close;
+		$lockfh = new IO::File "<$lockfile";
+	    }
+	    die "cache: cannot open lockfile '$lockfile' for shared lock\n" if !$lockfh;
+	} else {
+	    die "unknown lock mode: $lockargs";
+	}
 	return (flock($lockfh, $lockargs)) ? $lockfh : undef;
     };
     
@@ -290,3 +305,16 @@ sub access_data_cache
     }
 }
 
+#
+# Returns 1 if the exclusive, non-blocking lock was obtained,
+# undef otherwise. Left here for content management
+# backwards compatibility!
+#
+sub get_lock {
+    my $fh = shift;
+
+    my $LOCK_EX = 2;
+    my $LOCK_NB = 4;
+    my $LOCK_UN = 8;
+    return flock $fh, $LOCK_EX|$LOCK_NB;
+}

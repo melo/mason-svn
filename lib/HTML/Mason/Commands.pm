@@ -71,7 +71,8 @@ sub mc_auto_comp
     
     # return relative path if possible
     my $curdir = $INTERP->locals->{parentPath};
-    $path =~ s{^$curdir}{};
+    $path =~ s{^$curdir/}{};
+    return $path;
 }
 
 sub mc_auto_next
@@ -80,7 +81,6 @@ sub mc_auto_next
     my $aref = $INTERP->{exec_state}->{autohandler_next} or die "mc_auto_next $no_auto_error";
     my ($compPath, $argsref) = @$aref;
     my %args = (%$argsref,@_);
-    undef $INTERP->{exec_state}->{autohandler_next};
     my ($result,@result);
     if (wantarray) {
 	@result = mc_comp($compPath, %args);
