@@ -24,13 +24,11 @@ HTML::Mason::handler() routine in handler.pl.
 
 =head1 PARAMETERS TO THE use() DECLARATION
 
+
 The following are parameters to pass explicitly when using
-HTML::Mason::ApacheHandler. The line must precede 'use HTML::Mason' to
-take effect; otherwise HTML::Mason implicitly imports ApacheHandler
-with default settings. e.g.
+HTML::Mason::ApacheHandler. e.g.
 
     use HTML::Mason::ApacheHandler (args_method=>'mod_perl');
-    use HTML::Mason;
 
 =over
 
