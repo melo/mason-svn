@@ -5,20 +5,21 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
-0.81
+0.81  Sun Feb 20 23:39:05 PST 2000
 
-- Fixed several small 0.8 bugs with automatic header sending and
-batch/stream mode. Headers are now sent properly for blank pages and
-not sent for error status code.
-- Fixed bug with default system log file. (submitted by Renzo Toma
-<renzo.toma@veronica.nl>)
+- Fixed small 0.8 bugs with automatic header sending. Headers are now
+sent for blank pages and are not sent on an error status code.
+- Fixed bug with default system log file. (submitted by Renzo Toma)
+- Eliminated memory leak introduced in 0.8 for a few Linux platforms.
+(submitted by Renzo Toma and Pascal Eeftinck)
 - Fixed bug with component paths displaying two leading slashes.
 - Fixed $comp->source_file when multiple comp roots declared.
+- Fixed $m->decline in mod_perl mode.
 - Removed legacy dhandler code from ApacheHandler.
 - Replaced $r->filename with $r->finfo in ApacheHandler.
 (submitted by Dennis Watson)
 - Added dynamic virtual server configuration example to Admin.pod.
-(submitted by Caleb Crome <ccrome@yahoo.com>)
+(submitted by Caleb Crome)
 
 0.8  Sun Jan 23 16:48:46 PST 2000
 
