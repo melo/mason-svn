@@ -468,7 +468,7 @@ sub set_global
     die "Interp::set_global: expects a variable name and one or more values" if !@values;
     my ($prefix, $name) = ($decl =~ /^[\$@%]/) ? (substr($decl,0,1),substr($decl,1)) : ("\$",$decl);
 
-    my $varname = sprintf("%s::%s",$self->{parser}->{in_package},$name);
+    my $varname = sprintf("%s::%s",$self->{parser}->in_package,$name);
     if ($prefix eq "\$") {
 	no strict 'refs'; $$varname = $values[0];
     } elsif ($prefix eq "\@") {
