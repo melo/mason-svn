@@ -16,6 +16,7 @@ use Fcntl;
 use File::Basename;
 use HTML::Mason::Config;
 use HTML::Mason::Tools qw(date_delta_to_secs);
+use MLDBM ($HTML::Mason::Config{mldbm_use_db}, $HTML::Mason::Config{mldbm_serializer});
 
 sub access_data_cache
 {
@@ -25,16 +26,26 @@ sub access_data_cache
     # Defaults
     #
     my $cacheFile = $options{cache_file} || die "cache: must specify cache file";
-    my $physFile = $cacheFile . $HTML::Mason::DBM_FILE_EXT;
-    my $tieClass = ($options{tie_class} || $HTML::Mason::DEFAULT_CACHE_TIE_CLASS || die "no tie class defined!");
+    my $physFile = $cacheFile . $HTML::Mason::Config{mldbm_file_ext};
+    my $tieClass = ($options{tie_class} || $HTML::Mason::Config{default_cache_tie_class} || die "no tie class defined!");
     my $action = $options{action} || 'retrieve';
     my $key = $options{key} || 'main';
     my $memCache = $options{memory_cache};
     my $time = time();
     my $path = $cacheFile;
 
+    my $lockCacheFile = sub {
+	my ($base,$lockdir) = fileparse($physFile);
+	$lockdir .= "locks";
+	mkpath($lockdir,0,0755) if (!-d $lockdir);
+	my $lockfile = "$lockdir/$base.lock";
+	my $lockfh = new IO::File ">>$lockfile"
+	   or die "cache: cannot open lockfile '$lockfile' for locking\n";
+	return (&get_lock($lockfh)) ? $lockfh : undef;
+    };
+    
     #
-    # Store / expire
+    # Store
     #
     if ($action eq 'store' || $action eq 'expire') {
 	my ($expireTime,%out);
@@ -48,63 +59,130 @@ sub access_data_cache
 	}
 	
 	#
-	# Determine expiration time if expire flag given
+	# Determine expiration time if expire flag given. For the "next"
+	# options, we're jumping through hoops to find the *top* of the
+	# next hour or day.
 	#
 	if (exists($options{expire_at})) {
 	    $expireTime = $options{expire_at};
 	    die "cache: invalid expire_at value '$options{expire_at}' - must be a numeric time value\n" if $expireTime !~ /^[0-9]+$/;
 	} elsif (exists($options{expire_next})) {
-	    my $term = $options{expire_next};
-	    my ($sec,$min,$hour) = localtime(time);
+            my $term = $options{expire_next};
+	    my $lockTime = time();
+            my ($sec,$min,$hour) = localtime($lockTime);
 	    my $deltaTime;
-	    if ($term eq 'hour') {
-		$deltaTime = 60*(60-$min)+(60-$sec);
-	    } elsif ($term eq 'day') {
-		$deltaTime = 3600*(24-$hour)+60*(60-$min)+(60-$sec);
-	    } else {
-		die "cache: invalid expire_next value '$term' - must be 'hour' or 'day'\n";
-	    }
-	    $expireTime = time() + $deltaTime;
+            if ($term eq 'hour') {
+		$deltaTime = 60*(59-$min)+(60-$sec);
+            } elsif ($term eq 'day') {
+		$deltaTime = 3600*(23-$hour)+60*(59-$min)+(60-$sec);
+            } else {
+                die "cache: invalid expire_next value '$term' - must be'hour' or 'day'\n";
+            }
+            $expireTime = $lockTime + $deltaTime;
+
 	} elsif (exists($options{expire_in})) {
 	    my $delta = $options{expire_in};
 	    my $deltaTime = eval(date_delta_to_secs($delta));
-	    die "cache: invalid expire_in value '$options{expire_in}' - must be of the form <num><unit>, where <unit> is one of second, minute, hour, date, week or an abbreviation thereof\n" if !$deltaTime;
+	    die "cache: invalid expire_in value '$options{expire_in}' - must be of the form <num><unit>, where <unit> is one of seconds, minutes, hours, days, weeks, months or an abbreviation thereof\n" if !$deltaTime;
 	    $expireTime = time() + $deltaTime;
 	}
 
 	#
 	# Try to get lock on cache lockfile. If not possible, return.
 	#
-	my ($base,$lockdir) = fileparse($physFile);
-	$lockdir .= "locks";
-	mkpath($lockdir,0,0755) if (!-d $lockdir);
-	my $lockfile = "$lockdir/$base.lock";
-	my $lockfh = new IO::File ">>$lockfile"
-	   or die "cache: cannot open lockfile '$lockfile' for locking\n";
-	return unless &get_lock($lockfh);
+	my $lockfh = &$lockCacheFile();
+	return unless $lockfh;
     
 	# Tie to DB file
 	tie (%out, $tieClass, $cacheFile, O_RDWR|O_CREAT, 0664)
 		or die "cache: cannot create/open cache file '$cacheFile'\n";
 
-	if ($action eq 'store') {
+	# Finally, store the value.
+	eval {
 	    $out{"$key.contents"} = $options{value};
 	    $out{"$key.expires"} = $expireTime;
 	    $out{"$key.lastmod"} = $time;
-	    if (defined($memCache)) {
-		$memCache->{$path}->{$key} = {expires=>$expireTime,lastModified=>$time,lastUpdated=>$time,contents=>$options{value}};
+	};
+	if (my $err = $@) {
+	    my $msg = "An error occurred while storing to the cache file '$physFile'.\n";
+	    if ($tieClass eq 'MLDBM' && $HTML::Mason::Config{mldbm_use_db} =~ /^(SDBM|ODBM|NDBM)/) {
+		$msg .= "One likely reason is that you are using the '$HTML::Mason::Config{mldbm_use_db}'\n";
+		$msg .= "package which is inadequate for storing large data.  Try switching to DB_File\n";
+		$msg .= "or GDBM (see the Administrator's Manual for details). Otherwise, the\n";
+	    } else {
+		$msg .= "The ";
 	    }
-	} elsif ($action eq 'expire') {
-	    delete($out{"$key.contents"});
-	    delete($out{"$key.expires"});
-	    delete($out{"$key.lastmod"});
-	    if (defined($memCache)) {
-		delete($memCache->{$path}->{$key});
-	    }
+	    $msg .= "cache file may be corrupt or of the wrong DBM format; try removing it and\n";
+	    $msg .= "re-running your request.\n";
+	    $msg .= "Original error message:\n$err";
+	    die $msg;
 	}
+	if (defined($memCache)) {
+	    $memCache->{$path}->{$key} = {expires=>$expireTime,lastModified=>$time,lastUpdated=>$time,contents=>$options{value}};
+	}
+	
 	untie(%out);
 	$lockfh->close();
 
+    #
+    # Expire
+    #
+    } elsif ($action eq 'expire') {
+	my (%out);
+
+	#
+	# Validate parameters
+	#
+	if (my @invalids = grep(!/^(action|key|memory_cache|cache_file|tie_class)$/,keys(%options))) {
+	    die "cache: invalid parameter '$invalids[0]' for action '$action'\n";
+	}
+	
+	#
+	# Try to get lock on cache lockfile. If not possible, trigger error.
+	#
+	my $lockfh = &$lockCacheFile();
+	for (my $cnt=0; $cnt<4 && !$lockfh; $cnt++) {
+	    sleep(1);
+	    $lockfh = &$lockCacheFile();
+	}
+	die "cache: could not get lock on cache file '$physFile', expire action failed" unless $lockfh;
+    
+	# Tie to DB file
+	tie (%out, $tieClass, $cacheFile, O_RDWR|O_CREAT, 0664)
+		or die "cache: cannot create/open cache file '$cacheFile'\n";
+
+	# Expire key or keys
+	my @keys = (ref($key) eq 'ARRAY') ? @$key : ($key);
+	foreach my $key (@keys) {
+	    $out{"$key.expires"} = $time;
+	    $out{"$key.lastmod"} = $time;
+	    if (defined($memCache)) {
+		$memCache->{$path}->{$key}->{expires} = $time;
+		$memCache->{$path}->{$key}->{lastModified} = $time;
+		$memCache->{$path}->{$key}->{lastUpdated} = $time;
+	    }
+	}
+
+	untie(%out);
+	$lockfh->close();
+
+    #
+    # Keys
+    #
+    } elsif ($action eq 'keys') {
+	#
+	# Validate parameters
+	#
+	if (my @invalids = grep(!/^(memory_cache|cache_file|tie_class)$/,keys(%options))) {
+	    die "cache: invalid parameter '$invalids[0]' for action '$action'\n";
+	}
+	
+	my %in;
+	tie (%in, $tieClass, $cacheFile, O_RDONLY, 0);
+	my @keys = keys(%in);
+	untie (%in);
+	return @keys;
+	
     #
     # Retrieve
     #
@@ -116,7 +194,7 @@ sub access_data_cache
 	#
 	# Validate parameters
 	#
-	if (my @invalids = grep(!/^(expire_if|action|key|memory_cache|cache_file|tie_class)$/,keys(%options))) {
+	if (my @invalids = grep(!/^(expire_if|action|key|memory_cache|cache_file|busy_lock|tie_class)$/,keys(%options))) {
 	    die "cache: invalid parameter '$invalids[0]' for action '$action'\n";
 	}
 	
@@ -147,6 +225,7 @@ sub access_data_cache
 		$mem->{contents} = $in{"$key.contents"};
 		$mem->{expires} = $in{"$key.expires"};
 		$mem->{lastModified} = $in{"$key.lastmod"};
+		$mem->{busyLock} = $in{"$key.busylock"} if $options{busy_lock};
 		$mem->{lastUpdated} = $time;
 	    }
 	    untie(%in);
@@ -155,14 +234,55 @@ sub access_data_cache
 	#
 	# If cache entry has expired, return undef. Otherwise return contents.
 	#
-	return undef if ($mem->{expires} && $time >= $mem->{expires});
+	my $expired = 0;
+	$expired = 1 if ($mem->{expires} && $time >= $mem->{expires});
 	if (exists($options{expire_if})) {
 	    my $sub = $options{expire_if};
-	    return undef if (&$sub($mem->{lastModified}));
+	    $expired = 1 if (&$sub($mem->{lastModified}));
 	}
-	return $mem->{contents};
+	return $mem->{contents} if !$expired;
+	return undef if !$options{busy_lock};
+
+	#
+	# Here we implement the busy lock mechanism. This allows one
+	# process to recompute a new cache value while the rest of the
+	# processes temporarily return the old value.
+	#
+	my $delay = date_delta_to_secs($options{busy_lock});
+
+	# there are two pieces of information stored about the busy
+	# lock: a match number (which must match lastModified for the
+	# lock to be valid) and the time at which the lock was
+	# created.
+	my ($lockMatch,$lastLocked) = defined($mem->{busyLock}) ? split("/",$mem->{busyLock}) : (0,0);
+	my $locked = ($lockMatch && $lockMatch==$mem->{lastModified});
+	if (!$locked) {
+	    # busy lock has not been set yet.  Try to set it by
+	    # locking and writing to the cache file.
+	    my $lockfh = &$lockCacheFile();
+	    if ($lockfh) {
+		my %out;
+		tie (%out, $tieClass, $cacheFile, O_RDWR|O_CREAT, 0664)
+		    or die "cache: cannot create/open cache file '$cacheFile'\n";
+		$out{"$key.busylock"} = $mem->{lastModified}."/".$time;
+		untie(%out);
+		$lockfh->close();
+
+		# busy lock was set successfully.  Return undef so that
+		# this process computes the new cache value.
+		return undef;
+	    }
+	    # busy lock could not be set.  Return the old value if
+	    # we're close enough to the expire time, otherwise return
+	    # undef.
+	    return ($time < $mem->{expires}+$delay) ? $mem->{contents} : undef;
+	}
+	# busy lock is already set.  Return the old value if we're
+	# close enough to the locked time, otherwise return undef.
+	return ($time < $lastLocked+$delay) ? $mem->{contents} : undef;
+
     } else {
-	die "cache: bad action '$options{action}': must be one of 'store', 'retrieve', or 'expire'\n";
+	die "cache: bad action '$options{action}': must be one of 'store', 'retrieve', 'expire', or 'keys'\n";
     }
 }
 
