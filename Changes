@@ -17,7 +17,7 @@ id #538.
 they were purged from the code cache.  Task id #549.
 
 - Component calls (<& &>) starting with a newline were compiled
-incorrectly. Repoted by Rick Delaney. Task id #564.
+incorrectly. Reported by Rick Delaney. Task id #564.
 
 - If both a parent request and subrequest had autoflush set, output
 from the subrequest wasn't actually flushed.  Reported by Tony
