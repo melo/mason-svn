@@ -75,7 +75,7 @@ subcomponent (defined by c<< <%def> >>).
 
 =item owner
 
-Return the component object that this subcomponent or method was
+Returns the component object that this subcomponent or method was
 defined within.
 
 =back
