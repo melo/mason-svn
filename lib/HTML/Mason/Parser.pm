@@ -1133,6 +1133,8 @@ sub write_object_file
 	@options{qw(object_text object_file files_written)};
     my @newfiles = ($object_file);
 
+    ($object_file) = $object_file =~ /^(.*)/s if $self->taint_check;
+
     if (!-f $object_file) {
 	my ($dirname) = dirname($object_file);
 	if (!-d $dirname) {
@@ -1144,7 +1146,6 @@ sub write_object_file
     }
     
     my $fh = make_fh();
-    ($object_file) = $object_file =~ /^(.*)/s if $self->taint_check;
     open $fh, ">$object_file" or die "Couldn't write object file $object_file: $!";
     print $fh $object_text;
     close $fh or die "Couldn't close object file $object_file: $!";
