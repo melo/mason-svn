@@ -132,10 +132,10 @@ a parser with default parameters.
 
 =item preloads
 
-A list of component paths and/or component directories to load when the
-interpreter initializes, e.g.
+A list of component paths, optionally with glob wildcards, to load
+when the interpreter initializes. e.g.
 
-    preloads => ['/foo','/bar/baz.html']
+    preloads => ['/foo/index.html','/bar/*.pl']
 
 Default is the empty list. This should only be used for components that
 are frequently viewed and rarely updated.  See the L<Admin/preloading>

@@ -172,7 +172,9 @@ sub _initialize
     # Preloads
     #
     if ($self->preloads) {
+	die "list reference expected for preloads parameter" unless ref($self->preloads) eq 'ARRAY';
 	foreach my $pattern (@{$self->preloads}) {
+	    die "preloads pattern must be an absolute path" unless is_absolute_path($pattern);
 	    my @paths = $self->resolver->glob_path($pattern,$self);
 	    foreach (@paths) { $self->load($_) }
 	}
