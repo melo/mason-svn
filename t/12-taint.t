@@ -22,7 +22,11 @@ BEGIN
     eval $libs;
 }
 
+use Cwd;
+
 use HTML::Mason::Parser;
+use HTML::Mason::Interp;
+use HTML::Mason::Tools qw(read_file);
 
 # Clear alarms, and skip test if alarm not implemented
 eval {alarm 0};
@@ -63,3 +67,20 @@ else
     print "ok 1\n";
 }
 
+# return val of getcwd() is tainted
+my $data_dir = join '/', getcwd(), 'mason_tests', 'data';
+
+# this is tainted
+my $comp2 = read_file('t/taint.comp');
+eval { $parser->write_object_file( object_text => $comp2,
+				   object_file => "$data_dir/taint_write_test",
+				 ); };
+
+if (! $@)
+{
+    print "ok 2\n";
+}
+else
+{
+    print "not ok 2 - Unable to write a tainted object file to disk: $@\n";
+}
