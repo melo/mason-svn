@@ -19,23 +19,25 @@ PREREQUISITES
 
 Mason requires Perl 5.005 or greater, and the following CPAN modules:
 
-* Params::Validate
+* Class::Container
 
 * Exception::Class
 
-* Class::Container
+* File::Spec 0.8+ - included in the core as of 5.00504
 
 * File::Spec
 
+* Params::Validate
+
 * Scalar::Util
+
+* Test::More - you could skip this if you don't want to run the tests
 
 The following CPAN modules are optional for certain features, but not required:
 
-* Apache::Request
+* Either Apache::Request or CGI.pm
 
 * Cache::Cache
-
-* CGI.pm
 
 INSTALLATION
 
@@ -46,13 +48,14 @@ To install Mason, run the standard sequence:
 	make install
 
 By default, Mason will prompt you for information about where Apache
-is installed so that it can do tests with a live Apache server.  If
+is installed so that it can help you install Mason under mod_perl.  If
 you would like to skip this, invoke the Makefile.PL like this:
 
         perl Makefile.PL --no-prompts
 
-After Mason is installed, you will need to activate it by adding some
-directives to your Apache configuration files.
+If you didn't have Mason do this for you, then after Mason is
+installed, you will need to activate it by adding some directives to
+your Apache configuration files.
 
 The included pod docs have been pre-converted to HTML for you and
 placed in the htdocs/ directory. The Mason overview (a good place to
@@ -95,7 +98,8 @@ http://www.masonhq.com/?MailingLists.
 
 There is a book about Mason, _Embedding Perl in HTML with Mason_, by
 Dave Rolsky and Ken Williams.  This book is published by O'Reilly and
-Associates.  The book's home page is http://www.masonbook.com/.
+Associates.  The book's home page is http://www.masonbook.com/, and
+the entire book is available online.
 
 CODE EXAMPLES
 
@@ -124,6 +128,9 @@ If you are experiencing test failures, please run the tests like this:
 
 and send the output along with the bug report.  Otherwise we'll just
 ask you to do this before we can do anything.
+
+See http://www.masonhq.com/?MailingLists for information on the
+mailing lists.
 
 LICENSE
 
