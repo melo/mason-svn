@@ -65,7 +65,8 @@ component title, as in an error message.
 
 For example:
 
-    comp_root => [['private', '/usr/home/joe/comps'], ['main', '/usr/local/www/htdocs']]
+    comp_root => [['private', '/usr/home/joe/comps'],
+                  ['main', '/usr/local/www/htdocs']]
 
 This specifies two component roots, a main component tree and a
 private tree which overrides certain components.  The order is

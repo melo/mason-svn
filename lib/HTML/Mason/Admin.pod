@@ -998,8 +998,10 @@ site in the handler.pl:
 
     my (%interp,%ah);
     foreach my $site qw(...) {
-        $interp{$site} = new HTML::Mason::Interp  (comp_root=>"/usr/local/www/$site",...);
-        $ah{$site} = new HTML::Mason::ApacheHandler (interp=>$interp{$site},...);
+        $interp{$site} = new HTML::Mason::Interp
+            (comp_root => "/usr/local/www/$site",...);
+        $ah{$site} = new HTML::Mason::ApacheHandler
+            (interp => $interp{$site},...);
     }
 
     ...
