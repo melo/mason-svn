@@ -7,6 +7,10 @@ available at http://www.masonhq.com/code/history.html.
 
 1.27
 
+[ ENHANCEMENTS ]
+
+- Full support for Apache2/mod_perl2.
+
 [ BUG FIXES ]
 
 - The request object was not available as $m in the preamble if
