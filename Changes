@@ -5,10 +5,10 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
-0.896
+0.896  Fri Jan  5 15:55:55 PST 2001
 
 - Fixed bug preventing Mason from working with PerlFreshRestart.
-- Fixed use_reload_file to work as documented and not stat() source files. (submitted by bjturner)
+- Fixed use_reload_file to work as documented and not stat() source files. (submitted by Benjamin John Turner)
 - Fixed display in Apache::Status.
 - Documented the significance of ordering in <%args> sections.
 - Fixed documentation of %ARGS with regards to hashes passed in query string. (suggested by Adam Stubbs)
