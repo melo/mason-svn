@@ -6,10 +6,14 @@ e: <% join(",",@e) %>
 f: <% join(",",map("$_=$f{$_}",sort(keys(%f)))) %>
 
 <%args>
+# line comment
 $a       
 @b       # a comment
 %c
+    # second line comment
 $d=>5    # another comment
+
 @e=>('foo','baz')
 %f=>(joe=>1,bob=>2)
+
 </%args>

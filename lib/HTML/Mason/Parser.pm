@@ -415,7 +415,7 @@ sub _parse_var_decls
 {
     my ($self, $section) = @_;
 
-    my @decls = grep {/\S/} split /\n/, $section;
+    my @decls = grep {/\S/ && !/^\s*#/} split /\n/, $section;
 
     my @vars;
     foreach my $decl (@decls)
