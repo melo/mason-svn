@@ -21,6 +21,7 @@ unshift(@INC,"$root/lib");
 require "$root/t/test-common.pl";
 
 require HTML::Mason::ApacheHandler;
+HTML::Mason::ApacheHandler->import;
 
 init();
 
@@ -75,8 +76,13 @@ sub try_exec_with_ah {
     $r->{headers_out_method} = sub { $buf .= $_[0] };
     $r->headers_out('X-Mason-Test' => 'Initial value');
 
-    # Stop CGI from reinitializing with same params
-    CGI::initialize_globals();
+    # Stop CGI from reinitializing with same params. CGI normally registers this as a mod_perl cleanup.
+    # And unfortunately the method name changed in CGI3.
+    if ($CGI::VERSION < 3) {
+        CGI::initialize_globals();
+    } else {
+        CGI::Object::initialize_globals();
+    }
 
     # Handle request.
     my $retval = eval { $ah->handle_request($r) };
@@ -90,7 +96,7 @@ sub try_exec_with_ah {
     compare_results ($test_name, $buf);
 }
 
-print "1..5\n";
+print "1..6\n";
 
 try_exec_with_ah('/basic','basic',{},{});
 
@@ -99,5 +105,7 @@ try_exec_with_ah('/headers','headers-stream',{output_mode=>'stream'},{});
 { my $qs = 'blank=1';
   try_exec_with_ah('/headers','headers-batch-blank',{output_mode=>'batch'},{"args_hash" => {blank=>1}});
   try_exec_with_ah('/headers','headers-stream-blank',{output_mode=>'stream'},{"args_hash" => {blank=>1}}); }
+
+try_exec_with_ah('/cgi_object', 'cgi_object', {}, {});
 
 1;
