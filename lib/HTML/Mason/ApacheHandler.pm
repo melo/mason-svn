@@ -585,6 +585,7 @@ sub handle_request {
 	#
 	# Do not process error at all in raw mode or if die handler was overriden.
 	#
+	my $raw_err = $err;
 	unless ($self->error_mode =~ /^raw_/ or $interp->die_handler_overridden) {
 	    $err = error_process ($err, $request);
 	}
@@ -605,7 +606,7 @@ sub handle_request {
 	    }
 	    die $err;
 	} elsif ($self->error_mode eq 'raw_fatal') {
-	    die ("System error:\n$err\n");	    
+	    die ("System error:\n$raw_err\n");	    
 	} elsif ($self->error_mode =~ /html$/) {
 	    unless ($interp->die_handler_overridden) {
 		my $debug_msg;
@@ -614,10 +615,10 @@ sub handle_request {
 		}
 		if ($self->error_mode =~ /^raw_/) {
 		    $err .= "$debug_msg\n" if $debug_msg;
-		    $err = "<h3>System error</h3><p><pre><font size=-1>$err</font></pre>\n";
+		    $err = "<h3>System error</h3><p><pre><font size=-1>$raw_err</font></pre>\n";
 		} else {
 		    $err .= "Debug info: $debug_msg\n" if $debug_msg;
-		    $err = error_display_html($err);
+		    $err = error_display_html($err,$raw_err);
 		}
 	    }
 	    # Send HTTP headers if they have not been sent.

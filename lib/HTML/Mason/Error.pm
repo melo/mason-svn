@@ -214,13 +214,16 @@ sub error_process {
 }
 
 sub error_display_html {
-    my ($error) = @_;
+    my ($error,$raw_error) = @_;
 
     my $out = '';
 
     my $conf = error_conf();
     my $title = "Mason error";
     my $error_info = error_parse($error);
+
+    $raw_error =~ s/\n/<br>\n/g;
+    $error_info->{raw_error} = $raw_error if $raw_error;
 
     $out .= qq{<html><body>\n<p align="center"><font face="$conf->{'font_face'}"><b>$title</b></font></p>\n};
     $out .= error_table_html($error_info, $conf, $error);
@@ -252,6 +255,7 @@ sub error_table_html {
 		);
     $show{misc_info} = $error_info->{misc_info} if $error_info->{misc_info};
     $show{debug_info} = $error_info->{debug_info} if $error_info->{debug_info};
+    $show{raw_error} = "<br>" x 30 . "<a name=\"raw_error\">\n" . $error_info->{raw_error} if $error_info->{raw_error};
 
     $out .= qq{<table border="0" cellspacing="0" cellpadding="1">};
     foreach my $item (@{$conf->{'show'}}) {
@@ -316,8 +320,8 @@ sub error_conf {
 		    context         => "context: ",
 		    component_stack => "component stack: ", 
 		    call_trace      => "code stack: ",
-		    misc_info       => "misc info: ",
 		    debug_info      => "debug info: ",
+		    raw_error       => "<br><a href=\"#raw_error\">raw_error</a>" . "<br>" x 30 . "raw error: ",
 		},
 
 		show             => [ 
@@ -327,7 +331,7 @@ sub error_conf {
 				      "component_stack",
 				      "call_trace",
 				      "debug_info",
-				      "misc_info"
+				      "raw_error",
 				      ],
 
 		};
@@ -488,9 +492,6 @@ sub error_parse {
 		my ($file, $line) = ($entry =~ /\[(\S+):(\d+)\]/);
 		push @{$error_info->{'calltrace'}}, { file => $file, line => $line };
 	    }
-	} elsif($line =~ /^Misc info:/) {
-	    my ($misc_info) = ($line =~ /^Misc info: (.*)/);
-	    $error_info->{'misc_info'} = $misc_info;
 	} elsif($line =~ /^Debug info:/) {
 	    my ($debug_info) = ($line =~ /^Debug info: (.*)/);
 	    $error_info->{'debug_info'} = $debug_info;
