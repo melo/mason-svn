@@ -1629,8 +1629,10 @@ Externally>.
 
 =head2 Sending HTTP Headers
 
-Mason automatically sends HTTP headers via C<< $r->send_http_header >>
-but it will not send headers if they've already been sent manually.
+Under ApacheHandler and CGIHandler, Mason automatically sends HTTP
+headers, via C<< $r->send_http_header() >> with ApacheHandler, and via
+C<< CGI->header() >> with CGIHandler, but it will not send headers if
+they've already been sent manually.
 
 To determine the exact header behavior on your system, you need to
 know whether your server's default is to have P<autoflush> on or off.
@@ -1669,9 +1671,9 @@ P<auto_send_headers> parameter.
 
 =head2 Returning HTTP Status
 
-The value returned from the top-most component becomes the status code
-of the request. If no value is explicitly returned, it defaults to OK
-(0).
+When running under ApacheHandler, the value returned from the top-most
+component becomes the status code of the request. If no value is
+explicitly returned, it defaults to OK (0).
 
 Simply returning an error status (such as 404) from the top-most
 component has two problems in practice. First, the decision to return
@@ -1699,6 +1701,10 @@ or the status will not make it out:
           # deal with non-abort exceptions
       }
    }
+
+Note that when running under CGIHandler, the value you return from
+your components, or via C<< $m->abort() >>, is not able to affect the
+status code of the request.
 
 =head3 Filters and $m->abort
 
@@ -1742,8 +1748,9 @@ client.
 First, you can use a Mason subrequest (see L</Subrequests>). This only
 works if you are redirecting to another Mason page.
 
-Second, you can use Apache's internal_redirect method, which works
-whether or not the new URL will be handled by Mason.  Use it this way:
+Second, if you're running under mod_perl with ApacheHandler, you can
+use Apache's internal_redirect method, which works whether or not the
+new URL will be handled by Mason.  Use it this way:
 
     $r->internal_redirect($url);
     $m->auto_send_headers(0);
