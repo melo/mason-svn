@@ -263,13 +263,14 @@ sub handle_request {
 
     eval { $retval = handle_request_1($self, $apreq, $request, $debugState) };
     my $err = $@;
-    my $err_status = $err ? 1 : 0;
+    my $err_code = $request->{error_code};
+    undef $request;  # ward off memory leak
 
     if ($err) {
 	#
 	# If first component was not found, return 404.
 	#
-	return 404 if defined($request->{error_code}) and $request->{error_code} eq 'top_not_found';
+	return 404 if defined($err_code) and $err_code eq 'top_not_found';
 	
 	#
 	# Take out date stamp and (eval nnn) prefix
@@ -297,7 +298,7 @@ sub handle_request {
 	print "\n<!--\n$debugMsg\n-->\n" if (defined($debugMsg) && http_header_sent($apreq) && !$apreq->header_only && $apreq->header_out("Content-type") =~ /text\/html/);
     }
 
-    $interp->write_system_log('REQ_END', $self->{request_number}, $err_status);
+    $interp->write_system_log('REQ_END', $self->{request_number}, ($err ? 1 : 0));
     return ($err) ? &OK : (defined($retval)) ? $retval : &OK;
 }
 
