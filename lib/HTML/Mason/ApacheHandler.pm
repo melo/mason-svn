@@ -145,7 +145,7 @@ sub import
 
     if (_in_apache_conf_file())
     {
-	$params{args_method} ||= Apache->server->dir_config('MasonArgsMethod');
+	$params{args_method} = Apache->server->dir_config('MasonArgsMethod');
     }
 
     # safe default.
@@ -229,6 +229,7 @@ sub _make_interp
 	if defined $p{out_mode} && $p{out_mode} ne 'batch' && $p{out_mode} ne 'stream';
 
     $p{preloads}              = [ _get_list_param('Preloads') ];
+    delete $p{preloads} unless @{ $p{preloads} };
     $p{static_file_root}      = _get_string_param('StaticFileRoot');
     $p{system_log_events}     = _get_string_param('SystemLogEvents');
     $p{system_log_file}       = _get_string_param('SystemLogFile');
@@ -338,6 +339,10 @@ sub _get_code_param
 sub _get_list_param
 {
     my ($p, @val) = _get_val(@_[0,1], 1);
+    if (@val == 1 && ! defined $val[0])
+    {
+	@val = ();
+    }
 
     return @val;
 }
