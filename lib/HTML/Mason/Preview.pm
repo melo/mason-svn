@@ -109,7 +109,7 @@ sub send_http_header {
 package HTML::Mason::Preview;
 use HTML::Mason::ApacheHandler;
 use HTML::Mason::Config;
-use HTML::Mason::Tools qw(date_delta_to_secs html_escape);
+use HTML::Mason::Tools qw(date_delta_to_secs html_escape make_fh);
 use MLDBM ($HTML::Mason::Config{mldbm_use_db}, $HTML::Mason::Config{mldbm_serializer});
 use POSIX;
 
