@@ -28,7 +28,7 @@ local $| = 1;
 kill_httpd(1);
 test_load_apache();
 
-my $tests = 20; # multi conf & taint tests
+my $tests = 21; # multi conf & taint tests
 $tests += 63 if my $have_libapreq = have_module('Apache::Request');
 $tests += 41 if my $have_cgi      = have_module('CGI');
 $tests += 16 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
@@ -43,7 +43,7 @@ write_test_comps();
 
 if ($have_libapreq) {        # 63 tests
     cleanup_data_dir();
-    apache_request_tests(1); # 23 tests
+    apache_request_tests(1); # 24 tests
 
     cleanup_data_dir();
     apache_request_tests(0); # 23 tests
@@ -352,8 +352,15 @@ X-Mason-Test: Initial value
 Apache::Request
 Status code: 0
 EOF
+    if ($with_handler)
+    {
+        one_test( 1, '/comps/apache_request', 4, <<'EOF' );
+X-Mason-Test: Initial value
+Status code: 200
+EOF
+    }
 
-    unless ($with_handler)
+    else
     {
         one_test( $with_handler, '/comps/decline_dirs', 0, <<'EOF' );
 X-Mason-Test: Initial value

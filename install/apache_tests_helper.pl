@@ -269,10 +269,25 @@ package My::Resolver;
 \$My::Resolver::VERSION = '0.01';
 \@My::Resolver::ISA = 'HTML::Mason::Resolver::File::ApacheHandler';
 
-
 package My::Interp;
 \$My::Interp::VERSION = '0.01';
 \@My::Interp::ISA = 'HTML::Mason::Interp';
+
+package My::ThrowingInterp;
+\$My::ThrowingInterp::VERSION = '0.01';
+\@My::ThrowingInterp::ISA = 'HTML::Mason::Interp';
+use HTML::Mason::Exceptions;
+
+sub make_request {
+    my \$self = shift;
+    my \%p = \@_;
+    my \$r = \$p{apache_req}
+      || \$self->delayed_object_params('request', 'apache_req')
+      || \$self->delayed_object_params('request', 'cgi_request');
+    \$r->content_type( 'text/fooml' );
+    \$r->send_http_header;
+    HTML::Mason::Exception::Abort->throw(error => 'foo', aborted_value => 200);
+}
 
 package HTML::Mason;
 
@@ -286,6 +301,7 @@ use HTML::Mason;
 my \@ah_params = ( {},
                    {},
                    { decline_dirs => 0 },
+                   {},
                    {}
                  );
 
@@ -315,7 +331,17 @@ for (my \$x = 0; \$x <= \$#ah_params; \$x++)
     }
 
     my \%interp_params;
-    if ( \$x % 2 )
+    if (\$x == 4)
+    {
+        \%interp_params = ( interp_class => 'My::ThrowingInterp',
+                           data_dir => '$APACHE{data_dir}',
+                           error_mode => 'output',
+                           error_format => 'html',
+                           \%{\$interp_params[0]},
+                         );
+
+    }
+    elsif ( \$x % 2 )
     {
 
         \%interp_params = ( interp_class => 'My::Interp',

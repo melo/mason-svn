@@ -882,6 +882,7 @@ sub prepare_request
 		     rethrow_exception $err;
         $r->send_http_header unless $r->header_out("Content-type")
           || ($retval and $retval != 200);
+        return $retval;
     }
 
     my $final_output_method = ($r->method eq 'HEAD' ?

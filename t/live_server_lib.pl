@@ -64,7 +64,7 @@ sub start_httpd
 
     my $httpd = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd' );
     my $conf_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd.conf' );
-    my $cmd ="$httpd $def -f $conf_file";
+    my $cmd ="$httpd $def -d $ENV{APACHE_DIR} -f $conf_file";
     print STDERR "Executing $cmd\n";
     system ($cmd)
 	and die "Can't start httpd server as '$cmd': $!";
