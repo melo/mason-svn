@@ -766,6 +766,7 @@ sub callers
     my ($self, $levels_back) = @_;
     if (defined($levels_back)) {
 	my $entry = $self->stack_entry($levels_back);
+	return unless defined $entry;
 	return ( defined $entry ) ? $entry->{comp} : undef;
     } else {
 	return map($_->{comp}, reverse $self->stack);
@@ -781,7 +782,7 @@ sub caller_args
     param_error "caller_args expects stack level as argument" unless defined $levels_back;
 
     my $entry = $self->stack_entry($levels_back);
-    return undef unless $entry;
+    return unless $entry;
     my $args = $entry->{args};
     return wantarray ? @$args : { @$args };
 }
@@ -1612,8 +1613,8 @@ stack. e.g.
 
 When called in scalar context, a hash reference is returned.  When
 called in list context, a list of arguments (which may be assigned to
-a hash) is returned. Returns undef if the specified stack level does
-not exist.
+a hash) is returned.  Returns undef or an empty list, depending on
+context, if the specified stack level does not exist.
 
 =for html <a name="item_callers"></a>
 
@@ -1631,7 +1632,8 @@ the component at the bottom of the stack. e.g.
     $m->callers(1)            # component that called us
     $m->callers(-1)           # first component executed
 
-Returns undef if the specified stack level does not exist.
+Returns undef or an empty list, depending on context, if the specified
+stack level does not exist.
 
 =for html <a name="item_caller"></a>
 
