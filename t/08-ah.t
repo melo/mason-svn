@@ -101,12 +101,12 @@ EOF
     write_comp( 'headers', <<'EOF',
 
 
-% $r->header_out('X-Mason-Test' => 'New value 2');
+% $r->headers_out->{'X-Mason-Test'} = 'New value 2';
 Blah blah
 blah
-% $r->header_out('X-Mason-Test' => 'New value 3');
+% $r->headers_out->{'X-Mason-Test'} = 'New value 3';
 <%init>
-$r->header_out('X-Mason-Test' => 'New value 1');
+$r->headers_out->{'X-Mason-Test'} = 'New value 1';
 $m->abort if $blank;
 </%init>
 <%args>
@@ -218,7 +218,7 @@ EOF
 <%init>
 my $x = 1;
 foreach (sort keys %ARGS) {
-  $r->header_out( 'X-Mason-HEAD-Test' . $x++ => "$_: " . (ref $ARGS{$_} ? 'is a ref' : 'not a ref' ) );
+  $r->headers_out->{'X-Mason-HEAD-Test' . $x++} = "$_: " . (ref $ARGS{$_} ? 'is a ref' : 'not a ref' );
 }
 </%init>
 We should never see this.
@@ -243,6 +243,7 @@ EOF
 
     write_comp( 'internal_redirect', <<'EOF',
 <%init>
+if ($mod_perl::VERSION >= 1.99) { require Apache::SubRequest; }
 $r->internal_redirect('/comps/internal_redirect_target?foo=17');
 $m->auto_send_headers(0);
 $m->clear_buffer;
@@ -652,15 +653,19 @@ EOF
 sub one_test
 {
     my ($with_handler, $fetch, $ah_num, $expect) = @_;
+    my $test_name;
 
     if ( ref $fetch )
     {
         $fetch->{uri} = "/ah=$ah_num$fetch->{uri}" if $with_handler;
+	$test_name = $fetch->{uri};
     }
     else
     {
         $fetch = "/ah=$ah_num$fetch" if $with_handler;
+	$test_name = $fetch;
     }
+    print "# $test_name\n" if $HTML::Mason::Tests::VERBOSE;
 
     my $response = Apache::test->fetch($fetch);
     my $actual = filter_response($response, $with_handler);
