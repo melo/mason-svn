@@ -137,7 +137,6 @@ EOF
     $group->add_support( path => '/support/autoflush_subrequest',
 			 component => <<'EOF',
 here is the child
-% $m->clear_buffer;
 EOF
 		       );
 
@@ -148,7 +147,9 @@ EOF
 		      interp_params => { autoflush => 1 },
 		      component => <<'EOF',
 My child says:
+% $m->flush_buffer;
 % $m->subexec('/subrequest/support/autoflush_subrequest');
+% $m->clear_buffer;
 EOF
 		      expect => <<'EOF',
 My child says:
@@ -163,7 +164,9 @@ EOF
 		      interp_params => { autoflush => 0 },
 		      component => <<'EOF',
 My child says:
+% $m->flush_buffer;
 % $m->subexec('/subrequest/support/autoflush_subrequest');
+% $m->clear_buffer;
 EOF
 		      expect => <<'EOF',
 My child says:
