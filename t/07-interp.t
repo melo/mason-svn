@@ -746,6 +746,12 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_support( path => 'preloads_test/subdir/in_a_subdir',
+			 component => 'howareyou',
+		       );
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'preload_1',
 		      description => 'Make sure no preloading is done by default',
 		      component => <<'EOF',
@@ -779,8 +785,8 @@ EOF
 #------------------------------------------------------------
 
     $group->add_test( name => 'preload_3',
-		      description => 'Preload all components by glob pattern',
-		      interp_params => { preloads => [ '/interp/preloads_test/*' ] },
+		      description => 'Preload all components (including subdirectory) by glob pattern',
+		      interp_params => { preloads => [ '/interp/preloads_test/*', '/interp/preloads_test/*/*' ] },
 		      component => <<'EOF',
 <& preloads_test/show_code_cache &>
 EOF
@@ -791,6 +797,7 @@ Code cache contains:
 /interp/preloads_test/hello
 /interp/preloads_test/howareyou
 /interp/preloads_test/show_code_cache
+/interp/preloads_test/subdir/in_a_subdir
 EOF
 		    );
 
