@@ -36,6 +36,10 @@ sub get_source_text {
     die "Base class HTML::Mason::Resolver can't get source text";
 }
 
+sub get_source_description {
+    die "Base class HTML::Mason::Resolver can't get source description";
+}
+
 sub get_source_params {
     return (script_file=>($_[0]->get_source_text(@_)));
 }

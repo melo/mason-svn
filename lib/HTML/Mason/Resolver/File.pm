@@ -48,6 +48,13 @@ sub get_last_modified {
 }
 
 #
+# Return filename for error messages etc.
+#
+sub get_source_description {
+    return $_[2];
+}
+
+#
 # Return parameters to pass to make_component.
 #
 sub get_source_params {
