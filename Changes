@@ -5,6 +5,10 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+1.0  Wed Jan 31 08:56:31 PST 2001
+
+- Identical to 0.896 except for version.
+
 0.896  Fri Jan  5 15:55:55 PST 2001
 
 - Fixed bug preventing Mason from working with PerlFreshRestart.
