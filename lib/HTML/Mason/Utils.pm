@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -6,9 +6,7 @@ package HTML::Mason::Utils;
 
 use strict;
 
-use IO::File qw(!/^SEEK/);
-use POSIX;
-use Fcntl qw(:flock);
+use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use File::Path;
 use HTML::Mason::Config;
@@ -46,16 +44,15 @@ sub access_data_cache
 	my $lockfile = "$lockdir/$base.lock";
 
 	# Open file in correct mode for lock type (Tom Hughes)
-	my $lockfh;
+	my $lockfh = do { local *FH; *FH; };
 	if ($lockargs & LOCK_EX) {
-	    $lockfh = new IO::File ">>$lockfile"
+	    open $lockfh, ">>$lockfile"
 		or die "cache: cannot open lockfile '$lockfile' for exclusive lock: $!";
 	} elsif ($lockargs & LOCK_SH) {
-	    $lockfh = new IO::File "<$lockfile";
-	    if (!$lockfh && !-e $lockfile) {
-		$lockfh = new IO::File ">$lockfile";
-		$lockfh->close;
-		$lockfh = new IO::File "<$lockfile";
+	    if ( (!open $lockfh, "<$lockfile") && !-e $lockfile) {
+		open $lockfh, ">$lockfile" or die "Can't write to $lockfile: $!";
+		close $lockfh or die "Can't close $lockfile: $!";
+		open $lockfh, "<$lockfile" or die "Can't open $lockfile: $!";
 	    }
 	    die "cache: cannot open lockfile '$lockfile' for shared lock: $!" if !$lockfh;
 	} else {
@@ -105,7 +102,7 @@ sub access_data_cache
 	} elsif (exists($options{expire_in})) {
 	    my $delta = $options{expire_in};
 	    my $deltaTime = eval(date_delta_to_secs($delta));
-	    die "cache: invalid expire_in value '$options{expire_in}' - must be of the form <num><unit>, where <unit> is one of seconds, minutes, hours, days, weeks, months or an abbreviation thereof\n" if !$deltaTime;
+	    die "cache: invalid expire_in value '$options{expire_in}' - must be of the form <num><unit>, where <unit> is one of seconds, minutes, hours, days, weeks, months, years or an abbreviation thereof\n" if !$deltaTime;
 	    $expireTime = time() + $deltaTime;
 	}
 
@@ -145,7 +142,7 @@ sub access_data_cache
 	}
 	
 	untie(%out);
-	$lockfh->close();
+	close $lockfh or die "Can't close lock file: $!";
 
 	return $options{value};
     #
@@ -188,7 +185,7 @@ sub access_data_cache
 	}
 
 	untie(%out);
-	$lockfh->close();
+	close $lockfh or die "Can't close lock file: $!";
 
     #
     # Keys
@@ -255,7 +252,7 @@ sub access_data_cache
 		$mem->{lastUpdated} = $time;
 	    }
 	    untie(%in);
-	    $lockfh->close;
+	    close $lockfh or die "Can't close lock file: $!";
 	}
 
 	#
@@ -293,7 +290,7 @@ sub access_data_cache
 		    or die "cache: cannot create/open cache file '$cacheFile'\n";
 		$out{"$key.busylock"} = $mem->{lastModified}."/".$time;
 		untie(%out);
-		$lockfh->close();
+		close $lockfh or die "Can't close lock file: $!";
 
 		# busy lock was set successfully.  Return undef so that
 		# this process computes the new cache value.

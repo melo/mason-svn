@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -10,10 +10,9 @@
 package HTML::Mason::Commands;
 
 use strict;
-use HTML::Mason::Utils;
 
 use vars qw($m @ISA @EXPORT_OK @EXPORT);
- 
+
 require Exporter;
 @ISA=qw(Exporter);
 @EXPORT = qw

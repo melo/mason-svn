@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -12,7 +12,6 @@ package HTML::Mason::Tools;
 
 use strict;
 
-use IO::File qw(!/^SEEK/);
 use Cwd;
 
 require Exporter;
@@ -30,8 +29,9 @@ sub read_file
     my ($file,$binmode) = @_;
     die "read_file: '$file' does not exist" if (!-e $file);
     die "read_file: '$file' is a directory" if (-d _);
-    my $fh = new IO::File $file;
-    die "read_file: could not open file '$file' for reading\n" if !$fh;
+    my $fh = do { local *FH; *FH; };
+    open $fh, $file
+	or die "read_file: could not open file '$file' for reading: $!";
     binmode $fh if $binmode;
     local $/ = undef;
     my $text = <$fh>;
@@ -85,14 +85,14 @@ sub url_escape {
 # Convert a "date delta string" (e.g. 1sec, 3min, 2h) to a number of
 # seconds. Based on Date::Manip date delta concept.
 #
-my %dateDeltaHash = ('y'=>31557600, yr=>31557600, year=>31557600, years=>31557600,
-		     'm'=>2592000, mon=>2592000, month=>2592000, months=>2592000,
-		     'w'=>604800, wk=>604800, ws=>604800, wks=>604800, week=>604800, weeks=>604800,
-		     'd'=>86400, day=>86400, days=>86400,
-		     'h'=>3600, hr=>3600, hour=>3600, hours=>3600,
-		     mn=>60, min=>60, minute=>60, minutes=>60,
-		     's'=>1, sec=>1, second=>1, seconds=>1
-		     );
+my %date_delta = ('y'=>31557600, yr=>31557600, year=>31557600, years=>31557600,
+		  'm'=>2592000, mon=>2592000, month=>2592000, months=>2592000,
+		  'w'=>604800, wk=>604800, ws=>604800, wks=>604800, week=>604800, weeks=>604800,
+		  'd'=>86400, day=>86400, days=>86400,
+		  'h'=>3600, hr=>3600, hour=>3600, hours=>3600,
+		  mn=>60, min=>60, minute=>60, minutes=>60,
+		  's'=>1, sec=>1, second=>1, seconds=>1
+		 );
 sub date_delta_to_secs
 {
     my ($delta) = @_;
@@ -104,7 +104,7 @@ sub date_delta_to_secs
 	die $usage;
     }
     $unit = "s" if !$unit;
-    my $mult = $dateDeltaHash{$unit};
+    my $mult = $date_delta{$unit};
     die $usage if !$mult;
     return $num * $mult * ($sign eq '-' ? -1 : 1);
 }
@@ -114,7 +114,7 @@ sub date_delta_to_secs
 #
 sub dumper_method {
     my ($d) = @_;
-    return ($HTML::Mason::Config{use_data_dumper_xs} ? $d->Dumpxs : $d->Dumper);
+    return ($HTML::Mason::Config{use_data_dumper_xs} ? $d->Dumpxs : $d->Dump);
 }
 
 #
@@ -131,7 +131,7 @@ sub paths_eq {
 #
 sub is_absolute_path
 {
-    return $_[0] =~ /^(([A-Za-z]:)|~\w*)?\//;
+    return $_[0] =~ /^(([A-Za-z]:)|~\w*)?[\/\\]/;
 }
     
 #
@@ -152,6 +152,22 @@ sub compress_path
     for ($path) {
 	s@^/@@;
 	s/([^\w\.\-\~])/sprintf('+%02x', ord $1)/eg;
+    }
+    return $path;
+}
+
+sub mason_canonpath {
+    # Just like File::Spec::canonpath, but we're having trouble
+    # getting a patch through to them.
+    shift;
+    my $path = shift;
+    $path =~ s|/+|/|g unless($^O eq 'cygwin');       # xx////yy  -> xx/yy
+    $path =~ s|(/\.)+/|/|g;                          # xx/././yy -> xx/yy
+    {
+	$path =~ s|^(\./)+||s unless $path eq "./";  # ./xx      -> xx
+	$path =~ s|^/(\.\./)+|/|s;                   # /../../xx -> xx
+	$path =~ s|/\Z(?!\n)|| unless $path eq "/";  # xx/       -> xx
+	$path =~ s|[^/]+/\.\./|| && redo;            # /xx/../yy -> /yy
     }
     return $path;
 }
