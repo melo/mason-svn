@@ -7,6 +7,15 @@ available at http://www.masonhq.com/code/history.html.
 
 1.23
 
+[ ENHANCEMENTS ]
+
+- Lots of enhancements to the Apache.pm emulation when using the
+CGIHandler module.  Implemented by David Wheeler.
+- The fact that autohandlers or dhandlers can be turned off by setting
+autohandler_name or dhandler_name to "" has now been documented, and
+we explicitly check for this in the code.  Task id #499.
+
+
 [ BUG FIXES ]
 
 - If any code type parameters were set in the httpd.conf file, Mason
@@ -26,11 +35,6 @@ Reported by Harmen and Oleg Bartunov respectively.
 - If a component generated output, then called another component via
 $m->scomp, and that other component called $m->redirect, the redirect
 failed.  Task id #498.  Reported by Kim Alexander Hansen.
-
-[ IMPROVEMENTS ]
-
-- Lots of enhancements to the Apache.pm emulation when using the
-CGIHandler module.  Implemented by David Wheeler.
 
 
 1.22  July 14, 2003
