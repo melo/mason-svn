@@ -52,6 +52,10 @@ through components. The optional argument specifies the return
 value from C<Interp::exec>; in a web environment, this ultimately
 becomes the HTTP status code.
 
+Note: under the current implementation, any pending filters (via the
+<%filter> tag) will not be applied to the output when you abort.
+This is a known bug but there is no easy workaround.
+
 =for html <a name="item_base_comp">
 
 =item base_comp
