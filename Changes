@@ -5,10 +5,23 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
-1.02  April 2, 2001
+1.02  April 12, 2001
 
-- Completely redesigned error display, including contextual source
-listing. (submitted by Matthew Lewinski)
+- Completely redesigned error display. The new display includes a
+contextual source listing and readable stacktrace. (implemented by
+Matthew Lewinski)
+- Fixed $m->file to close its filehandle between uses. (reported by
+Matthew Lewinski)
+- Fixed bad interaction with Mason 1.01 and CPAN module, by adding
+version number to ApacheHandler.pm.
+- Changed sql examples in Devel.pod to use bind variables. (suggested
+by Austin S. Lin)
+
+1.015 April 3, 2001
+
+- Fixed incompatibility with mod_perl < 1.21_01, introduced in 1.01.
+- Added 'use Apache.pm' to ApacheHandler.pm, necessary for some
+mod_perl installations.
 
 1.01  March 27, 2001
 
