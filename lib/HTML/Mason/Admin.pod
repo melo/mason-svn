@@ -215,7 +215,7 @@ Corresponds to the C<current_time> parameter.
 
 Corresponds to the C<data_cache_dir> parameter.
 
-=item * MasonDieHandler - code or 0 or undef
+=item * MasonDieHandler - code or 0
 
 Corresponds to the C<die_handler> parameter.
 
