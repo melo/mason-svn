@@ -104,18 +104,29 @@ sub get_test_params {
     my $pkg = shift;
 
     print("\nFor testing purposes, please give the full path to an httpd\n",
-	  "with mod_perl enabled.  The path defaults to \$ENV{APACHE},\n",
-	  "if present (and that binary has mod_perl).");
+	  "with mod_perl enabled.  The path defaults to \$ENV{APACHE}, if present.");
     
     my %conf;
     
-    my $httpd = $pkg->_find_mod_perl_httpd();
+    my $httpd = $pkg->_find_mod_perl_httpd(1);
 
-    $httpd = _ask("\n", $httpd, 1, '!');
-    if ($httpd eq '!') {
-	print "Skipping.\n";
-	return;
-    }
+    my $found;
+    do
+    {
+	$httpd = _ask("\n", $httpd, 1, '!');
+	if ($httpd eq '!') {
+	    print "Skipping.\n";
+	    return;
+	}
+
+	if ($pkg->_httpd_has_mod_perl($httpd)) {
+	    $found = 1;
+	} else {
+	    warn("$httpd does not appear to have been compiled with\n",
+		 "mod_perl as a static or dynamic module\n");
+	    $httpd = $pkg->_find_mod_perl_httpd(0);
+	}
+    } until ($found);
     system "$Config{lns} $httpd t/httpd";
 
     # Default: search for dynamic dependencies if mod_so is present, don't bother otherwise.
@@ -214,25 +225,24 @@ sub static_modules {
 }
 
 sub _find_mod_perl_httpd {
-    my ($self) = @_;
+    my ($self, $respect_env) = @_;
 
-    foreach ( $ENV{'APACHE'},
-	      '/usr/local/apache/bin/httpd',
+    return $ENV{'APACHE'} if $ENV{'APACHE'} && $respect_env;
+
+    foreach ( '/usr/local/apache/bin/httpd',
 	      '/usr/local/apache_mp/bin/httpd',
 	      '/opt/apache/bin/httpd',
 	      $self->_which('httpd'),
 	      $self->_which('apache'),
 	    ) {
-	return $_ if -x $_ && $self->_has_mod_perl($_);
+	return $_ if -x $_ && $self->_httpd_has_mod_perl($_);
     }
 }
 
-sub _has_mod_perl {
+sub _httpd_has_mod_perl {
     my ($self, $httpd) = @_;
 
-    foreach ( `$httpd -l` )  {
-	return 1 if /mod_perl\.c/;
-    }
+    return 1 if `$httpd -l` =~ /mod_perl\.c/;
 
     my %compiled = $self->_get_compilation_params($httpd);
 
