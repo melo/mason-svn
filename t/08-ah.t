@@ -1,103 +1,636 @@
 #!/usr/bin/perl -w
-BEGIN { $HTML::Mason::IN_DEBUG_FILE = 1 if !$HTML::Mason::IN_DEBUG_FILE }
-use Cwd;
-use CGI;
-use strict;
-use vars (qw($root $branch $comp_root $data_dir));
 
 # Skip test if no mod_perl
 eval { require mod_perl };
-my @use = ($mod_perl::VERSION);
-unless ($mod_perl::VERSION) {
+# need to use it twice to avoid annoying warning
+unless ($mod_perl::VERSION || $mod_perl::VERSION)
+{
     print "1..0\n";
     exit;
 }
 
-$branch = "ah";
-my $pwd = cwd();
-$root = (-f "test-common.pl") ? "$pwd/.." : (-f "t/test-common.pl") ? "$pwd" : die "ERROR: cannot find test-common.pl\n";
-unshift(@INC,"$root/lib");
+use strict;
 
-require "$root/t/test-common.pl";
+use vars qw($VERBOSE $DEBUG);
 
-require HTML::Mason::ApacheHandler;
-
-init();
-
-sub fake_apache {
-    my ($options) = @_;
-    die "must specify uri" if !$options->{uri};
-    my $dref = {
-	'method' => 'GET',
-	'document_root' => "$comp_root/ah",
-	'header_only' => 0,
-	'args@' => [],
-	'connection' => {
-	    'remote_ip' => '127.0.0.1',
-	},
-	'uri' => $options->{uri},
-	'headers_in' => {
-	    'User-Agent' => 'Mozilla/4.61 [en] (X11; I; Linux 2.2.12-20 i686)',
-	},
-	'protocol' => 'HTTP/1.0',
-	'dir_config' => {},
-	'server' => {
-	    'server_hostname' => 'www.foo.com',
-	},
-	'content_type' => 'text/html',
-	'ENV' => {
-	},
-	"args\$" => undef,
-	"args_hash" => {},
-	%$options
-    };
-    $dref->{filename} = $dref->{document_root}.$dref->{uri};
-    my $r = HTML::Mason::ApacheHandler::simulate_debug_request($dref);
-    return $r;
+BEGIN
+{
+    $VERBOSE = $ENV{MASON_DEBUG} || $ENV{MASON_VERBOSE};
+    $DEBUG = $ENV{MASON_DEBUG};
 }
 
-sub try_exec_with_ah {
-    my ($uri,$test_name,$ah_options,$r_options) = @_;
-    my $buf;
+use File::Basename;
+use File::Path;
+use HTML::Mason::Tests;
 
-    # Create standard interpreter.
-    my $interp = new HTML::Mason::Interp(comp_root => $comp_root, data_dir => $data_dir, out_method=>\$buf);
-    
-    # Create new ApacheHandler based on options.
-    undef *Apache::Status::status_mason if *Apache::Status::status_mason;
-    my $ah = new HTML::Mason::ApacheHandler(interp=>$interp, error_mode=>'fatal', apache_status_title=>"mason_$test_name", %$ah_options);
+use lib 'lib', 't/lib';
 
-    # Create fake Apache request.
-    my $r = fake_apache ({uri=>$uri, %$r_options});
-    undef $ENV{SERVER_SOFTWARE} if defined($ENV{SERVER_SOFTWARE});
+use Apache::test qw(skip_test have_httpd);
+skip_test unless have_httpd;
 
-    # Override send header function, and supply default header value.
-    $r->{headers_out_method} = sub { $buf .= $_[0] };
-    $r->headers_out('X-Mason-Test' => 'Initial value');
+# We'll repeat all the tests with an Apache::Request-using
+# ApacheHandler if the user has the Apache::Request module installed.
+my $has_apache_request = 1;
+eval { require Apache::Request; };
+$has_apache_request = 0 if $@;
 
-    # Stop CGI from reinitializing with same params
-    CGI::initialize_globals();
+local $| = 1;
 
-    # Handle request.
-    my $retval = eval { $ah->handle_request($r) };
-    if (my $err = $@) {
-	print "ERROR:\n$err\nnot ok\n";
-	return;
+{
+    my $both_tests = 12;
+    my $cgi_only_tests = 1;
+    my $apr_only_tests = 1;
+    my $both_no_handler_tests = 8;
+    my $cgi_only_no_handler_tests = 2;
+    my $apr_only_no_handler_tests = 2;
+    my $multi_conf_tests = 4;
+
+    my $total = $both_tests + $both_no_handler_tests;
+    $total += $cgi_only_tests + $cgi_only_no_handler_tests;
+    if ($has_apache_request)
+    {
+	$total += $both_tests + $both_no_handler_tests;
+	$total += $apr_only_tests;
+	$total += $apr_only_no_handler_tests;
     }
-    $buf .= "Status code: $retval\n";
 
-    # Compare current results with stored results.
-    compare_results ($test_name, $buf);
+    $total += $multi_conf_tests;
+
+    print "1..$total\n";
 }
 
-print "1..5\n";
+print STDERR "\n";
 
-try_exec_with_ah('/basic','basic',{},{});
+write_test_comps();
 
-try_exec_with_ah('/headers','headers-batch',{output_mode=>'batch'},{});
-try_exec_with_ah('/headers','headers-stream',{output_mode=>'stream'},{});
-{ my $qs = 'blank=1';
-  try_exec_with_ah('/headers','headers-batch-blank',{output_mode=>'batch'},{"args_hash" => {blank=>1}});
-  try_exec_with_ah('/headers','headers-stream-blank',{output_mode=>'stream'},{"args_hash" => {blank=>1}}); }
+cleanup_data_dir();
+cgi_tests(1);
 
-1;
+cleanup_data_dir();
+cgi_tests(0);
+
+
+if ($has_apache_request)
+{
+    cleanup_data_dir();
+    apache_request_tests(1);
+
+    cleanup_data_dir();
+    apache_request_tests(0);
+}
+
+cleanup_data_dir();
+
+# This is a hack but otherwise the following tests fail if the Apache
+# server runs as any user other than root.  In real life, a user using
+# the multi-config option with httpd.conf must handle the file
+# permissions manually.
+if ( $> == 0 || $< == 0 )
+{
+    chmod 0777, "$ENV{APACHE_DIR}/data";
+}
+multi_conf_tests();
+
+sub write_test_comps
+{
+    write_comp( 'basic', <<'EOF',
+Basic test.
+2 + 2 = <% 2 + 2 %>.
+uri = <% $r->uri =~ /basic$/ ? '/basic' : $r->uri %>.
+method = <% $r->method %>.
+
+
+EOF
+	      );
+
+    write_comp( 'headers', <<'EOF',
+
+
+% $r->header_out('X-Mason-Test' => 'New value 2');
+Blah blah
+blah
+% $r->header_out('X-Mason-Test' => 'New value 3');
+<%init>
+$r->header_out('X-Mason-Test' => 'New value 1');
+$m->abort if $blank;
+</%init>
+<%args>
+$blank=>0
+</%args>
+EOF
+	      );
+
+    write_comp( 'cgi_object', <<'EOF',
+<% UNIVERSAL::isa(eval { $m->cgi_object }, 'CGI') ? 'CGI' : 'NO CGI' %>
+EOF
+	      );
+
+    write_comp( 'params', <<'EOF',
+% foreach (sort keys %ARGS) {
+<% $_ %>: <% ref $ARGS{$_} ? join ', ', sort @{ $ARGS{$_} }, 'array' : $ARGS{$_} %>
+% }
+EOF
+	      );
+
+    write_comp( '_underscore', <<'EOF',
+I am underscore.
+EOF
+	      );
+
+    write_comp( 'dhandler/dhandler', <<'EOF',
+I am the dhandler.
+EOF
+	      );
+
+    write_comp( 'die', <<'EOF',
+% die 'Mine heart is pierced';
+EOF
+	      );
+
+    if ($has_apache_request)
+    {
+	write_comp( 'apache_request', <<'EOF',
+<% ref $r %>
+EOF
+		  );
+    }
+
+    write_comp( 'multiconf1/foo', <<'EOF',
+I am foo in multiconf1
+comp root is <% $m->interp->comp_root =~ m,/comps/multiconf1$, ? 'multiconf1' : $m->interp->comp_root %>
+EOF
+	      );
+
+    write_comp( 'multiconf1/autohandler', <<'EOF'
+<& $m->fetch_next, autohandler => 'present' &>
+EOF
+	      );
+
+    write_comp( 'multiconf1/autohandler_test', <<'EOF'
+<%args>
+$autohandler => 'absent'
+</%args>
+autohandler is <% $autohandler %>
+EOF
+	      );
+
+
+    write_comp( 'multiconf2/foo', <<'EOF',
+I am foo in multiconf2
+comp root is <% $m->interp->comp_root =~ m,/comps/multiconf2$, ? 'multiconf2' : $m->interp->comp_root %>
+EOF
+	      );
+
+    write_comp( 'multiconf2/dhandler', <<'EOF',
+This should not work
+EOF
+	      );
+
+    write_comp( 'allow_globals', <<'EOF',
+% $foo = 1;
+% @bar = ( qw( a b c ) );
+$foo is <% $foo %>
+@bar is <% @bar %>
+EOF
+	      );
+
+    write_comp( '__top_level_predicate', <<'EOF',
+Shouldn't ever run
+EOF
+	      );
+}
+
+sub write_comp
+{
+    my $name = shift;
+    my $comp = shift;
+
+    my $file = "$ENV{APACHE_DIR}/comps/$name";
+    my $dir = dirname($file);
+    mkpath( $dir, 0, 0755 ) unless -d $dir;
+
+    open F, ">$file"
+	or die "Can't write to '$file': $!";
+
+    print F $comp;
+
+    close F;
+}
+
+# by wiping out the subdirectories here we can catch permissions
+# issues if some of the tests can't write to the data dir.
+sub cleanup_data_dir
+{
+    local *DIR;
+    opendir DIR, "$ENV{APACHE_DIR}/data"
+	or die "Can't open $ENV{APACHE_DIR}/data dir: $!";
+    foreach ( grep { -d "$ENV{APACHE_DIR}/data/$_" && $_ !~ /^\./ } readdir DIR )
+    {
+	rmtree("$ENV{APACHE_DIR}/data/$_");
+    }
+    closedir DIR;
+}
+
+sub cgi_tests
+{
+    my $with_handler = shift;
+
+    my $def = $with_handler ? 'CGI' : 'CGI_no_handler';
+    start_httpd($def);
+
+    standard_tests($with_handler);
+
+    my $path = '/comps/cgi_object';
+    $path = "/ah=0$path" if $with_handler;
+
+    my $response = Apache::test->fetch($path);
+    my $actual = filter_response($response, $with_handler);
+    my $success = HTML::Mason::Tests->check_output( actual => $actual,
+						    expect => <<'EOF',
+X-Mason-Test: Initial value
+CGI
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    unless ($with_handler)
+    {
+	# test that MasonAllowGlobals works (testing a list parameter
+	# from httpd.conf)
+	my $response = Apache::test->fetch('/comps/allow_globals');
+	my $actual = filter_response($response, 0);
+	my $success = HTML::Mason::Tests->check_output( actual => $actual,
+							expect => <<'EOF',
+X-Mason-Test: Initial value
+$foo is 1
+@bar is abc
+Status code: 0
+EOF
+						      );
+	ok($success);
+    }
+
+    kill_httpd(1);
+}
+
+sub apache_request_tests
+{
+    my $with_handler = shift;
+
+    my $def = $with_handler ? 'mod_perl' : 'mod_perl_no_handler';
+    start_httpd($def);
+
+    standard_tests($with_handler);
+
+    my $path = '/comps/apache_request';
+    $path = "/ah=0$path" if $with_handler;
+
+    my $response = Apache::test->fetch($path);
+    my $actual = filter_response($response, $with_handler);
+    my $success = HTML::Mason::Tests->check_output( actual => $actual,
+						    expect => <<'EOF',
+X-Mason-Test: Initial value
+Apache::Request
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    unless ($with_handler)
+    {
+	# test that MasonDieHandler works (testing a code parameter
+	# from httpd.conf)
+	my $response = Apache::test->fetch('/comps/__top_level_predicate');
+	my $actual = filter_response($response, 0);
+	ok( $actual =~ /404 not found/,
+	    'top level predicate should have refused request' );
+    }
+
+    kill_httpd(1);
+}
+
+sub standard_tests
+{
+    my $with_handler = shift;
+
+    my $path = '/comps/basic';
+    $path = "/ah=0$path" if $with_handler;
+
+    my $response = Apache::test->fetch($path);
+    my $actual = filter_response($response, $with_handler);
+    my $success = HTML::Mason::Tests->check_output( actual => $actual,
+						    expect => <<'EOF',
+X-Mason-Test: Initial value
+Basic test.
+2 + 2 = 4.
+uri = /basic.
+method = GET.
+
+
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    $path = '/comps/headers';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: New value 3
+
+
+Blah blah
+blah
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    if ($with_handler)
+    {
+	$response = Apache::test->fetch( "/ah=1/comps/headers" );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
+X-Mason-Test: New value 2
+
+
+Blah blah
+blah
+Status code: 0
+EOF
+						   );
+	ok($success);
+    }
+
+    $path = '/comps/headers?blank=1';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: New value 1
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    if ($with_handler)
+    {
+	$response = Apache::test->fetch( "/ah=1/comps/headers?blank=1" );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
+X-Mason-Test: New value 1
+Status code: 0
+EOF
+						   );
+	ok($success);
+    }
+
+    $path = '/comps/_underscore';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+I am underscore.
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    if ($with_handler)
+    {
+	# top_level_predicate should reject this request.
+	$response = Apache::test->fetch( "/ah=2/comps/_underscore" );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
+X-Mason-Test: 
+Status code: 404
+EOF
+						   );
+	ok($success);
+    }
+
+    $path = '/comps/die';
+    $path = "/ah=0$path" if $with_handler;
+
+    # error_mode is html so we get lots of stuff
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
+    ok( $actual =~ m|error while executing /die:\s+Mine heart is pierced|,
+	"Error should have said 'Mine heart is pierced'" );
+
+    if ($with_handler)
+    {
+	# error_mode is fatal so we just get a 500
+	$response = Apache::test->fetch( "/ah=4/comps/die" );
+	$actual = filter_response($response, $with_handler);
+	ok( $actual =~ m|500 Internal Server Error|,
+	    "die should have generated 500 error" );
+    }
+
+    $path = '/comps/params?qs1=foo&qs2=bar&foo=A&foo=B';
+    $path = "/ah=0$path" if $with_handler;
+
+    # params in query string only
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+foo: A, B, array
+qs1: foo
+qs2: bar
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    $path = '/comps/params';
+    $path = "/ah=0$path" if $with_handler;
+
+    # params as POST only
+    $response = Apache::test->fetch( { uri => $path,
+				       method => 'POST',
+				       content => 'post1=foo&post2=bar&foo=A&foo=B',
+				     } );
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+foo: A, B, array
+post1: foo
+post2: bar
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    $path = '/comps/params?qs1=foo&qs2=bar&mixed=A';
+    $path = "/ah=0$path" if $with_handler;
+
+    # params mixed in query string and POST
+    $response = Apache::test->fetch( { uri => $path,
+				       method => 'POST',
+				       content => 'post1=a&post2=b&mixed=B',
+				     } );
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+mixed: A, B, array
+post1: a
+post2: b
+qs1: foo
+qs2: bar
+Status code: 0
+EOF
+						  );
+    ok($success);
+}
+
+sub multi_conf_tests
+{
+    start_httpd('multi_config');
+
+    my $response = Apache::test->fetch('/comps/multiconf1/foo');
+    my $actual = filter_response($response, 0);
+    my $success = HTML::Mason::Tests->check_output( actual => $actual,
+						    expect => <<'EOF',
+X-Mason-Test: Initial value
+I am foo in multiconf1
+comp root is multiconf1
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    $response = Apache::test->fetch('/comps/multiconf1/autohandler_test');
+    $actual = filter_response($response, 0);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+autohandler is absent
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    $response = Apache::test->fetch('/comps/multiconf2/foo');
+    $actual = filter_response($response, 0);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+I am foo in multiconf2
+comp root is multiconf2
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    $response = Apache::test->fetch('/comps/multiconf2/dhandler_test');
+    $actual = filter_response($response, 0);
+    ok( $actual =~ /404 not found/i,
+	"Attempt to request a non-existent component should not work with dhandlers turned off" );
+
+    kill_httpd(1);
+}
+
+# We're not interested in headers that are always going to be
+# different (like date or server type).
+sub filter_response
+{
+    my $response = shift;
+
+    my $with_handler = shift;
+
+    # because the header or content may be undef
+    local $^W = 0;
+    my $actual = join "\n", ( 'X-Mason-Test: ' .
+			      # hack until I make a separate test
+			      # suite for the httpd.conf configuration
+			      # stuff
+			      ( $with_handler ?
+				$response->headers->header('X-Mason-Test') :
+				( $response->headers->header('X-Mason-Test') ?
+				  $response->headers->header('X-Mason-Test') :
+				  'Initial value' ) ),
+			      $response->content );
+
+    my $code = $response->code == 200 ? 0 : $response->code;
+    $actual .= "Status code: $code" unless $with_handler;
+
+    return $actual;
+}
+
+sub start_httpd
+{
+    my $def = shift;
+
+    my $cmd ="$ENV{APACHE_DIR}/httpd -D$def -f $ENV{APACHE_DIR}/httpd.conf";
+    print STDERR "Executing $cmd\n";
+    system ($cmd)
+	and die "Can't start httpd server as '$cmd': $!";
+
+    my $x = 0;
+    print STDERR "Waiting for httpd to start.\n";
+    until ( -e 't/httpd.pid' )
+    {
+	sleep (1);
+	$x++;
+	if ( $x > 10 )
+	{
+	    die "No t/httpd.pid file has appeared after 10 seconds.  Exiting.";
+	}
+    }
+}
+
+sub kill_httpd
+{
+    my $wait = shift;
+
+    open PID, "$ENV{APACHE_DIR}/httpd.pid"
+	or die "Can't open '$ENV{APACHE_DIR}/httpd.pid': $!";
+    my $pid = <PID>;
+    close PID;
+    chomp $pid;
+
+    print STDERR "Killing httpd process ($pid)\n";
+    kill 15, $pid
+	or die "Can't kill process $pid: $!";
+
+    if ($wait)
+    {
+	print STDERR "Waiting for previous httpd to shut down\n";
+	my $x = 0;
+	while ( -e "$ENV{APACHE_DIR}/httpd.pid" )
+	{
+	    sleep (1);
+	    $x++;
+	    if ( $x > 10 )
+	    {
+		die "$ENV{APACHE_DIR}t/httpd.pid file still exists after 10 seconds.  Exiting.";
+	    }
+	}
+    }
+}
+
+use vars qw($TESTS);
+
+sub ok
+{
+    my $ok = !!shift;
+    print $ok ? 'ok ' : 'not ok ';
+    print ++$TESTS, "\n";
+}
+
