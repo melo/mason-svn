@@ -11,7 +11,7 @@ package HTML::Mason::FakeApache;
 # Analogous to Apache request object $r (but not an actual Apache subclass)
 # In the future we'll probably want to switch this to Apache::Fake or similar
 
-use HTML::Mason::MethodMaker(read_write => [qw(query)]);
+use HTML::Mason::MethodMaker (read_write => [qw(query)]);
 
 sub new {
     my $class = shift;
