@@ -455,7 +455,7 @@ See the L<HTML::Mason::ApacheHandler> documentation for more details.
 
 =head1 AUTHOR
 
-Jonathan Swartz, swartz@transbay.net
+Jonathan Swartz, swartz@pobox.com
 
 =head1 SEE ALSO
 

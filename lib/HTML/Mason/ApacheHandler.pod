@@ -15,7 +15,7 @@ HTML::Mason::ApacheHandler - Mason/mod_perl interface
 
 =head1 DESCRIPTION
 
-The ApacheHandler object links Mason to Apache, running components in
+The ApacheHandler object links Mason to mod_perl, running components in
 response to HTTP requests. It is controlled primarily through
 parameters to the new() constructor.
 
@@ -135,7 +135,7 @@ For example:
 
 =head1 AUTHOR
 
-Jonathan Swartz, swartz@transbay.net
+Jonathan Swartz, swartz@pobox.com
 
 =head1 SEE ALSO
 
