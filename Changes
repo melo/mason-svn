@@ -33,8 +33,10 @@ error display component causes an endless loop.  The other is that the
 "|h" flag can mangle non-Latin-1 characters.  Task ids #497 and #494.
 Reported by Harmen and Oleg Bartunov respectively.
 - If a component generated output, then called another component via
-$m->scomp, and that other component called $m->redirect, the redirect
-failed.  Task id #498.  Reported by Kim Alexander Hansen.
+$m->scomp, and that other component attempted to clear the buffer and
+then abort, any output generated before the call to $m->scomp was
+still sent to the client.  This broke calling $m->redirect inside an
+$m->scomp call.  Task id #498.  Reported by Kim Alexander Hansen.
 
 
 1.22  July 14, 2003
