@@ -17,7 +17,8 @@ Mason - High-performance, dynamic web site authoring system
     # Start Mason and define the mod_perl handler routine.
     #
     package HTML::Mason;
-    use HTML::Mason;    # brings in subpackages: Parser, Interp, etc.
+    use HTML::Mason;
+    use HTML::Mason::ApacheHandler;
     use strict;
 
     my $parser = new HTML::Mason::Parser;
