@@ -55,11 +55,12 @@ A simple configuration looks like:
 
     DocumentRoot /usr/local/www/htdocs
     DefaultType text/html
+    PerlSetVar MasonCompRoot "/usr/local/www/htdocs"
+    PerlSetVar MasonDataDir "/usr/local/www/mason"
+    PerlModule HTML::Mason::ApacheHandler
     <Location />
         SetHandler perl-script
-        PerlHandler HTML::Mason
-        PerlSetVar MasonCompRoot "/usr/local/www/htdocs"
-        PerlSetVar MasonDataDir "/usr/local/www/mason"
+        PerlHandler HTML::Mason::ApacheHandler
     </Location>
 
 C<MasonCompRoot> specifies the I<component root>, the top of your
@@ -335,6 +336,12 @@ If you set this option, the Apache child processes will need
 the proper permissions to create the data directories.
 
 =back
+
+=head2 Memory Usage
+
+To maximize shared memory, you should put your Mason configuration
+directives B<before> you load the C<HTML::Mason::ApacheHandler>
+module via a C<PerlModule> directive.
 
 =head1 CONFIGURING VIA A HANDLER SCRIPT
 
