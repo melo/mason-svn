@@ -8,6 +8,7 @@ use strict;
 
 use Carp;
 
+use HTML::Mason::Error qw(error_process);
 use HTML::Mason::Tools qw(is_absolute_path read_file);
 use HTML::Mason::Utils;
 
@@ -95,6 +96,9 @@ sub _reinitialize {
 sub exec {
     my ($self, $comp, @args) = @_;
     my $interp = $self->interp;
+
+    # Error may occur in several places in function.
+    my $err;
     
     # Check if reload file has changed.
     $interp->check_reload_file if ($interp->use_reload_file);
@@ -108,7 +112,13 @@ sub exec {
     my ($path, $orig_path);
     if (!ref($comp) && substr($comp,0,1) eq '/') {
 	$orig_path = $path = $comp;
-	if (!($comp = $interp->load($path))) {
+	{
+	    local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
+	    eval { $comp = $interp->load($path) };
+	    $err = $@;
+	    goto error if ($err);
+	}
+	unless ($comp) {
 	    if (defined($interp->dhandler_name) and $comp = $interp->find_comp_upwards($path,$interp->dhandler_name)) {
 		my $parent_path = $comp->dir_path;
 		($self->{dhandler_arg} = $path) =~ s{^$parent_path/?}{};
@@ -149,7 +159,7 @@ sub exec {
 	local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
 	$result = eval {$self->comp({base_comp=>$comp}, $first_comp, @args)};
     }
-    my $err = $@;
+    $err = $@;
 
     # If declined, try to find the next dhandler.
     if ($self->declined and $path) {
@@ -165,25 +175,7 @@ sub exec {
 
     # If an error occurred...
     if ($err and !$self->aborted) {
-	if ($interp->die_handler_overridden) {
-	    # the default $SIG{__DIE__} was overridden so let's not
-	    # mess with the error message
-	    die $err;
-	} else {
-	    my $i = index($err,'HTML::Mason::Interp::exec');
-	    $err = substr($err,0,$i) if $i!=-1;
-	    $err =~ s/^\s*(HTML::Mason::Commands::__ANON__|HTML::Mason::Request::call).*\n//gm;
-	    # Get backtrace information
-	    if ($self->{error_backtrace} and @{$self->{error_backtrace}}) {
-		my @titles = map($_->title,@{$self->{error_backtrace}});
-		my $errmsg = "error while executing $titles[-1]:\n";
-		$errmsg .= $err."\n";
-		$errmsg .= "backtrace: " . join(" <= ",reverse(@titles)) . "\n" if @titles > 1;
-		die ($errmsg);
-	    } else {
-		die ($err);
-	    }
-	}
+	goto error;
     }
 
     # Flush output buffer for batch mode.
@@ -197,6 +189,11 @@ sub exec {
     return $self->{aborted_value} if ($self->{aborted});
 
     return wantarray ? @result : $result;
+
+    error:
+    # don't mess with error message if default $SIG{__DIE__} was overridden
+    $err = error_process ($err, $self) unless ($interp->die_handler_overridden);
+    die $err;
 }
 
 #

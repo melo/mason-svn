@@ -78,6 +78,7 @@ sub SERVER_ERROR { return 500 }
 sub NOT_FOUND { return 404 }
 use Data::Dumper;
 use File::Path;
+use HTML::Mason::Error qw(error_display_html);
 use HTML::Mason::Interp;
 use HTML::Mason::Commands;
 use HTML::Mason::FakeApache;
@@ -563,25 +564,23 @@ sub handle_request {
 	}
 
 	#
-	# Take out date stamp and (eval nnn) prefix
-	# Add server name, uri
+	# Process error. If fatal mode, simply die with error. If html
+	# mode, call error_display_html and print result.
 	#
-	$err =~ s@^\[[^\]]*\] \(eval [0-9]+\): @@mg;
-	$err = html_escape($err);
-	$err = sprintf("while serving %s %s\n%s",$apreq->server->server_hostname,$apreq->uri,$err);
-
 	if ($self->error_mode eq 'fatal') {
-	    die ("System error:\n$err\n");
+	    die $err;
 	} elsif ($self->error_mode eq 'html') {
+	    if ($debugMode eq 'error' or $debugMode eq 'all') {
+		my $debug_msg = $self->write_debug_file($apreq,$debug_state);
+		$err .= "Debug info: $debug_msg\n";
+	    }
+	    $err = error_display_html($err);
+	    
 	    if (!http_header_sent($apreq)) {
 		$apreq->content_type('text/html');
 		$apreq->send_http_header();
 	    }
-	    print("<h3>System error</h3><p><pre><font size=-1>$err</font></pre>\n");
-	    if ($debugMode eq 'error' or $debugMode eq 'all') {
-		my $debug_msg = $self->write_debug_file($apreq,$debug_state);
-		print("<pre><font size=-1>\n$debug_msg\n</font></pre>\n");
-	    }
+	    print($err);
 	}
     } else {
 	if ($debugMode eq 'all') {
@@ -693,7 +692,7 @@ PERL
     close $outfh or die "can't close file: $out_path: $!";
     chmod(0775,$out_path) or die "can't chmod file to 0775: $out_path: $!";
 
-    my $debug_msg = "Debug file is '$outFile'.\nFull debug path is '$out_path'.\n";
+    my $debug_msg = "Debug file is '$out_path'.";
     return $debug_msg;
 }
 
