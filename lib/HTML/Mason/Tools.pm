@@ -168,6 +168,7 @@ sub mason_canonpath {
 	$path =~ s|^(\./)+||s unless $path eq "./";  # ./xx      -> xx
 	$path =~ s|^/(\.\./)+|/|s;                   # /../../xx -> xx
 	$path =~ s|/\Z(?!\n)|| unless $path eq "/";  # xx/       -> xx
+	$path =~ s|/[^/]+/\.\.$|| && redo;           # /xx/..    -> /
 	$path =~ s|[^/]+/\.\./|| && redo;            # /xx/../yy -> /yy
     }
     return $path;
