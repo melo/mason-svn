@@ -239,8 +239,10 @@ EOF
 
     $group->add_test( name => 'preamble',
 		      description => 'tests preamble compiler parameter',
-		      interp_params => { preamble => 'my $msg = "This is the preamble.\n"; $m->print($msg);
-'},
+                      interp_params =>
+                      { preamble =>
+                        qq{my \$msg = "This is the preamble.\\n"; \$m->print(\$msg);\n},
+		      },
 		      component => <<'EOF',
 This is the body.
 EOF
@@ -250,14 +252,14 @@ This is the body.
 EOF
 		    );
 
-
 #------------------------------------------------------------
 
     $group->add_test( name => 'preamble_in_different_package',
-		      description => 'tests preamble compiler parameter when in_package is set',
-		      interp_params => { preamble => 'my $msg = "This is the preamble.\n"; $m->print($msg);
-',
-		                         in_package => 'HTML::Mason::NewPackage',
+		      description => 'tests preamble compiler parameter with in_package set',
+		      interp_params =>
+                      { preamble =>
+                        qq{my \$msg = "This is the preamble.\\n"; \$m->print(\$msg);\n},
+                        in_package => 'HTML::Mason::NewPackage',
 		      },
 		      component => <<'EOF',
 This is the body.
@@ -273,8 +275,28 @@ EOF
 
     $group->add_test( name => 'postamble',
 		      description => 'tests postamble compiler parameter',
-		      interp_params => { postamble => 'my $msg = "This is the postamble.\n"; $m->print($msg);
-'},
+		      interp_params =>
+                      { postamble =>
+                        qq{my \$msg = "This is the postamble.\\n"; \$m->print(\$msg);\n},
+                      },
+		      component => <<'EOF',
+This is the body.
+EOF
+		      expect => <<'EOF',
+This is the body.
+This is the postamble.
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'postamble_in_package',
+		      description => 'tests postamble compiler parameter with in_package set',
+		      interp_params =>
+                      { postamble =>
+                        qq{my \$msg = "This is the postamble.\\n"; \$m->print(\$msg);\n},
+                        in_package => 'HTML::Mason::NewPackage2',
+                      },
 		      component => <<'EOF',
 This is the body.
 EOF
