@@ -40,7 +40,7 @@ EOF
 # These are required modules.
 my %prereq = ( 'File::Spec' => {version => 0.8,
 				where => "CPAN/modules/by-module/File/File-Spec-x.x.tar.gz"},
-	       'Params::Validate' => {version => 0.59,
+	       'Params::Validate' => {version => 0.70,
 				      where => "CPAN/modules/by-authors/id/D/DR/DROLSKY/Params-Validate-x.x.tar.gz"},
 	       'Exception::Class' => {version => 1.14,
 				      where => "CPAN/modules/by-module/Exception/Exception-Class-x.x.tar.gz"},
