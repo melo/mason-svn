@@ -146,15 +146,18 @@ EOF
 		      component => <<'EOF',
 Now I will print myself:
 
-<% $m->file("file") %>
+% my $output = $m->file("file");
+% $output =~ s/\cM//g;
+<% $output %>
 EOF
 		      expect => <<'EOF',
 Now I will print myself:
 
 Now I will print myself:
 
-<% $m->file("file") %>
-
+% my $output = $m->file("file");
+% $output =~ s/\cM//g;
+<% $output %>
 EOF
 		    );
 
@@ -376,7 +379,7 @@ Trying to fetch /shared (full path /shared):
 /shared does not exist.
 
 Output via the out function.
-/request/file outputs 70+ characters.
+/request/file outputs 120+ characters.
 
 No time difference.
 
