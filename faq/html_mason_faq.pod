@@ -281,7 +281,12 @@ arguments.
 To print HTML constructs returned by CGI functions, just enclose them in
 <%%>, e.g.
 
-	<% $query->radio_group(...) %>
+	<% $query->checkbox(...) %>
+
+Note that a few CGI functions, like radio_group, return a list; for these it is
+best to explicitly join the list:
+
+	<% join("\n",$query->radio_group(...)) %>
 
 =head2 How do I modify the outgoing HTTP headers?
 
