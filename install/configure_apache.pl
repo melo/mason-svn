@@ -2,6 +2,7 @@ use strict;
 
 use File::Basename;
 use File::Spec;
+use File::Path;
 
 my $params_file = './apache_install.txt';
 # main
@@ -11,6 +12,7 @@ my $params_file = './apache_install.txt';
     my %params = read_params();
     my $mason_conf = write_mason_conf(%params);
     alter_httpd_conf( mason_config_file => $mason_conf, %params );
+    create_data_dir(%params);
 }
 
 sub read_params
@@ -95,4 +97,19 @@ sub alter_httpd_conf
     print CONF $new
 	or die "Can't write to $params{apache_config_file}: $!";
     close CONF or die "Can't close $params{apache_config_file}: $!";
+}
+
+# When running under Apache2, the ApacheHandler does not have permissions 
+# to create the data_dir, so we do it at install time.
+sub create_data_dir
+{
+    my %params = @_;
+
+    my $uid = getpwnam($params{user});
+    my $gid = getgrnam($params{group});
+
+    eval { 
+	mkpath( $params{data_dir}, 0, 0775 );
+	chown $uid,$gid,$params{data_dir};
+    };
 }

@@ -239,8 +239,28 @@ EOF
 
     $group->add_test( name => 'preamble',
 		      description => 'tests preamble compiler parameter',
-		      interp_params => { preamble => 'my $msg = "This is the preamble.\n"; $m->print($msg);
-'},
+                      interp_params =>
+                      { preamble =>
+                        qq{my \$msg = "This is the preamble.\\n"; \$m->print(\$msg);\n},
+		      },
+		      component => <<'EOF',
+This is the body.
+EOF
+		      expect => <<'EOF',
+This is the preamble.
+This is the body.
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'preamble_in_different_package',
+		      description => 'tests preamble compiler parameter with in_package set',
+		      interp_params =>
+                      { preamble =>
+                        qq{my \$msg = "This is the preamble.\\n"; \$m->print(\$msg);\n},
+                        in_package => 'HTML::Mason::NewPackage',
+		      },
 		      component => <<'EOF',
 This is the body.
 EOF
@@ -255,8 +275,28 @@ EOF
 
     $group->add_test( name => 'postamble',
 		      description => 'tests postamble compiler parameter',
-		      interp_params => { postamble => 'my $msg = "This is the postamble.\n"; $m->print($msg);
-'},
+		      interp_params =>
+                      { postamble =>
+                        qq{my \$msg = "This is the postamble.\\n"; \$m->print(\$msg);\n},
+                      },
+		      component => <<'EOF',
+This is the body.
+EOF
+		      expect => <<'EOF',
+This is the body.
+This is the postamble.
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'postamble_in_package',
+		      description => 'tests postamble compiler parameter with in_package set',
+		      interp_params =>
+                      { postamble =>
+                        qq{my \$msg = "This is the postamble.\\n"; \$m->print(\$msg);\n},
+                        in_package => 'HTML::Mason::NewPackage2',
+                      },
 		      component => <<'EOF',
 This is the body.
 EOF
@@ -480,6 +520,19 @@ $y; #16
 EOF
 		      expect_error => qr/Global symbol .* at .* line 16/,
 		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'line_nums_off_2',
+		      description => 'make sure that line number reporting is not off (another buggy case)',
+		      component => <<'EOF',
+<%flags>
+    inherit => undef
+</%flags>
+% die "really #4";
+EOF
+		      expect_error => qr/really #4 .* line 4/,
+                    );
 
 #------------------------------------------------------------
 
@@ -926,6 +979,63 @@ foo is <% $foo %>
 EOF
                           expect => <<'EOF',
 foo is 7
+EOF
+                        );
+
+#------------------------------------------------------------
+
+	$group->add_test( name => 'in_package_shared',
+			  description => 'Make sure in_package works with %shared',
+		          interp_params => { in_package => 'HTML::Mason::Foo' },
+			  component => <<'EOF',
+<%shared>
+my $foo = 'bar';
+</%shared>
+Foo: <% $foo %>
+EOF
+                          expect => <<'EOF',
+Foo: bar
+EOF
+                        );
+
+#------------------------------------------------------------
+
+	$group->add_test( name => 'in_package_m_in_shared',
+			  description => 'Make sure $m works with %shared when in_package is set',
+		          interp_params => { in_package => 'HTML::Mason::Bar' },
+			  component => <<'EOF',
+<%shared>
+my $dh = $m->dhandler_name;
+</%shared>
+<% $dh %>
+This is the body.
+EOF
+                          expect => <<'EOF',
+dhandler
+This is the body.
+EOF
+                        );
+
+#------------------------------------------------------------
+
+	$group->add_test( name => 'preamble_with_shared_in_package',
+			  description => 'Make sure $m works with %shared when in_package is set',
+		          interp_params =>
+                          { preamble =>
+                            qq{my \$msg = "This is the preamble.\\n"; \$m->print(\$msg);\n},
+                            in_package => 'HTML::Mason::Baz'
+	 	          },
+			  component => <<'EOF',
+<%shared>
+my $dh = $m->dhandler_name;
+</%shared>
+<% $dh %>
+This is the body.
+EOF
+                          expect => <<'EOF',
+This is the preamble.
+dhandler
+This is the body.
 EOF
                         );
 

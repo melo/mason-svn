@@ -32,7 +32,7 @@ sub setup_mod_perl_tests
 
 sub cleanup_files
 {
-    foreach ( qw( httpd httpd.conf mason_handler_CGI.pl mason_handler_mod_perl.pl ) )
+    foreach ( qw( httpd mason_handler_CGI.pl mason_handler_mod_perl.pl ) )
     {
 	my $file = File::Spec->catdir( 't', $_ );
 	if ( -e $file )
@@ -42,7 +42,7 @@ sub cleanup_files
 	}
     }
 
-    foreach ( qw( comps data ) )
+    foreach ( qw( comps data conf logs) )
     {
 	my $dir = File::Spec->catdir( 't', $_ );
 	if ( -d $dir )
@@ -61,17 +61,36 @@ sub write_apache_conf
     }
 
     my $cwd = cwd();
-    my $conf_file = File::Spec->catfile( $cwd, 't', 'httpd.conf' );
-    $APACHE{apache_dir} = dirname($conf_file);
+    $APACHE{apache_dir} = File::Spec->catdir( $cwd, 't' );
     $APACHE{apache_dir} =~ s,/$,,;
+
+    $APACHE{conf_dir} =  File::Spec->catdir( $APACHE{apache_dir}, 'conf' );
+    $APACHE{conf_file} = File::Spec->catfile( $APACHE{conf_dir}, 'httpd.conf' );
 
     $APACHE{comp_root} = File::Spec->catdir( $APACHE{apache_dir}, 'comps' );
     $APACHE{data_dir} = File::Spec->catdir( $APACHE{apache_dir}, 'data' );
+
+    $APACHE{log_dir} = File::Spec->catdir( $APACHE{apache_dir}, 'logs' );
 
     mkdir $APACHE{comp_root}, 0755
 	or die "Can't make dir '$APACHE{comp_root}': $!";
     mkdir $APACHE{data_dir}, 0755
 	or die "Can't make dir '$APACHE{data_dir}': $!";
+    mkdir $APACHE{conf_dir}, 0755
+	or die "Can't make dir '$APACHE{conf_dir}': $!";
+    mkdir $APACHE{log_dir}, 0755
+	or die "Can't make dir '$APACHE{log_dir}': $!";
+    if (!$<) {
+	# set data_dir permissions when running as root
+	my $uid = getpwnam($APACHE{user});
+	my $gid = getgrnam($APACHE{group});
+	my $default_data_dir = File::Spec->catdir( $APACHE{apache_dir}, 'mason' );
+	eval {
+            chown $uid,$gid, $APACHE{data_dir};
+            mkdir $default_data_dir, 0755;
+            chown $uid,$gid, $default_data_dir;
+	};
+    }
 
     my $libs = _libs();
 
@@ -79,6 +98,7 @@ sub write_apache_conf
         File::Spec->catfile( $APACHE{apache_dir}, 'mason_handler_CGI.pl' );
     my $mod_perl_handler =
         File::Spec->catfile( $APACHE{apache_dir}, 'mason_handler_mod_perl.pl' );
+    my $default_args_method = (Apache::test::have_module('Apache::Request') ? 'mod_perl' : 'CGI');
 
     my %multiconf;
     $multiconf{1}{comp_root} = File::Spec->catfile( $APACHE{comp_root}, 'multiconf1' );
@@ -86,13 +106,19 @@ sub write_apache_conf
     $multiconf{2}{comp_root} = File::Spec->catfile( $APACHE{comp_root}, 'multiconf2' );
     $multiconf{2}{data_dir}  = File::Spec->catfile( $APACHE{data_dir}, 'multiconf2' );
 
+    # Apache2 tweaks
+    my $PerlTaintCheck = 'PerlTaintCheck On';
+    if ($APACHE{version} =~ m/^2\./) {
+	$PerlTaintCheck = 'PerlSwitches -T';
+    }
+
     my $include .= <<"EOF";
 ServerRoot $APACHE{apache_dir}
 
 # tainting has to be turned on before any Perl code is loaded
 <IfDefine taint>
   PerlSetEnv PATH /bin:/usr/bin
-  PerlTaintCheck On
+  $PerlTaintCheck
 </IfDefine>
 
 <Perl>
@@ -138,6 +164,8 @@ EOF
   PerlAddVar  MasonCompRoot "root2 => $APACHE{data_dir}"
   PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
   PerlSetVar  MasonDeclineDirs 0
+  # We need to test setting a "code" type parameter
+  PerlSetVar  MasonPreprocess "sub { \${\$_[0]} =~ s/fooquux/FOOQUUX/ }"
 
   PerlSetVar  MasonEscapeFlags "old_h  => \\&HTML::Mason::Escapes::basic_html_escape"
   PerlAddVar  MasonEscapeFlags "old_h2 => basic_html_escape"
@@ -152,14 +180,14 @@ EOF
 </IfDefine>
 
 <IfDefine multi_config>
-  PerlSetVar MasonArgsMethod CGI
+  PerlSetVar MasonArgsMethod $default_args_method
+  PerlModule  HTML::Mason::ApacheHandler
 
   <Location /comps/multiconf1>
     PerlSetVar  MasonCompRoot "$multiconf{1}{comp_root}"
     PerlSetVar  MasonDataDir  "$multiconf{1}{data_dir}"
     PerlSetVar  MasonAutohandlerName no_such_file
     SetHandler  perl-script
-    PerlModule  HTML::Mason::ApacheHandler
     PerlHandler HTML::Mason::ApacheHandler
   </Location>
 
@@ -168,7 +196,6 @@ EOF
     PerlSetVar  MasonDataDir  "$multiconf{2}{data_dir}"
     PerlSetVar  MasonDhandlerName no_such_file
     SetHandler  perl-script
-    PerlModule  HTML::Mason::ApacheHandler
     PerlHandler HTML::Mason::ApacheHandler
   </Location>
 
@@ -183,25 +210,25 @@ EOF
   ServerRoot /tmp
   SetHandler perl-script
   PerlSetVar MasonDataDir /tmp/one/two
+  PerlSetVar  MasonArgsMethod $default_args_method
   PerlHandler HTML::Mason::ApacheHandler
 </IfDefine>
 
 <IfDefine taint>
   SetHandler  perl-script
+  PerlSetVar  MasonArgsMethod $default_args_method
   PerlHandler HTML::Mason::ApacheHandler
 </IfDefine>
 
 <IfDefine CGIHandler>
-  AddHandler cgi-script .cgi
-  Action html-mason /CGIHandler.cgi
-  <Location /comps>
-    Options +ExecCGI
-    SetHandler html-mason
-  </Location>
+  ScriptAlias /comps $APACHE{apache_dir}/CGIHandler.cgi/comps
 </IfDefine>
 EOF
 
-    if ( load_pkg('Apache::Filter') )
+# Apache::Filter is reported to not work with mod_perl 2
+# also Apache-2.0.40 chokes on <Perl> inside <IfDefine> (2.0.49 is ok)
+    if ( load_pkg('Apache::Filter') && Apache::Filter->VERSION >= 1.021 &&
+	$APACHE{version} !~ m/^2\./)
     {
         my $filter_handler = <<'EOF';
   sub FilterTest::handler
@@ -243,7 +270,7 @@ EOF
     local $^W;
     Apache::test->write_httpd_conf
 	    ( %APACHE,
-	      include => $include
+	      include => $include,
 	    );
 }
 
@@ -267,16 +294,31 @@ package My::Resolver;
 \$My::Resolver::VERSION = '0.01';
 \@My::Resolver::ISA = 'HTML::Mason::Resolver::File::ApacheHandler';
 
-
 package My::Interp;
 \$My::Interp::VERSION = '0.01';
 \@My::Interp::ISA = 'HTML::Mason::Interp';
+
+package My::ThrowingInterp;
+\$My::ThrowingInterp::VERSION = '0.01';
+\@My::ThrowingInterp::ISA = 'HTML::Mason::Interp';
+use HTML::Mason::Exceptions;
+
+sub make_request {
+    my \$self = shift;
+    my \%p = \@_;
+    my \$r = \$p{apache_req}
+      || \$self->delayed_object_params('request', 'apache_req')
+      || \$self->delayed_object_params('request', 'cgi_request');
+    \$r->content_type( 'text/fooml' );
+    \$r->send_http_header if \$mod_perl::VERSION < 1.99;
+    HTML::Mason::Exception::Abort->throw(error => 'foo', aborted_value => 200);
+}
 
 package HTML::Mason;
 
 $libs
 
-use Apache::Constants qw(REDIRECT);
+use constant REDIRECT => 302;
 
 use HTML::Mason::ApacheHandler;
 use HTML::Mason;
@@ -284,6 +326,7 @@ use HTML::Mason;
 my \@ah_params = ( {},
                    {},
                    { decline_dirs => 0 },
+                   {},
                    {}
                  );
 
@@ -313,7 +356,17 @@ for (my \$x = 0; \$x <= \$#ah_params; \$x++)
     }
 
     my \%interp_params;
-    if ( \$x % 2 )
+    if (\$x == 4)
+    {
+        \%interp_params = ( interp_class => 'My::ThrowingInterp',
+                           data_dir => '$APACHE{data_dir}',
+                           error_mode => 'output',
+                           error_format => 'html',
+                           \%{\$interp_params[0]},
+                         );
+
+    }
+    elsif ( \$x % 2 )
     {
 
         \%interp_params = ( interp_class => 'My::Interp',
@@ -347,7 +400,7 @@ for (my \$x = 0; \$x <= \$#ah_params; \$x++)
 	      \%res_params,
             );
 
-    chown Apache->server->uid, Apache->server->gid, \$ah->interp->files_written;
+    chown \$ah->get_uid_gid, \$ah->interp->files_written;
 
     push \@ah, \$ah;
 }
@@ -355,7 +408,7 @@ for (my \$x = 0; \$x <= \$#ah_params; \$x++)
 sub handler
 {
     my \$r = shift;
-    \$r->header_out('X-Mason-Test' => 'Initial value');
+    \$r->headers_out->{'X-Mason-Test'} = 'Initial value';
 
     my (\$ah_index) = \$r->uri =~ /ah=(\\d+)/;
 
@@ -376,6 +429,7 @@ sub handler
     my \$status = \$ah[\$ah_index]->handle_request(\$r);
     return \$status if \$status == REDIRECT;
     \$r->print( "Status code: \$status\\n" );
+    return \$status;
 }
 
 1;

@@ -30,8 +30,12 @@ sub get
 
     if (Cache::BaseCache::Object_Has_Expired($object))
     {
-	if (my $duration = $params{busy_lock}) {
-	    $object->set_expires_at(time + $duration);
+	if ($params{busy_lock}) {
+	    # If busy_lock value provided, set a new "temporary"
+	    # expiration time that many seconds forward, and return
+	    # undef so that this process will start recomputing.
+	    my $busy_lock_time = Cache::BaseCache::Canonicalize_Expiration_Time($params{busy_lock});
+	    $object->set_expires_at(time + $busy_lock_time);
 	    $self->set_object($key, $object);
 	} else {
 	    $self->remove($key);
