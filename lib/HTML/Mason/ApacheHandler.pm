@@ -1,10 +1,16 @@
 # Copyright (c) 1998-2003 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
+package HTML::Mason::ApacheHandler;
 
 use strict;
 # This is the version that introduced PerlAddVar
 use mod_perl 1.24;
+
+# This needs to come before any mention of $mod_perl::VERSION
+use vars qw($VERSION);
+
+$VERSION = 1.69;
 
 #----------------------------------------------------------------------
 #
@@ -279,10 +285,6 @@ unless ( APACHE2 )
     error "mod_perl must be compiled with PERL_METHOD_HANDLERS=1 (or EVERYTHING=1) to use ", __PACKAGE__, "\n"
 	unless Apache::perl_hook('MethodHandlers');
 }
-
-use vars qw($VERSION);
-
-$VERSION = 1.69;
 
 use Class::Container;
 use base qw(Class::Container);
