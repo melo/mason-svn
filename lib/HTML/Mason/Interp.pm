@@ -17,7 +17,7 @@ use File::Find;
 use IO::File;
 use IO::Seekable;
 use HTML::Mason::Parser;
-use HTML::Mason::Tools qw(read_file pkg_loaded is_absolute_path);
+use HTML::Mason::Tools qw(read_file pkg_loaded is_root_path is_absolute_path);
 use HTML::Mason::Commands qw();
 use HTML::Mason::Config;
 require Time::HiRes if $HTML::Mason::Config{use_time_hires};
@@ -108,7 +108,7 @@ sub _initialize
     # that directories are absolute.
     #
     foreach my $field (qw(comp_root data_dir data_cache_dir)) {
-	$self->{$field} =~ s/\/$//g;
+	$self->{$field} =~ s/\/$//g unless is_root_path($self->{$field});
  	die "$field ('".$self->{$field}."') must be an absolute directory" if !is_absolute_path($self->{$field});
     }
     
@@ -161,8 +161,8 @@ sub _initialize
     # Adjust to current size of reload file
     #
     if ($self->use_reload_file && -f $self->reload_file) {
-	$self->{last_reload_file_pos} = [stat($self->reload_file)]->[7];
-	$self->{last_reload_time} = [stat($self->reload_file)]->[9];
+	$self->{last_reload_file_pos} = (stat(_))[7];
+	$self->{last_reload_time} = (stat(_))[9];
     }
 }
 
@@ -270,14 +270,15 @@ sub check_reload_file {
     my ($self) = @_;
     my $reloadFile = $self->reload_file;
     return if (!-f $reloadFile);
-    my $lastmod = [stat($reloadFile)]->[9];
+    my $lastmod = (stat(_))[9];
     if ($lastmod > $self->{last_reload_time}) {
 	my ($block);
-	my $length = [stat($reloadFile)]->[7];
+	my $length = (stat(_))[7];
+	$self->{last_reload_file_pos} = 0 if ($length < $self->{last_reload_file_pos});
 	my $fh = new IO::File $reloadFile;
 	return if !$fh;
 	my $pos = $self->{last_reload_file_pos};
-	$fh->seek(&SEEK_SET,$pos);
+	$fh->seek($pos,&SEEK_SET);
 	read($fh,$block,$length-$pos);
 	$self->{last_reload_time} = $lastmod;
 	$self->{last_reload_file_pos} = $fh->tell;

@@ -13,7 +13,7 @@ require 5.004;
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(read_file chop_slash html_escape url_escape url_unescape date_delta_to_secs is_absolute_path make_absolute_path pkg_loaded pkg_installed);
+@EXPORT_OK = qw(read_file chop_slash html_escape url_escape url_unescape date_delta_to_secs is_root_path is_absolute_path make_absolute_path pkg_loaded pkg_installed);
 
 use strict;
 use IO::File qw(!/^SEEK/);
@@ -106,6 +106,14 @@ sub date_delta_to_secs
     return $num * $mult * ($sign eq '-' ? -1 : 1);
 }
 
+#
+# Determines whether a pathname is at the root directory.
+#
+sub is_root_path
+{
+    return $_[0] =~ /^([A-Za-z]:)?\/$/;
+}
+    
 #
 # Determines whether a pathname is absolute: beginning with / or ~/ or a
 # drive letter (e.g. C:/).
