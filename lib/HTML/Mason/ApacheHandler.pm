@@ -233,7 +233,6 @@ sub _make_interp
     $p{use_dhandlers}         = _get_boolean_param('UseDhandlers');
     $p{use_object_files}      = _get_boolean_param('UseObjectFiles');
     $p{use_reload_file}       = _get_boolean_param('UseReloadFile');
-    $p{verbose_compile_error} = _get_boolean_param('VerboseCompileError');
 
     my @comp_root = _get_list_param('CompRoot', 1);
     if (@comp_root == 1)

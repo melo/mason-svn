@@ -41,8 +41,7 @@ use HTML::Mason::MethodMaker
 			  static_file_root
 			  use_data_cache
 			  use_object_files
-			  use_reload_file
-			  verbose_compile_error ) ],
+			  use_reload_file ) ],
       );
 
 # Fields that can be set in new method, with defaults
@@ -70,8 +69,7 @@ my %fields =
      use_data_cache => 1,
      use_dhandlers => 1,
      use_object_files => 1,
-     use_reload_file => 0,
-     verbose_compile_error => 0
+     use_reload_file => 0
      );
 
 sub new
@@ -113,7 +111,6 @@ sub new
 		use_dhandlers => { type => SCALAR | UNDEF, optional => 1 },
 		use_object_files => { type => SCALAR | UNDEF, optional => 1 },
 		use_reload_file => { type => SCALAR | UNDEF, optional => 1 },
-		verbose_compile_error => { type => SCALAR | UNDEF, optional => 1 },
 
 		comp_root => { type => SCALAR | ARRAYREF },
 		data_dir => { type => SCALAR },
@@ -417,16 +414,6 @@ sub _compilation_error {
     my ($self, $filename, $err) = @_;
 
     my $msg = sprintf("Error during compilation of %s:\n%s\n",$filename, $err);
-
-    if ($self->verbose_compile_error) {
-	my $comp = read_file($filename);
-	my $x = 1;
-	my @lines = split /\n/, $comp;
-	my $max = length (scalar @lines);
-	$msg .= join "\n", map { sprintf("%-${max}s: %s", $x++, $_) } @lines;
-	$msg .= "\n";
-    }
-
     die $msg;
 }
 
