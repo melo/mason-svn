@@ -276,7 +276,7 @@ sub _make_interp
 
     # if version <= 1.21 then these files shouldn't be created til
     # after a fork so they should have the right ids anyway
-    if ($interp->files_written && $mod_perl::VERSION > 1.21)
+    if ($interp->files_written && $mod_perl::VERSION > 1.21 && ! ($> || $<))
     {
 	chown Apache->server->uid, Apache->server->gid, $interp->files_written
 	    or die "Can't change ownership of files written by interp object\n";
