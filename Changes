@@ -5,6 +5,16 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+0.896
+
+- Fixed bug preventing Mason from working with PerlFreshRestart.
+- Fixed use_reload_file to work as documented and not stat() source files. (submitted by bjturner)
+- Fixed display in Apache::Status.
+- Documented the significance of ordering in <%args> sections.
+- Fixed documentation of %ARGS with regards to hashes passed in query string. (suggested by Adam Stubbs)
+- Added version # to 'use Apache::Session::File' in session_handler.pl.
+- Fixed preloads documentation to match reality.
+
 0.895  Mon Dec 11 21:27:15 PST 2000
 
 - ** Removed ApacheHandler from Mason.pm. It is now necessary to
