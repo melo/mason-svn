@@ -5,6 +5,11 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+1.015 Tue Apr  3 10:49:07 PDT 2001
+
+- Fixed incompatibility with mod_perl < 1.21_01, introduced in 1.01.
+- Added 'use Apache.pm' to ApacheHandler.pm, necessary for some mod_perl installations.
+
 1.01  Tue Mar 27 16:55:46 PST 2001
 
 - Implemented configuration of Mason from httpd.conf via PerlSetVar
