@@ -151,23 +151,15 @@ Defaults to C<CGI>.
 
 =item * MasonMultipleConfig - boolean
 
-If this parameter is true then Mason assumes that you may have
-multiple sets of configuration directives defined, perhaps for
-multiple locations or virtual hosts.  This means that Mason will
-create a new set of parser/interp/handler objects for every request.
-Otherwise Mason simply creates a single set at server startup to
-maximize shared memory.
+If this parameter is true, Mason assumes that you may have multiple
+sets of configuration directives defined, perhaps for multiple
+locations or virtual hosts.  This means that Mason will create a new
+set of parser/interp/handler objects for every request.  If this
+parameter is false, Mason simply creates a single set at server
+startup to maximize shared memory. Defaults to false.
 
-Defaults to false.
-
-B<Important>: If you set this option, you must make sure that whatever
-directories you are using as data directories (set via
-C<MasonDataDir>) are writeable by the user that Apache runs as.
-Similarly, your component roots must be readable by the user Apache
-runs as.
-
-This is only relevant when the C<MasonMultipleConfig> option is set as
-true.
+If you set this option, the Apache child processes will need
+the proper permissions to create the data directories.
 
 =back
 
