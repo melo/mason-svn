@@ -193,11 +193,7 @@ sub _make_ah
     $p{debug_handler_script} = _get_string_param('DebugHandlerScript');
     $p{debug_mode} = _get_string_param('DebugMode');
     $p{debug_perl_binary} = _get_string_param('DebugPerlBinary');
-
     $p{error_mode} = _get_string_param('ErrorMode');
-    die "Configuration parameter MasonErrorMode must be either 'batch' or 'stream'\n"
-	if defined $p{out_mode} && $p{out_mode} ne 'html' && $p{out_mode} ne 'fatal';
-
     $p{top_level_predicate} = _get_code_param('TopLevelPredicate');
 
     foreach (keys %p)
@@ -225,11 +221,7 @@ sub _make_interp
     $p{die_handler}         = _get_code_param('DieHandler');
     $p{max_recurse}         = _get_string_param('MaxRecurse');
     $p{out_method}          = _get_code_param('OutMethod');
-
     $p{out_mode}            = _get_string_param('OutMode');
-    die "Configuration parameter MasonOutMode must be either 'batch' or 'stream'\n"
-	if defined $p{out_mode} && $p{out_mode} ne 'batch' && $p{out_mode} ne 'stream';
-
     $p{preloads}              = [ _get_list_param('Preloads') ];
     delete $p{preloads} unless @{ $p{preloads} };
     $p{static_file_root}      = _get_string_param('StaticFileRoot');
@@ -316,17 +308,7 @@ sub _get_boolean_param
 {
     my ($p, $val) = _get_val(@_[0, 1]);
 
-    return undef unless defined $val;
-
-    $val = lc $val;
-
-    if ($val)
-    {
-	die "Configuration parameter '$p' must be either 'On' or 'Off'\n"
-	    unless $val eq 'on' || $val eq 'off';
-    }
-
-    return $val eq 'on' ? 1 : 0;
+    return $val;
 }
 
 sub _get_code_param
@@ -398,6 +380,9 @@ sub new
 	    );
 
     my (%options) = @_;
+
+    die "error_mode parameter must be either 'html' or 'fatal'\n"
+	if exists $options{error_mode} && $options{error_mode} ne 'html' && $options{error_mode} ne 'fatal';
 
     while (my ($key,$value) = each(%options)) {
 	$self->{$key} = $value;
