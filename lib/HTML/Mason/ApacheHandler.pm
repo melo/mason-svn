@@ -706,15 +706,18 @@ sub _cgi_args
 
 #
 # Get %args hash via Apache::Request package. As a side effect, assign the
-# new Apache::Request package back to $r.
+# new Apache::Request package back to $r, unless $r is already an Apache::Request.
 #
 sub _mod_perl_args
 {
     my ($self, $rref, $request) = @_;
 
-    my $apr = Apache::Request->new($$rref);
-    $$rref = $apr;
-
+    my $apr = $$rref;
+    unless (UNIVERSAL::isa($apr, 'Apache::Request')) {
+	$apr = Apache::Request->new($apr);
+	$$rref = $apr;
+    }
+    
     return unless $apr->param;
 
     my %args;
