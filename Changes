@@ -23,6 +23,9 @@ HTML::Entities is not installed, using the "|h" escape flag in the
 error display component causes an endless loop.  The other is that the
 "|h" flag can mangle non-Latin-1 characters.  Task ids #497 and #494.
 Reported by Harmen and Oleg Bartunov respectively.
+- If a component generated output, then called another component via
+$m->scomp, and that other component called $m->redirect, the redirect
+failed.  Task id #498.  Reported by Kim Alexander Hansen.
 
 
 1.22  July 14, 2003
