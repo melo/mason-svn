@@ -190,8 +190,7 @@ B<L<HTML::Mason::Interp>>.
 
 =head1 AUTHORS
 
-Jonathan Swartz, swartz@pobox.com
-Dave Rolsky, autarch@urth.org
+Jonathan Swartz, swartz@pobox.com and Dave Rolsky, autarch@urth.org
 
 =head1 SEE ALSO
 

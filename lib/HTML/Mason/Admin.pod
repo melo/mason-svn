@@ -1297,8 +1297,7 @@ matter; on production servers you may wish to profile the two schemes.
 
 =head1 AUTHOR
 
-Jonathan Swartz, swartz@pobox.com
-Dave Rolsky, autarch@urth.org
+Jonathan Swartz, swartz@pobox.com and Dave Rolsky, autarch@urth.org
 
 =head1 SEE ALSO
 
