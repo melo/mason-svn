@@ -19,6 +19,8 @@ BEGIN
     $DEBUG = $ENV{MASON_DEBUG};
 }
 
+use File::Basename;
+use File::Path;
 use HTML::Mason::Tests;
 
 use lib 'lib', 't/lib';
@@ -35,7 +37,7 @@ $has_apache_request = 0 if $@;
 local $| = 1;
 
 {
-    my $both_tests = 11;
+    my $both_tests = 12;
     my $cgi_only_tests = 1;
     my $apr_only_tests = 1;
 
@@ -106,12 +108,19 @@ EOF
 EOF
 	      );
 
-    write_comp( '_underscore', <<'EOF',
+    write_comp( 'params', <<'EOF',
+% foreach (sort keys %ARGS) {
+<% $_ %>: <% ref $ARGS{$_} ? join ', ', sort @{ $ARGS{$_} }, 'array' : $ARGS{$_} %>
+% }
+EOF
+	      );
+
+    write_comp( 'dhandler/_underscore', <<'EOF',
 I am underscore.
 EOF
 	      );
 
-    write_comp( 'dhandler', <<'EOF',
+    write_comp( 'dhandler/dhandler', <<'EOF',
 I am the dhandler.
 EOF
 	      );
@@ -136,6 +145,9 @@ sub write_comp
     my $comp = shift;
 
     my $file = "$ENV{APACHE_DIR}/comps/$name";
+    my $dir = dirname($file);
+    mkpath( $dir, 0, 0755 ) unless -d $dir;
+
     open F, ">$file"
 	or die "Can't write to '$file': $!";
 
@@ -251,7 +263,7 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/ah=0/comps/_underscore" );
+    $response = Apache::test->fetch( "/ah=0/comps/dhandler/_underscore" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -263,7 +275,7 @@ EOF
     ok($success);
 
     # top_level_predicate should reject this request.
-    $response = Apache::test->fetch( "/ah=2/comps/_underscore" );
+    $response = Apache::test->fetch( "/ah=2/comps/dhandler/_underscore" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -273,28 +285,6 @@ EOF
 					       );
     ok($success);
 
-    # decline_dirs defaults to true so this request is declined
-    $response = Apache::test->fetch( "/ah=0/comps/" );
-    $actual = filter_response($response);
-    $success = HTML::Mason::Tests->check_output( actual => $actual,
-						 expect => <<'EOF',
-X-Mason-Test: 
-Status code: -1
-EOF
-					       );
-    ok($success);
-
-    # decline_dirs is false so the dhandler should pick this up
-    $response = Apache::test->fetch( "/ah=3/comps/" );
-    $actual = filter_response($response);
-    $success = HTML::Mason::Tests->check_output( actual => $actual,
-						 expect => <<'EOF',
-X-Mason-Test: Initial value
-I am the dhandler.
-Status code: 0
-EOF
-					       );
-    ok($success);
 
     # error_mode is html so we get lots of stuff
     $response = Apache::test->fetch( "/ah=0/comps/die" );
@@ -305,6 +295,56 @@ EOF
     $response = Apache::test->fetch( "/ah=4/comps/die" );
     $actual = filter_response($response);
     ok( $actual =~ m,500 Internal Server Error, );
+
+    # params in query string only
+    $response = Apache::test->fetch( '/ah=0/comps/params?qs1=foo&qs2=bar&foo=A&foo=B' );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+foo: A, B, array
+qs1: foo
+qs2: bar
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    # params as POST only
+    $response = Apache::test->fetch( { uri =>  '/ah=0/comps/params',
+				       method => 'POST',
+				       content => 'post1=foo&post2=bar&foo=A&foo=B',
+				     } );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+foo: A, B, array
+post1: foo
+post2: bar
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    # params mixed in query string and POST
+    $response = Apache::test->fetch( { uri =>  '/ah=0/comps/params?qs1=foo&qs2=bar&mixed=A',
+				       method => 'POST',
+				       content => 'post1=a&post2=b&mixed=B',
+				     } );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+mixed: A, B, array
+post1: a
+post2: b
+qs1: foo
+qs2: bar
+Status code: 0
+EOF
+						  );
+    ok($success);
 }
 
 # We're not interested in headers that are always going to be
