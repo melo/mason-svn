@@ -469,18 +469,13 @@ sub handle_request_1
     }
     
     #
-    # Compute the component path by deleting the component root
-    # directory from the front of Apache's filename.  If the
-    # substitute fails, we must have an URL outside Mason's component
-    # space; return not found.
+    # Compute the component path via the resolver.
     #
-    my $compPath = $r->filename;
-    if (!($compPath =~ s/^$compRoot//)) {
-	$r->warn("Mason: filename (\"$compPath\") is outside component root (\"$compRoot\"); returning 404.");
+    my $compPath = $interp->resolver->file_to_path($r->filename,$interp);
+    if (!$compPath) {
+	$r->warn("Mason: filename (\"$compPath\") cannot be resolved to component path; return 404.");
 	return NOT_FOUND;
     }
-    $compPath =~ s@/$@@ if $compPath ne '/';
-    while ($compPath =~ s@//@/@) {}
 
     #
     # Try to load the component; if not found, try dhandlers

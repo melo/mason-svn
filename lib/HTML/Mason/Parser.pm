@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -14,7 +14,8 @@ use Data::Dumper;
 use File::Path;
 use File::Basename;
 use File::Find;
-use HTML::Mason::Component;
+use HTML::Mason::Component::FileBased;
+use HTML::Mason::Component::Subcomponent;
 use HTML::Mason::Request;
 use HTML::Mason::Tools qw(read_file);
 use vars qw($AUTOLOAD);
@@ -115,10 +116,11 @@ sub parse
 sub parse_component
 {
     my ($self, %options) = @_;
-    my ($script,$scriptFile,$errorRef,$errposRef,$embedded,$fileBased) =
-	@options{qw(script script_file error errpos embedded file_based)};
+    my ($script,$scriptFile,$errorRef,$errposRef,$embedded,$fileBased,$compClass) =
+	@options{qw(script script_file error errpos embedded file_based comp_class)};
     my ($sub, $err, $errpos, $suberr, $suberrpos);
     $fileBased = 1 if !exists($options{file_based});
+    $compClass = 'HTML::Mason::Component' if !exists($options{comp_class});
     my $pureTextFlag = 1;
     my $parseError = 1;
     my $parserVersion = version();
@@ -188,7 +190,7 @@ sub parse_component
 		    $errpos = $begintail;
 		} else {
 		    my $subtext = substr($script,$begintail,$endmark-$begintail);
-		    if (my $objtext = $self->parse_component(script=>$subtext, embedded=>1, file_based=>0, error=>\$suberr, errpos=>\$suberrpos)) {
+		    if (my $objtext = $self->parse_component(script=>$subtext, embedded=>1, file_based=>0, comp_class=>'HTML::Mason::Component::Subcomponent', error=>\$suberr, errpos=>\$suberrpos)) {
 			$subcomps{$name} = $objtext;
 		    } else {
 			$err = "Error while parsing subcomponent '$name':\n$suberr";
@@ -554,7 +556,7 @@ sub parse_component
     }
     my $cparamstr = join(",\n",@cparams);
     
-    $body = "new HTML::Mason::Component (\n$cparamstr\n);\n";
+    $body = "new $compClass (\n$cparamstr\n);\n";
     $body = $header . $body;
 
     #
@@ -691,7 +693,6 @@ sub eval_object_text
 	$$errref = $err if defined($errref);
 	return undef;
     } else {
-	$comp->object_file($objectFile);
 	return $comp;
     }
 }
