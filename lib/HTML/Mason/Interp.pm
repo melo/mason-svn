@@ -14,6 +14,7 @@ use HTML::Mason::Tools qw(is_absolute_path);
 use HTML::Mason::Commands qw();
 use HTML::Mason::Config;
 use HTML::Mason::Resolver::File;
+use Params::Validate qw(:all);
 
 require Time::HiRes if $HTML::Mason::Config{use_time_hires};
 
@@ -55,7 +56,7 @@ my %fields =
      data_cache_dir => '',
      data_dir => undef,
      dhandler_name => 'dhandler',
-     die_handler => sub { confess($_[0]) },
+     die_handler => sub { Carp::confess($_[0]) },
      die_handler_overridden => 0,
      system_log_file => undef,
      system_log_separator => "\cA",
@@ -87,18 +88,41 @@ sub new
 	system_log_fh => undef,
 	system_log_events_hash => undef
     };
+
+    validate( @_,
+	      { allow_recursive_autohandlers => { type => SCALAR | UNDEF, optional => 1 },
+		autohandler_name => { type => SCALAR, optional => 1 },
+		code_cache_max_size => { type => SCALAR, optional => 1 },
+		current_time => { type => SCALAR, optional => 1 },
+		data_cache_dir => { type => SCALAR, optional => 1 },
+		dhandler_name => { type => SCALAR, optional => 1 },
+		die_handler => { type => CODEREF, optional => 1 },
+		out_method => { type => CODEREF | SCALARREF, optional => 1 },
+		out_mode => { type => SCALAR, optional => 1 },
+		max_recurse => { type => SCALAR, optional => 1 },
+		parser => { isa => 'HTML::Mason::Parser', optional => 1 },
+		preloads => { type => ARRAYREF, optional => 1 },
+		static_file_root => { type => SCALAR, optional => 1 },
+		system_log_events => { type => SCALAR, optional => 1 },
+		system_log_file => { type => SCALAR, optional => 1 },
+		system_log_separator => { type => SCALAR, optional => 1 },
+		use_data_cache => { type => SCALAR | UNDEF, optional => 1 },
+		use_object_files => { type => SCALAR | UNDEF, optional => 1 },
+		use_reload_file => { type => SCALAR | UNDEF, optional => 1 },
+		verbose_compile_error => { type => SCALAR | UNDEF, optional => 1 },
+
+		comp_root => { type => SCALAR | ARRAYREF },
+		data_dir => { type => SCALAR },
+	      }
+	    );
+
     my (%options) = @_;
     while (my ($key,$value) = each(%options)) {
 	next if $key =~ /out_method|system_log_events/;
-	if (exists($fields{$key})) {
-	    $self->{$key} = $value;
-	} else {
-	    die "HTML::Mason::Interp::new: invalid option '$key'\n";
-	}
+	$self->{$key} = $value;
     }
     $self->{die_handler_overridden} = 1 if exists $options{die_handler};
 
-    die "HTML::Mason::Interp::new: must specify value for data_dir\n" if !$self->{data_dir};
     $self->{data_cache_dir} ||= ($self->{data_dir} . "/cache");
     bless $self, $class;
     $self->out_method($options{out_method}) if (exists($options{out_method}));
