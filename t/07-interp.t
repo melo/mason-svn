@@ -890,5 +890,18 @@ I am foo!
 EOF
 		    );
 
+#------------------------------------------------------------
+
+    $group->add_test( name => 'overriding_die_handler',
+		      description => 'Test overriding the $SIG{__DIE__} handler',
+		      interp_params => { die_handler => sub { die "BAR\n" } },
+		      component => <<'EOF',
+<% die 'foo' %>
+EOF
+		      expect_error => '^\\s*BAR\\s*$',
+		    );
+
+#------------------------------------------------------------
+
     return $group;
 }
