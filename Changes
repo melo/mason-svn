@@ -5,6 +5,24 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.24  November 10, 2003
+
+[ BUG FIXES ]
+
+- Two tests in 04-misc.t, #9 and #10, failed if Params::Validate 0.66+
+was installed.  This happened because an error message given by
+Params::Validate changed slightly, and was not a problem in the Mason
+core code.
+- The Component object method attr_if_exists returned 0 when the
+attribute didn't exist, instead of undef as is documented.  Reported
+by Chris Reinhardt.
+- The HTML::Mason::Resolver::File glob_path method, which is used for
+the preloads feature, now uses File::Glob::bsd_glob when run with Perl
+5.6.0+.  This function properly handles spaces in filenames, which are
+legal on most systems, and common on Win32.  Implemented by Autrijus
+Tang.
+
+
 1.23  September 8, 2003
 
 [ ENHANCEMENTS ]
