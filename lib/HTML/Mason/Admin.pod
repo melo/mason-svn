@@ -49,6 +49,11 @@ The next three sections discuss these methods in detail. We recommend
 that you start with the simplest method and work your way forward as
 the need for flexibility arises.
 
+It is important to note that you cannot mix httpd.conf configuration
+directives with a handler script.  Depending on how you declare your
+C<PerlHandler>, one or the other will always take precedence and the
+other will be ignored.
+
 =head1 MINIMAL CONFIGURATION
 
 A simple configuration looks like:
