@@ -181,6 +181,8 @@ use vars qw(%APACHE);
 
 sub setup_mod_perl_tests
 {
+    return if $^O =~ /win32/i;
+
     # Skip if no mod_perl
     eval { require mod_perl; };
     return if $@;
