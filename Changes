@@ -5,6 +5,13 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.23
+
+[ BUG FIXES ]
+
+- The busy_lock option to $m->cache->get was broken.  Task id #484.
+Reported by Igor Muratov.
+
 1.22  July 14, 2003
 
 [ ENHANCEMENTS ]
