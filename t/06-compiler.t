@@ -483,15 +483,15 @@ EOF
 
 #------------------------------------------------------------
 
-    $group->add_test( name => 'line_nums_off_by_one_2',
-		      description => 'make sure that line number reporting is not off by one (another buggy case)',
+    $group->add_test( name => 'line_nums_off_2',
+		      description => 'make sure that line number reporting is not off (another buggy case)',
 		      component => <<'EOF',
 <%flags>
     inherit => undef
 </%flags>
 % die "really #4";
 EOF
-		      expect_error => qr/died .* line 4/,
+		      expect_error => qr/really #4 .* line 4/,
                     );
 
 #------------------------------------------------------------
