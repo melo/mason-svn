@@ -1230,7 +1230,7 @@ httpd.conf so that all DocumentRoots live under a single component space:
         DocumentRoot /usr/local/www/htdocs/site1
         <Location />
             SetHandler perl-script
-            PerlHandler HTML::Mason
+            PerlHandler HTML::Mason::ApacheHandler
         </Location>
     </VirtualHost>
 
@@ -1239,13 +1239,14 @@ httpd.conf so that all DocumentRoots live under a single component space:
         DocumentRoot /usr/local/www/htdocs/site2
         <Location />
             SetHandler perl-script
-            PerlHandler HTML::Mason
+            PerlHandler HTML::Mason::ApacheHandler
         </Location>
     </VirtualHost>
 
     # Mason configuration
-    MasonCompRoot "/usr/local/www/htdocs"
-    MasonDataDir "/usr/local/mason"
+    PerlSetVar MasonCompRoot "/usr/local/www/htdocs"
+    PerlSetVar MasonDataDir "/usr/local/mason"
+    PerlModule HTML::Mason::ApacheHandler
 
 The directory structure for this scenario might look like:
 
