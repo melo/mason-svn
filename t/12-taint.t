@@ -24,6 +24,13 @@ BEGIN
 
 use HTML::Mason::Parser;
 
+# Clear alarms, and skip test if alarm not implemented
+eval {alarm 0};
+if ($@) {
+    print "1..0\n";
+    exit;
+}
+
 print "1..1\n";
 
 my $parser = HTML::Mason::Parser->new;
