@@ -673,18 +673,18 @@ sub _cgi_args
 
     my $r = $$rref;
 
-    if ($r->method eq 'GET' && !scalar($r->args)) {
-	
-	# For optimization, don't bother creating a CGI object if request
-	# is a GET with no query string
-	return ();
-    } else {
-	my $q = CGI->new;
-        $request->cgi_object($q);
+    # For optimization, don't bother creating a CGI object if request
+    # is a GET with no query string
+    return if $r->method eq 'GET' && !scalar($r->args);
 
-	my %args;
-	foreach my $key ( $q->param ) {
-	    foreach my $value ( $q->param($key) ) {
+    my $q = CGI->new;
+    $request->cgi_object($q);
+
+    my %args;
+    my $methods = $r->method eq 'GET' ? [ 'param' ] : [ 'param', 'url_param' ];
+    foreach my $method (@$methods) {
+	foreach my $key ( $q->$method() ) {
+	    foreach my $value ( $q->$method($key) ) {
 		if (exists($args{$key})) {
 		    if (ref($args{$key}) eq 'ARRAY') {
 			push @{ $args{$key} }, $value;
@@ -696,9 +696,9 @@ sub _cgi_args
 		}
 	    }
 	}
-
-	return %args;
     }
+
+    return %args;
 }
 
 #
