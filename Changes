@@ -9,6 +9,9 @@ available at http://www.masonhq.com/code/history.html.
 
 [ BUG FIXES ]
 
+- $m->caller, $m->callers and $m->caller_args now return undef instead
+of crashing when the specified stack level does not exist. Task id #495.
+Reported by Bernhard Schmalhofer.
 - The busy_lock option to $m->cache->get was broken.  Task id #484.
 Reported by Igor Muratov.
 
