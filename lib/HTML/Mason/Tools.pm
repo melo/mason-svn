@@ -131,7 +131,7 @@ sub paths_eq {
 #
 sub is_absolute_path
 {
-    return $_[0] =~ /^(([A-Za-z]:)|~\w*)?\//;
+    return $_[0] =~ /^(([A-Za-z]:)|~\w*)?[\/\\]/;
 }
     
 #
