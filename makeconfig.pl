@@ -240,7 +240,13 @@ sub write_apache_conf
     mkdir $APACHE{data_dir}, 0755
 	or die "Can't make dir '$APACHE{comp_root}': $!";
 
+    my $libs = _libs();
+
     my $include .= <<"EOF";
+
+<Perl>
+ $libs
+</Perl>
 
 <IfDefine CGI>
   PerlRequire $APACHE{apache_dir}/mason_handler_CGI.pl
@@ -317,14 +323,7 @@ sub setup_handler
     open F, ">$handler_file"
 	or die "Can't write to '$handler_file': $!";
 
-    my $cwd = cwd();
-    my $libs = 'use lib qw( ';
-    $libs .= join ' ', "$cwd/blib/lib", "$cwd/t/lib";
-    if ($ENV{PERL5LIB})
-    {
-	$libs .= join ' ', (split /:|;/, $ENV{PERL5LIB});
-    }
-    $libs .= ' );';
+    my $libs = _libs();
 
     print F <<"EOF";
 package HTML::Mason;
@@ -380,6 +379,21 @@ sub handler
 }
 EOF
     close F;
+}
+
+sub _libs
+{
+    my $cwd = cwd();
+    my $libs = 'use lib qw( ';
+    $libs .= join ' ', "$cwd/blib/lib", "$cwd/t/lib";
+    if ($ENV{PERL5LIB})
+    {
+	$libs .= ' ';
+	$libs .= join ' ', (split /:|;/, $ENV{PERL5LIB});
+    }
+    $libs .= ' );';
+
+    return $libs;
 }
 
 1;
