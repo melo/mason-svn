@@ -146,7 +146,10 @@ sub add_test
     die "no name provided for test\n"
 	unless exists $p{name};
 
-    $p{path} ||= $p{call_path} || $p{name};
+    unless ( exists $p{path} )
+    {
+	$p{path} = $p{call_path} || $p{name};
+    }
 
     my $call_path = "/$self->{name}/";
     $call_path .= exists $p{call_path} ? $p{call_path} : $p{name};
@@ -157,7 +160,7 @@ sub add_test
 	unless exists $p{description};
 
     die "'$p{name}' test has no component\n"
-	unless exists $p{component};
+	unless exists $p{component} || $p{skip_component};
 
     die "'$p{name}' test has no 'expect' or 'expect_error' key\n"
 	unless exists $p{expect} || exists $p{expect_error} || $p{skip_expect} || $self->{create};
@@ -192,7 +195,7 @@ sub run
 	$self->_write_support_comps;
 	$self->_run_tests;
     };
-#    my $x = <STDIN>;
+
     $self->_cleanup;
 
     die $@ if $@;
@@ -350,7 +353,7 @@ sub _run_tests
 	    if $VERBOSE;
 
 	$self->{current_test} = $test;
-	$self->_write_test_comp;
+	$self->_write_test_comp unless $test->{skip_component};
 	$self->_run_test;
 
 	$x++;
@@ -436,35 +439,32 @@ sub _run_test
 	return;
     }
 
-    if ($self->{create} )
+    if ($self->{create})
     {
 	print "Results for $test->{name}:\n$buf\n";
 	return;
     }
 
-    my $success = $self->_check_output($buf);
+    my $success = $test->{skip_expect} ? 1 : $self->check_output( actual => $buf, expect => $test->{expect} );
 
     $success ? $self->_success : $self->_fail;
 }
 
-sub _check_output
+sub check_output
 {
     my $self = shift;
-    my $buf = shift;
-    my $test = $self->{current_test};
+    my %p = @_;
 
-    return 1 if $test->{skip_expect};
-
-    my @actual = split /\n/, $buf;
-    my @expect = split /\n/, $test->{expect};
+    my @actual = split /\n/, $p{actual};
+    my @expect = split /\n/, $p{expect};
 
     my $diff;
-    if (@actual > @expect)
+    if (@expect > @actual)
     {
-	$diff = @actual - @expect;
+	$diff = @expect - @actual;
 	if ($VERBOSE)
 	{
-	    print "Actual result contained $diff extra lines.\n";
+	    print "Actual result contained $diff too few lines.\n";
 	}
     }
     elsif (@expect < @actual)
@@ -604,9 +604,15 @@ reachable at.  All paths are prepended with the group name.  So '/bar'
 as a support component in the 'foo' group's ultimate path would be
 '/foo/bar'.
 
-=item * component (required)
+=item * component
 
-Text of the support component.
+Text of the support component.  This parameter must have a value
+unless the skip_component parameter is true.
+
+=item * skip_component
+
+If true, then the test harness will not write a component to disk for
+this test.
 
 =head2 add_test
 
@@ -701,6 +707,12 @@ Returns the component root directory.
 =head2 data_dir
 
 Return the data directory
+
+=head2 check_output ( actual => $actual_output, expect => $expected_output )
+
+Given the parameters shown above, this method will check to see if the
+two are equal.  If they're not equal, it will print out an error
+message attempting to highlight the difference.
 
 =back
 
