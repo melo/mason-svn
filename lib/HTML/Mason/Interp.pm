@@ -64,9 +64,11 @@ my %fields =
      out_mode => 'batch',
      parser => undef,
      preloads => [],
-     resolver => undef,     
+     resolver => undef,
      static_file_root => undef,
+     use_autohandlers => 1,
      use_data_cache => 1,
+     use_dhandlers => 1,
      use_object_files => 1,
      use_reload_file => 0,
      verbose_compile_error => 0
@@ -106,7 +108,9 @@ sub new
 		system_log_events => { type => SCALAR | UNDEF, optional => 1 },
 		system_log_file => { type => SCALAR, optional => 1 },
 		system_log_separator => { type => SCALAR, optional => 1 },
+		use_autohandlers => { type => SCALAR | UNDEF, optional => 1 },
 		use_data_cache => { type => SCALAR | UNDEF, optional => 1 },
+		use_dhandlers => { type => SCALAR | UNDEF, optional => 1 },
 		use_object_files => { type => SCALAR | UNDEF, optional => 1 },
 		use_reload_file => { type => SCALAR | UNDEF, optional => 1 },
 		verbose_compile_error => { type => SCALAR | UNDEF, optional => 1 },
@@ -121,6 +125,8 @@ sub new
 	next if $key =~ /out_method|system_log_events/;
 	$self->{$key} = $value;
     }
+    $self->{autohandler_name} = undef unless $self->{use_autohandlers};
+    $self->{dhandler_name} = undef unless $self->{use_dhandlers};
     $self->{die_handler_overridden} = 1 if exists $options{die_handler};
 
     $self->{data_cache_dir} ||= ($self->{data_dir} . "/cache");

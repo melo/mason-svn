@@ -177,12 +177,22 @@ Absolute path of system log.  Default is data_dir/etc/system.log.
 
 Separator to use between fields on a line in the system log. Default is ctrl-A ("\cA").
 
+=item use_autohandlers
+
+True or undef, default is true.  If not true, Mason will not attempt
+to use autohandlers.
+
 =item use_data_cache
 
 True or undef, default is true. Specifies whether the $m->cache and
 related commands are operational.  You may need to disable data
 caching temporarily for debugging purposes, but normally this should
 be left alone.
+
+=item use_dhandlers
+
+True or undef, default is true.  If not true, Mason will not attempt
+to use dhandlers.
 
 =item use_object_files
 

@@ -236,7 +236,9 @@ sub _make_interp
     $p{system_log_events}     = _get_string_param('SystemLogEvents');
     $p{system_log_file}       = _get_string_param('SystemLogFile');
     $p{system_log_separator}  = _get_string_param('SystemLogSepartor');
+    $p{use_autohandlers}      = _get_boolean_param('UseAutohandlers');
     $p{use_data_cache}        = _get_boolean_param('UseDataCache');
+    $p{use_dhandlers}         = _get_boolean_param('UseDhandlers');
     $p{use_object_files}      = _get_boolean_param('UseObjectFiles');
     $p{use_reload_file}       = _get_boolean_param('UseReloadFile');
     $p{verbose_compile_error} = _get_boolean_param('VerboseCompileError');

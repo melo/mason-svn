@@ -251,9 +251,17 @@ Corresponds to the C<system_log_file> parameter.
 
 Corresponds to the C<system_log_separator> parameter.
 
+=item * MasonUseAutohandlers - boolean
+
+Corresponds to the C<use_autohandlers> parameter.
+
 =item * MasonUseDataCache - boolean
 
 Corresponds to the C<use_data_cache> parameter.
+
+=item * MasonUseDhandlers - boolean
+
+Corresponds to the C<use_dhandlers> parameter.
 
 =item * MasonUseObjectFiles - boolean
 
