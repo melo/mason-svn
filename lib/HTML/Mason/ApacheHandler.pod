@@ -76,14 +76,14 @@ Guide for details about the automatic header feature.
 =item debug_handler_proc, debug_handler_script, debug_mode, debug_perl_binary
 
 The B<debug_*> parameters control Mason's use of debug files.
-Component L<Admin/debugging> procedures are fully described in the I<Mason
+Component L<HTML::Mason::Admin/debugging> procedures are fully described in the I<Mason
 Administrator's Guide>.
 
 =item decline_dirs
 
 Indicates whether Mason should decline directory requests, leaving
 Apache to serve up a directory index or a FORBIDDEN error as
-appropriate. Default is 1. See L<Admin/Allowing directory requests>
+appropriate. Default is 1. See L<HTML::Mason::Admin/Allowing directory requests>
 for more information about handling directories with Mason.
 
 =item error_mode

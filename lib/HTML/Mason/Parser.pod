@@ -16,7 +16,7 @@ are typically embedded within (and used by) Interp objects.
 These parameters affect the way that components are translated into
 Perl code. If you change a Parser's options, you must remove any
 previously created object files for the changes to take effect.
-See also L<Admin/Object files>.
+See also L<HTML::Mason::Admin/Object files>.
 
 =over
 

@@ -44,7 +44,7 @@ where components are stored. e.g.
     code_cache_max_size => 20*1024*1024
     code_cache_max_size => 20_000_000
 
-Default is 10 MB. See the L<Admin/Code Cache> section of the I<Admin Guide>
+Default is 10 MB. See the L<HTML::Mason::Admin/Code Cache> section of the I<Admin Guide>
 for further details.
 
 =item comp_root
@@ -136,7 +136,7 @@ batch mode Mason computes the entire page in a memory buffer and then
 transmits it all at once. In stream mode Mason outputs data as soon as
 it is computed. (This does not take into account buffering done by
 Apache or the O/S.) The default mode is batch.  See the 
-L<Admin/staging vs production> section of the I<Admin Guide> for a
+L<HTML::Mason::Admin/staging vs production> section of the I<Admin Guide> for a
 discussion of the trade-offs.
 
 =item parser
@@ -152,7 +152,7 @@ when the interpreter initializes. e.g.
     preloads => ['/foo/index.html','/bar/*.pl']
 
 Default is the empty list. This should only be used for components that
-are frequently viewed and rarely updated.  See the L<Admin/preloading>
+are frequently viewed and rarely updated.  See the L<HTML::Mason::Admin/preloading>
 section of the I<Admin Guide> for further details.
 
 =item static_file_root
@@ -205,7 +205,7 @@ should be left alone.
 
 True or undef, default is undef. If true, disables Mason's automatic
 timestamp checking on component source files, relying instead on an
-explicitly updated L<Admin/reload file>.
+explicitly updated L<HTML::Mason::Admin/reload file>.
 
 =back
 
