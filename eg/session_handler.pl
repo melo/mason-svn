@@ -10,6 +10,8 @@
 #        returns its error conditions, or upgrade to Perl 5.6.0 or
 #        greater, which has its own bugs.
 
+package HTML::Mason;
+
 # Bring in main Mason package.
 use HTML::Mason;
 
