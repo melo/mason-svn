@@ -5,6 +5,69 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+0.895
+
+- Mason now works under Perl's tainting mode again.  Thanks to John
+Tobey for pointing us in the right direction.
+- ** It is now necessary to explicitly 'use' the
+HTML::Mason::ApacheHandler module in your handler.pl file (or
+elsewhere).  Formerly, simply loading the HTML::Mason module was
+sufficient.  This fixes a strange bug where you the argument
+processing method would be set to mod_perl during server startup but
+somehow ended up default back to using CGI in the Apache children.
+- Full line comments are now allowed in the <%args> sections, such as:
+<%args>
+# This is a full line comment
+  # Spaces before the comment are fine
+</%args>
+Suggested by Matthew Lewinski.
+- Documented Mason request object's aborted and aborted_value methods.
+- Documented the fact that any variable declared in the <%args>
+section must be a valid Perl variable name.  The parser will not give
+an error if it encounters an invalid name (such as $foo.x).
+- Fix bug where we attempted to upgrade the Apache request object to
+an Apache::Request object even if this had been previously (by an
+earlier handler for example).  Fix submitted by Shevek.
+- Fix bug where attempt to escape a substitution that contained a
+function operating on a list (like sort or map) ended up appending the
+escape flag characters to the list being operated on.
+- Fixed the test 08-ah to work with CGI versions >= 3.0.  Reported by
+Alexei V. Barantsev.
+- Fixed problems with debug files
+- Fixed the fact that using $m->fetch_next could result in the next
+component being called twice.
+- Fixed a problem with the parser when running with a locale that used
+a comma as the decimal separator instead of a period.  Reported by
+Louis-David Mitterrand.
+- Fixed security hole with ../.. in component paths.  Versions 0.88
+and 0.89 would allow any component path when calling one component
+from another.  This could Mason to attempt to process any file on the
+system that it could read.  Note: this was _not_ exploitable via
+Apache.  Reported by Pascal Eeftinck.
+- Implemented $m->top_comp and $m->top_args.  Suggested by Kees Vonk.
+- Fixed documentation for $m->callers.
+- Fixed documentation about caching to point out that the expire_in
+syntax treats 'm' as months, not minutes.  Also documented the fact
+that it is possible to specify 'y' as the number of years before
+expiration.
+- When a web request results in a NOT FOUND error, there is now an
+appropriate entry in the Apache error log.
+- Clarify in docs exactly what the  'u' escape flag escapes.
+- Remove use of $r->finfo in Apachehandler.pm, which could cause
+random core dumps.
+- The test harness system has been entirely revamped and now use the
+module HTML::Mason::Tests to run most of the tests.  This is not
+terribly important to anyone unless you want to add a test to the test
+suite, but we like it ;)
+- The FAQ is no longer included in the distribution.  It is being
+separately maintained by Kwindla Kramer.  This will help keep the fact
+as up to date as possible.
+- Updated eg/session_handler.pl code.
+- Fixed a bug sometimes seen when the parser failed to parse a
+component called by another component.
+- Fixed a bug that prevented the $m->cache_self method from returning
+anything.
+
 0.89  Thu Sep 14 08:44:58 PDT 2000
 
 - Fixed broken CGI args implementation from 0.88 (old arguments
