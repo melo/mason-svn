@@ -1,2 +1,2 @@
 % my $q = $m->cgi_object;
-<% (defined($q) and ref($q) eq 'CGI') ? 'CGI' : 'NO CGI' %>
+<% (defined($q) and ref($q) =~ /CGI/) ? 'CGI' : 'NO CGI' %>

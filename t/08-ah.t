@@ -77,8 +77,11 @@ sub try_exec_with_ah {
 
     # Stop CGI from reinitializing with same params. CGI normally registers this as a mod_perl cleanup.
     # And unfortunately the method name changed in CGI3.
-    
-    CGI::initialize_globals();
+    if ($CGI::VERSION < 3) {
+	CGI::initialize_globals();
+    } else {
+	CGI::Object::initialize_globals();
+    }
 
     # Handle request.
     my $retval = eval { $ah->handle_request($r) };
