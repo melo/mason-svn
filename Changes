@@ -8,18 +8,21 @@ available at http://www.masonhq.com/changes.html.
 1.02  April 17, 2001
 
 - Completely redesigned error display. The new display includes a
-contextual source listing and readable stacktrace. (implemented by
-Matthew Lewinski)
+contextual source listing and readable stacktrace. You can access the
+old error behavior with the raw_html and raw_fatal error modes.
+(implemented by Matthew Lewinski)
 - Fixed $m->file to close its filehandle between uses. (reported by
 Matthew Lewinski)
 - Fixed bad interaction with Mason 1.01 and CPAN module, by adding
 version number to ApacheHandler.pm.
-- Changed sql examples in Devel.pod to use bind variables. (suggested
-by Austin S. Lin)
+- Fixed $m->top_comp to work as documented, and made documentation
+a bit more explicit. (reported by Gordon Henriksen)
 - Fixed specification of a component root as "foo => /foo" in
 httpd.conf. (reported by Chuck O'Donnell)
 - Added MasonDeclineDirs, accidentally omitted in 1.01. (reported by
 David Wheeler)
+- Changed sql examples in Devel.pod to use bind variables. (suggested
+by Austin S. Lin)
 
 1.015 April 3, 2001
 
