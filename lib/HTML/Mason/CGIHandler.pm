@@ -118,6 +118,8 @@ sub _handler {
 
     my %args = $self->request_args($r);
 
+    # Discarding the return value of the exec is different than what
+    # ApacheHandler does.  What a mess.
     eval { $self->interp->exec($p->{comp}, %args) };
 
     if (my $err = $@) {
@@ -182,12 +184,17 @@ sub exec
 
     eval { $retval = $self->SUPER::exec(@_) };
 
-    rethrow_exception $@ if $@;
+    if (my $err = $@)
+    {
+	$retval =
+            ( isa_mason_exception($err, 'Abort') ? $err->aborted_value :
+              rethrow_exception $err
+            );
+    }
 
     # On a success code, send headers if they have not been sent and
     # if we are the top-level request. Since the out_method sends
     # headers, this will typically only apply after $m->abort.
-    # On an error code, leave it to Apache to send the headers.
     if (!$self->is_subrequest
 	and $self->auto_send_headers
 	and !$r->http_header_sent
@@ -323,6 +330,16 @@ Returns the Mason Interpreter associated with this handler.  The
 Interpreter lasts for the entire lifetime of the handler.
 
 =back
+
+=head2 Calling abort() Under CGIHandler
+
+If you call C<< $m->abort() >> under CGIHandler, request execution
+stops, just as when running ApacheHandler.  For compatibility with
+ApacheHandler, if you call C<< $m->abort() >> with no argument, or
+with an argument of 0 or 200 (OK statuses), then headers will be sent.
+Otherwise, they are not.  However, unlike with ApacheHandler, calling
+C<< $m->abort() >> with an HTTP status code does not cause Apache to
+return that status code to the browser.
 
 =head2 $r Methods
 
