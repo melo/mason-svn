@@ -49,9 +49,8 @@ sub error_process {
     my @error = split(/\n/, $error);
     foreach my $line (@error) {
 	# Handle the call stack lines.
-	if ($line =~ /called at/) {
-	    my ($func, $file, $linenum) =
-		($line =~ /\t(.*) called at (\S*) line (\d*)/);
+	if ($line =~ /\t(.*) called at (\S*) line (\d+)/) {
+	    my ($func, $file, $linenum) = ($1, $2, $3);
 
 	    # Ignore superfluous call stack entries.
 	    next if $file =~ m#/dev/null#;
@@ -81,9 +80,8 @@ sub error_process {
 	# This error is redundant and we do not actually use the information,
 	# but we need to handle the case so it doesn't get pushed into the
 	# unparsable information structure.
-	elsif($line =~ /loading/) {
-	    my ($document) =
-		($line =~ /loading '(\S*)' at/);
+	elsif($line =~ /loading '(\S*)' at/) {
+	    my ($document) = ($1);
 	    $error_info{'err_type'} = $conf{'runtime_error'};
 	    $error_info{'err_descr'} = "while loading $document";
 	}
@@ -95,18 +93,16 @@ sub error_process {
 	}
 	
 	# Handle perl's errors and 'die' statements.
-	elsif($line =~ /at (\S*) line (\d*)/) {
-	    my ($message, $file, $linenum) =
-		($line =~ /(.*) at (\S*) line (\d*)/);
+	elsif($line =~ /(.*) at (\S*) line (\d*)/) {
+	    my ($message, $file, $linenum) = ($1, $2, $3);
 	    $message =~ s/,/ /g;  # hack for sake of error_parse
 	    push @errors, { "message" => $message, "line" => $linenum };
 	    $error_info{'err_file'} = $file;
 	}
 
 	# Handle undefined components.
-	elsif($line =~ /^could not find component/) {
-	    my ($component) = 
-		($line =~ /^could not find component for path '(\S*)'/);
+	elsif($line =~ /^could not find component for path '(\S*)'/) {
+	    my ($component) = ($1);
 	    $error_info{'undef_component'} = $component;
 	    $error_info{'err_type'} = $conf{'component_error'};
 	}
@@ -115,9 +111,8 @@ sub error_process {
 	# Mason compile errors don't follow the same format as other errors, and the
 	# format of the different errors are not necessarily the same, so we have to
 	# handle them by checking if the error type is a compilation error.
-	elsif($line =~ /during compilation/) {
-	    my ($file) =
-		($line =~ /compilation of (\S*):/);
+	elsif($line =~ /during compilation of (\S*):/) {
+	    my ($file) = ($1);
 	    $error_info{'err_file'} = $file;
 	    $error_info{'err_type'} = $conf{'compile_error'};
 	    $error_info{'err_descr'} = "during compilation of $file";
