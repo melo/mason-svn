@@ -616,7 +616,7 @@ Takes the following parameters:
 
 The name of this test.
 
-=item *description (required)
+=item * description (required)
 
 What this test is testing.
 
