@@ -568,8 +568,8 @@ parameters.
 Component parameters, whether they come from GET/POST or another
 component, can be accessed in two ways.
 
-1.  Declared named arguments: Components can define a
-C<E<lt>%args%E<gt>> section listing argument names, types, and
+1.  Declared named arguments: Components can define an
+C<E<lt>%argsE<gt>> section listing argument names, types, and
 default values, with optional comments. For example:
 
     <%args>
