@@ -640,9 +640,10 @@ components must end in ".html". Then turn all private requests away
 with a 404 NOT_FOUND (rather than, say, a 403 FORBIDDEN which would
 provide more information than necessary). Use either an Apache directive
 
+    PerlModule Apache::Constants
     <FilesMatch "^_">
     SetHandler perl-script
-    PerlHandler "sub { return 404 }"
+    PerlInitHandler Apache::Constants::NOT_FOUND
     </FilesMatch>
 
 or a handler.pl directive:
