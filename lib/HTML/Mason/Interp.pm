@@ -399,11 +399,11 @@ sub purge_code_cache {
 	$self->{code_cache_current_size} = $cur_size;
 
 	#
-	# Multiple each remaining cache item's count by a decay factor,
+	# Multiply each remaining cache item's count by a decay factor,
 	# to gradually reduce impact of old information.
 	#
 	foreach my $elem (@elems) {
-	    $elem->[2]->{mfu_count} *= $decay_factor;
+	    $elem->[2]->mfu_count( $elem->[2]->mfu_count * $decay_factor );
 	}
     }
 }
