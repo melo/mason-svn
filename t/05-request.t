@@ -323,7 +323,7 @@ EOF
 Calling helper
 % eval {$m->comp('.helper')};
 % my $error = $@;
-<& /shared/check_error, error=>$error, lines=>2 &>
+<& /shared/check_error, error=>$error, lines=>1 &>
 
 % if ($error) {
 Back from error, checking request state:
@@ -334,8 +334,7 @@ EOF
 
 Calling helper
 
-Error: error while executing /request/support/subrequest_error_test:
-whoops! 
+Error: Mason error (while executing /request/support/subrequest_error_test)
 
 
 Back from error, checking request state:
