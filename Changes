@@ -18,6 +18,7 @@ component call syntax conversions (reported by Oleg Bartunov)
 Bartunov)
 - Fixed mc_suppress_http_header(0) which was broken by removal of
 internal unsuppress_hook function (reported by Jim Mortko)
+- Fixed cache access under high concurrencies (reported by Oleg Bartunov)
 
 0.6  Fri Jul 16 08:09:27 PDT 1999
 
