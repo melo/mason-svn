@@ -149,7 +149,7 @@ EOF
 #------------------------------------------------------------
 
     $group->add_test( name => 'subrequest_inherits_autoflush',
-		      description => 'make sure that a subrequest respects its parent autoflush setting',
+		      description => 'make sure that a subrequest inherits its parent autoflush setting (autoflush on)',
 		      interp_params => { autoflush => 1 },
 		      component => <<'EOF',
 My child says:
@@ -166,7 +166,7 @@ EOF
 #------------------------------------------------------------
 
     $group->add_test( name => 'subrequest_inherits_no_autoflush',
-		      description => 'make sure that a subrequest respects its parent autoflush setting',
+		      description => 'make sure that a subrequest inherits its parent autoflush setting (autoflush off)',
 		      interp_params => { autoflush => 0 },
 		      component => <<'EOF',
 My child says:
@@ -197,7 +197,7 @@ EOF
 #------------------------------------------------------------
 
     $group->add_test( name => 'autoflush_in_parent_not_subrequest',
-		      description => 'make sure that a subrequest respects its parent autoflush setting',
+		      description => 'make sure that a subrequest with autoflush can clear its own buffers',
 		      interp_params => { autoflush => 1 },
 		      component => <<'EOF',
 My child says:
