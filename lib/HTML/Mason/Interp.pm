@@ -113,7 +113,6 @@ use HTML::Mason::MethodMaker
 				  [ error_format => { type => SCALAR } ],
 				  [ error_mode => { type => SCALAR } ],
 				  [ max_recurse => { type => SCALAR } ],
-				  [ out_method => { type => SCALARREF | CODEREF } ],
 				]
 			      },
       );
