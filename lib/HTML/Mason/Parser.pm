@@ -1045,7 +1045,7 @@ sub _make_error
     my $dump = dumper_method($d);
     for ($dump) { s/\$VAR1\s*=//g; s/;\s*$// }
 
-    return "MASON: $dump\n";
+    return "MASON: $dump :NOSAM";
 }
 
 sub _handle_parse_error
@@ -1056,7 +1056,9 @@ sub _handle_parse_error
     # sort of 'real' error generated in another module.  We need real
     # exceptions.  bleah.
     die $errdump unless substr($errdump,0,7) eq "MASON: ";
-    my $err = eval(substr($errdump,7));
+    $errdump =~ /MASON: (.*?) :NOSAM/s;
+    my $error = $1;
+    my $err = eval $error;
     die "assert: could not read _make_error output: $@" if $@;
 
     my $state = $self->{parser_state};
