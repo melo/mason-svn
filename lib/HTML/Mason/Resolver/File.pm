@@ -7,6 +7,20 @@ package HTML::Mason::Resolver::File;
 use strict;
 
 use Cwd;
+
+BEGIN
+{
+    # Only available with 5.006 +
+    if ( eval { require File::Glob } )
+    {
+        *_glob = sub { File::Glob::bsd_glob($_[0]) };
+    }
+    else
+    {
+        *_glob = sub { glob($_[0]) };
+    }
+}
+
 use File::Spec;
 use HTML::Mason::Tools qw(read_file_ref paths_eq);
 use Params::Validate qw(:all);
@@ -106,7 +120,7 @@ sub glob_path {
 
     my %path_hash;
     foreach my $root (@roots) {
-	my @files = glob($root.$pattern);
+	my @files = _glob($root.$pattern);
 	foreach my $file (@files) {
             next unless -f $file;
 	    if (substr($file, 0, length $root) eq $root) {
@@ -116,6 +130,7 @@ sub glob_path {
     }
     return keys(%path_hash);
 }
+
 
 1;
 
