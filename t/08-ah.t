@@ -43,6 +43,7 @@ local $| = 1;
     my $both_no_handler_tests = 8;
     my $cgi_only_no_handler_tests = 1;
     my $apr_only_no_handler_tests = 1;
+    my $multi_conf_tests = 2;
 
     my $total = $both_tests + $both_no_handler_tests;
     $total += $cgi_only_tests + $cgi_only_no_handler_tests;
@@ -52,6 +53,8 @@ local $| = 1;
 	$total += $apr_only_tests;
 	$total += $apr_only_no_handler_tests;
     }
+
+    $total += $multi_conf_tests;
 
     print "1..$total\n";
 }
@@ -68,6 +71,8 @@ if ($has_apache_request)
     apache_request_tests(1);
     apache_request_tests(0);
 }
+
+multi_conf_tests();
 
 sub write_test_comps
 {
@@ -132,6 +137,18 @@ EOF
 EOF
 		  );
     }
+
+    write_comp( 'multiconf1/foo', <<'EOF',
+I am foo in multiconf1
+comp root is <% $m->interp->comp_root =~ m,/comps/multiconf1$, ? 'multiconf1' : $m->interp->comp_root %>
+EOF
+	      );
+
+    write_comp( 'multiconf2/foo', <<'EOF',
+I am foo in multiconf2
+comp root is <% $m->interp->comp_root =~ m,/comps/multiconf2$, ? 'multiconf2' : $m->interp->comp_root %>
+EOF
+	      );
 }
 
 sub write_comp
@@ -389,6 +406,37 @@ Status code: 0
 EOF
 						  );
     ok($success);
+}
+
+sub multi_conf_tests
+{
+    start_httpd('multi_config');
+
+    my $response = Apache::test->fetch('/comps/multiconf1/foo');
+    my $actual = filter_response($response, 0);
+    my $success = HTML::Mason::Tests->check_output( actual => $actual,
+						    expect => <<'EOF',
+X-Mason-Test: Initial value
+I am foo in multiconf1
+comp root is multiconf1
+Status code: 0
+EOF
+						  );
+    ok($success);
+
+    $response = Apache::test->fetch('/comps/multiconf2/foo');
+    $actual = filter_response($response, 0);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+I am foo in multiconf2
+comp root is multiconf2
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    kill_httpd(1);
 }
 
 # We're not interested in headers that are always going to be
