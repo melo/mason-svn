@@ -390,8 +390,9 @@ sub create_context_html {
 	}
 	$context .= $conf->{table_entry}->("...", "");
 	$context .= qq(</table>);
+	
+	close $fh or die "can't close file: $file: $!";
     }
-    close $fh or die "can't close file: $file: $!";
 
     return $context;
 }

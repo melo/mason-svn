@@ -85,6 +85,7 @@ sub new
 	last_reload_time => 0,
 	last_reload_file_pos => 0,
 	out_method => sub { print $_[0] if defined($_[0]) },
+	request_count => 0,
 	system_log_fh => undef,
 	system_log_events_hash => undef
     };

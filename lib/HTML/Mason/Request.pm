@@ -57,7 +57,7 @@ sub new
     }
     bless $self, $class;
     my $interp = $self->{interp} or die "HTML::Mason::Request::new: must specify interp";
-    ++$self->{count};
+    $self->{count} = ++($interp->{request_count});
     $self->_initialize;
     return $self;
 }

@@ -44,7 +44,7 @@ mod_perl installations.
 
 - Implemented configuration of Mason from httpd.conf via PerlSetVar
 directives.  This removes the need for a handler.pl file in many
-cases.  L{Admin/CONFIGURING MASON VIA httpd.conf}.
+cases.  L{Admin/CONFIGURING MASON VIA httpd.conf}
 - Revamped ApacheHandler tests to use a real Apache web server and
 mod_perl (assuming this is installed).  This allows for much better
 testing of Mason.  However, the test suite takes a bit longer to run
