@@ -368,7 +368,7 @@ sub have_module {
     }
 
 
-    print "module $mod is installed\n" unless $ENV{MOD_PERL};
+    print "# module $mod is installed\n" unless $ENV{MOD_PERL};
     
     return 1;
 }

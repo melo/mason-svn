@@ -3,6 +3,8 @@ use strict;
 use File::Basename;
 use File::Path;
 use File::Spec;
+use HTML::Mason::Tests;
+*diag = \&HTML::Mason::Tests::diag;
 
 sub write_comp
 {
@@ -52,7 +54,7 @@ sub get_pid
 
 sub test_load_apache
 {
-    print STDERR "\nTesting whether Apache can be started\n";
+    diag("\nTesting whether Apache can be started\n");
     start_httpd('');
     kill_httpd(1);
 }
@@ -65,12 +67,12 @@ sub start_httpd
     my $httpd = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd' );
     my $conf_file = File::Spec->catfile( $ENV{APACHE_DIR}, 'httpd.conf' );
     my $cmd ="$httpd $def -d $ENV{APACHE_DIR} -f $conf_file";
-    print STDERR "Executing $cmd\n";
+    diag("Executing $cmd\n");
     system ($cmd)
 	and die "Can't start httpd server as '$cmd': $!";
 
     my $x = 0;
-    print STDERR "Waiting for httpd to start.\n";
+    diag("Waiting for httpd to start.\n");
     until ( -e 't/httpd.pid' )
     {
 	sleep (1);
@@ -90,7 +92,7 @@ sub kill_httpd
     return unless -e $pid_file;
     my $pid = get_pid();
 
-    print STDERR "\nKilling httpd process ($pid)\n";
+    diag("\nKilling httpd process ($pid)\n");
     my $result = kill 'TERM', $pid;
     if ( ! $result and $! =~ /no such (?:file|proc)/i )
     {
@@ -103,7 +105,7 @@ sub kill_httpd
 
     if ($wait)
     {
-	print STDERR "Waiting for httpd to shut down\n";
+	diag("Waiting for httpd to shut down\n");
 	my $x = 0;
 	while ( -e $pid_file )
 	{

@@ -362,7 +362,7 @@ sub _write_test_comp
     my $dir = File::Spec->catdir( $self->comp_root, $self->{name}, @path );
     unless ( -d $dir )
     {
-	print "Making dir: $dir\n" if $DEBUG;
+	diag("Making dir: $dir\n") if $DEBUG;
 	mkpath( $dir, 0, 0755 )
 	    or die "Unable to create directory '$dir': $!";
     }
@@ -377,14 +377,14 @@ sub write_comp
 
     unless (-d $dir)
     {
-	print "Making dir: $dir\n" if $DEBUG;
+	diag("Making dir: $dir\n") if $DEBUG;
 	mkpath( $dir, 0, 0755 )
 	    or die "Unable to create directory '$dir': $!";
     }
 
     my $real_file = File::Spec->catfile( $dir, $file );
 
-    print "Making component $path at $real_file\n"
+    diag("Making component $path at $real_file\n")
 	if $DEBUG;
 
     my $fh = make_fh();
@@ -405,14 +405,14 @@ sub _run_tests
 
     if ($VERBOSE)
     {
-	print "Running $self->{name} tests ($count tests): $self->{description}\n";
+	diag("Running $self->{name} tests ($count tests): $self->{description}\n");
     }
 
     my $x = 1;
     foreach my $test ( @{ $self->{tests} } )
     {
 	$self->{current_test} = $test;
-	
+
 	#
 	# If tests_to_run or tests_to_skip were specified in the
 	# environment or command line, check them to see whether to
@@ -446,7 +446,7 @@ sub _run_tests
 		next;
 	    }
 	}
-	print "Running $test->{name} (#$x): $test->{description}\n" if $VERBOSE;
+	diag("Running $test->{name} (#$x): $test->{description}\n") if $VERBOSE;
 	$self->_make_component unless $test->{skip_component};
 	$self->_run_test;
 	$x++;
@@ -472,10 +472,10 @@ sub _make_main_interp
 
     if ($DEBUG && %interp_params)
     {
-	print "Interp params:\n";
+	diag("Interp params:\n");
 	while ( my ($k, $v) = each %interp_params)
 	{
-	    print "  $k => $v\n";
+	    diag("  $k => $v\n");
 	}
     }
 
@@ -510,7 +510,7 @@ sub _execute
     my ($self, $interp) = @_;
     my $test = $self->{current_test};
 
-    print "Calling $test->{name} test with path: $test->{call_path}\n" if $DEBUG;
+    diag("Calling $test->{name} test with path: $test->{call_path}\n") if $DEBUG;
     $test->{pretest_code}->() if $test->{pretest_code};
     $interp->exec( $test->{call_path}, @{$test->{call_args}} );
 }
@@ -531,27 +531,29 @@ sub check_result {
 	    {
 		if ($VERBOSE)
 		{
-		    print "Got error:\n$error\n...but expected something matching:\n$test->{expect_error}\n";
+		    diag("Got error:\n$error\n...but expected something matching:",
+                         "$test->{expect_error}\n");
 		}
 		return $self->_fail;
 	    }
 	}
 	else
 	{
-	    print "Unexpected error running $test->{name}:\n$error" if $VERBOSE;
+	    diag("Unexpected error running $test->{name}:\n$error") if $VERBOSE;
 	    return $self->_fail;
 	}
 
     }
     elsif ( $test->{expect_error} )
     {
-	print "Expected an error matching '$test->{expect_error}' but no error occurred\n" if $VERBOSE;
+	diag("Expected an error matching '$test->{expect_error}' but no error occurred\n")
+          if $VERBOSE;
 	return $self->_fail;
     }
 
     if ($self->{create})
     {
-	print "Results for $test->{name}:\n$self->{buffer}\n";
+	diag("# Results for $test->{name}:\n$self->{buffer}\n");
 	return;
     }
 
@@ -579,7 +581,8 @@ sub check_output
     }
 
     if (!$same and $VERBOSE) {
-	print "Got ...\n-----\n$p{actual}\n-----\n   ... but expected ...\n-----\n$p{expect}\n-----\n";
+	diag("Got ...\n-----\n$p{actual}\n-----\n",
+             "... but expected ...\n-----\n$p{expect}\n-----\n");
     }
     return $same;
 }
@@ -591,7 +594,8 @@ sub _fail
 
     $self->{test_count}++;
 
-    print "Result for $self->{name}: $test->{name}\nnot ok $self->{test_count}\n";
+    diag("Result for $self->{name}: $test->{name}\n");
+    print STDOUT "not ok $self->{test_count}\n";
 }
 
 sub _success
@@ -601,7 +605,8 @@ sub _success
 
     $self->{test_count}++;
 
-    print "Result for $self->{name}: $test->{name}\nok $self->{test_count}\n";
+    diag("Result for $self->{name}: $test->{name}\n");
+    print STDOUT "ok $self->{test_count}\n";
 }
 
 sub _skip
@@ -612,7 +617,8 @@ sub _skip
     $self->{test_count}++;
 
     die "no test name for " . $self->{test_count} unless $test->{name};
-    print "Result for $self->{name}: $test->{name}\nok $self->{test_count}  # skip Skipped by user\n";
+    diag("Result for $self->{name}: $test->{name}\n");
+    print STDOUT "ok $self->{test_count}  # skip Skipped by user\n";
 }
 
 #
@@ -646,6 +652,17 @@ sub _cleanup
     my $self = shift;
 
     rm_tree( $self->base_path, $DEBUG, @_ );
+}
+
+sub diag {
+    my @msgs = @_;
+    for (@msgs) {
+        $_ = 'undef' unless defined;
+        s/^/# /gms;
+    }
+    local($\, $", $,) = (undef, ' ', '');
+    push @msgs, "\n" unless $msgs[-1] =~ /\n\Z/;
+    print STDERR @msgs;
 }
 
 1;
