@@ -116,6 +116,7 @@ $cmd_options{tests_class} = $ENV{MASON_TESTS_CLASS}
 # default it to this package.
 if (defined($cmd_options{tests_class})) {
     eval "use $cmd_options{tests_class}";
+    die $@ if $@;
 } else {
     $cmd_options{tests_class} = __PACKAGE__;
 }
