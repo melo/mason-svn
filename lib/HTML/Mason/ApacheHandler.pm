@@ -84,6 +84,7 @@ use HTML::Mason::FakeApache;
 use HTML::Mason::Tools qw(dumper_method html_escape pkg_installed);
 use HTML::Mason::Utils;
 use Params::Validate qw(:all);
+use Apache;
 use Apache::Status;
 
 use HTML::Mason::MethodMaker
@@ -128,7 +129,11 @@ my %fields =
 # If loaded via a PerlModule directive in a conf file we are being
 # loaded via 'require', not 'use'.  However, the import routine _must_
 # be called at some point during startup or things go boom.
-__PACKAGE__->import;
+
+# If mod_perl <= 1.21 we will call import later (in the handler sub)
+# to make sure we can see the user's MasonArgsMethod setting (if there
+# is one)
+__PACKAGE__->import if $mod_perl::VERSION > 1.21;
 
 sub import
 {
@@ -146,7 +151,7 @@ sub import
 
     if (_in_apache_conf_file())
     {
-	$params{args_method} = Apache->server->dir_config('MasonArgsMethod');
+	$params{args_method} = _get_string_param('ArgsMethod');
     }
 
     # safe default.
@@ -168,7 +173,7 @@ sub import
 	die "Invalid args_method parameter ('$params{args_method}') given to HTML::Mason::ApacheHandler in 'use'\n";
     }
 
-    _make_ah() if _in_apache_conf_file() && ! Apache->server->dir_config('MasonMultipleConfig');
+    _make_ah() if _in_apache_conf_file() && ! _get_boolean_param('MultipleConfig');
 }
 
 # This is my best guess as to whether we are being configured via the
@@ -176,14 +181,17 @@ sub import
 # later anyway.  This may not be the case in the future though.
 sub _in_apache_conf_file
 {
-    return ( $ENV{MOD_PERL} &&
-	     ( Apache->server->dir_config('MasonCompRoot') ||
-	       Apache->server->dir_config('MasonMultipleConfig') ) );
+    # We don't want to try to read the configuration til we're in a
+    # request if mod_perl <= 1.21
+    return 0 if $mod_perl::VERSION <= 1.21 && ( $Apache::Server::Starting || $Apache::ServerStarting ||
+						$Apache::Server::ReStarting || $Apache::ServerReStarting );
+    return $ENV{MOD_PERL} && ( _get_list_param('CompRoot') ||
+			       _get_boolean_param('MultipleConfig') );
 }
 
 sub _make_ah
 {
-    return $AH if $AH && ! Apache->server->dir_config('MasonMultipleConfig');
+    return $AH if $AH && ! _get_boolean_param('MultipleConfig');
 
     my %p;
 
@@ -261,7 +269,10 @@ sub _make_interp
     my $interp = HTML::Mason::Interp->new( parser => _make_parser(),
 					   %p,
 					 );
-    if ($interp->files_written)
+
+    # if version <= 1.21 then these files shouldn't be created til
+    # after a fork so they should have the right ids anyway
+    if ($interp->files_written && $mod_perl::VERSION > 1.21)
     {
 	chown Apache->server->uid, Apache->server->gid, $interp->files_written
 	    or die "Can't change ownership of files written by interp object\n";
@@ -340,8 +351,14 @@ sub _get_val
     my ($p, $required, $wantarray) = @_;
     $p = "Mason$p";
 
+    if ( $mod_perl::VERSION <= 1.21 && ( $Apache::Server::Starting || $Apache::ServerStarting ||
+					 $Apache::Server::ReStarting || $Apache::ServerReStarting ) )
+    {
+	die "Can't get configuration info during server startup with mod_perl <= 1.21";
+    }
     my $c = Apache->request ? Apache->request : Apache->server;
-    my @val = $c->dir_config->get($p);
+
+    my @val = $mod_perl::VERSION < 1.24 ? $c->dir_config($p) : $c->dir_config->get($p);
 
     die "Only a single value is allowed for configuration parameter '$p'\n"
 	if @val > 1 && ! $wantarray;

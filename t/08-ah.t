@@ -22,6 +22,7 @@ BEGIN
 use File::Basename;
 use File::Path;
 use HTML::Mason::Tests;
+use mod_perl;
 
 use lib 'lib', 't/lib';
 
@@ -41,7 +42,8 @@ local $| = 1;
     my $cgi_only_tests = 1;
     my $apr_only_tests = 1;
     my $both_no_handler_tests = 8;
-    my $cgi_only_no_handler_tests = 2;
+    my $cgi_only_no_handler_tests = 1;
+    $cgi_only_no_handler_tests++ if $mod_perl::VERSION >= 1.24;
     my $apr_only_no_handler_tests = 2;
     my $multi_conf_tests = 4;
 
@@ -254,7 +256,7 @@ EOF
 						  );
     ok($success);
 
-    unless ($with_handler)
+    if (! $with_handler && $mod_perl::VERSION >= 1.24)
     {
 	# test that MasonAllowGlobals works (testing a list parameter
 	# from httpd.conf)

@@ -257,8 +257,16 @@ sub write_apache_conf
 <IfDefine CGI_no_handler>
   PerlSetVar  MasonCompRoot "$APACHE{comp_root}"
   PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
-  PerlAddVar  MasonAllowGlobals \$foo
-  PerlAddVar  MasonAllowGlobals \@bar
+EOF
+
+    if ($mod_perl::VERSION >= 1.24) {
+	$include .= <<'EOF';
+  PerlAddVar  MasonAllowGlobals $foo
+  PerlAddVar  MasonAllowGlobals @bar
+EOF
+    }
+
+    $include .= <<"EOF";
   PerlSetVar  MasonArgsMethod CGI
   SetHandler  perl-script
   PerlModule  HTML::Mason::ApacheHandler
