@@ -5,6 +5,16 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+1.03  May 17, 2001
+
+- Made raw error message accessible from the new error display via
+an unobtrusive link.
+- Fixed Apache tests when started by a non-root user. (reported
+by Barrie Slaymaker)
+- Added short-circuits for Apache tests on Win32 and on systems with
+Apache configurations that cannot be properly parsed. (reported by
+Jindra Vavruska)
+
 1.02  April 17, 2001
 
 - Completely redesigned error display. The new display includes a
