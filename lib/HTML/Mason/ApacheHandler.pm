@@ -340,13 +340,11 @@ sub handle_request {
 
 	#
 	# Take out date stamp and (eval nnn) prefix
-	# Add server name, uri, referer, and agent
+	# Add server name, uri
 	#
 	$err =~ s@^\[[^\]]*\] \(eval [0-9]+\): @@mg;
 	$err = html_escape($err);
-	my $referer = $apreq->header_in('Referer') || '<none>';
-	my $agent = $apreq->header_in('User-Agent') || '';
-	$err = sprintf("while serving %s %s (referer=%s, agent=%s)\n%s",$apreq->server->server_hostname,$apreq->uri,$referer,$agent,$err);
+	$err = sprintf("while serving %s %s\n%s",$apreq->server->server_hostname,$apreq->uri,$err);
 
 	if ($self->error_mode eq 'fatal') {
 	    die ("System error:\n$err\n");
