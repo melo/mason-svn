@@ -32,6 +32,9 @@ for $m->callers(-1).  (suggested by Kees Vonk) L{Request/item_top_args}
 Lewinski)
 - Revamped test harness system with HTML::Mason::Tests, greatly
 simplifying the new test creation process.
+- Implemented partial compliance with Apache::Filter; Mason can now be
+used as a pre-filter but not yet as a post-filter. i.e. Configurations
+like "PerlHandler HTML::Mason Apache::Compress" will work.
 - Implemented logging of NOT FOUND errors to match plain Apache. Also
 issue special warnings for Mason-specific causes of NOT FOUND.
 - Documented Mason request object's aborted and aborted_value methods.
