@@ -104,6 +104,18 @@ $group->add_test( name => 'fatal_error',
 		  expect_error => qr/dead at .+/,
 		);
 
+$group->add_test( name => 'headers',
+		  description => 'Test header generation',
+		  component => q{% $r->header_out('foo' => 'bar');},
+		  expect    => qr/Foo: bar/,
+		);
+
+$group->add_test( name => 'redirect headers',
+		  description => 'Test header generation',
+		  component => q{% $m->redirect('/hello.html');},
+		  expect    => qr/Status: 302\s+Location: \/hello\.html|Location: \/hello\.html\s+Status: 302/,
+		);
+
 #------------------------------------------------------------
 
 $group->run;
