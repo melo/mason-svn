@@ -1298,7 +1298,7 @@ as much information in the C<handler.pl>. The disadvantage is a slight
 memory and performance impact. On development servers this shouldn't
 matter; on production servers you may wish to profile the two schemes.
 
-=head1 AUTHOR
+=head1 AUTHORS
 
 Jonathan Swartz, swartz@pobox.com and Dave Rolsky, autarch@urth.org
 
