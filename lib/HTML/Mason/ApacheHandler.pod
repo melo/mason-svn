@@ -19,11 +19,7 @@ The ApacheHandler object links Mason to mod_perl, running components in
 response to HTTP requests. It is controlled primarily through
 parameters to the new() constructor.
 
-handle_request() is not a user method, but rather is called from the
-HTML::Mason::handler() routine in handler.pl.
-
 =head1 PARAMETERS TO THE use() DECLARATION
-
 
 The following are parameters to pass explicitly when using
 HTML::Mason::ApacheHandler. e.g.
