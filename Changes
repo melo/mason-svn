@@ -10,6 +10,8 @@ available at http://www.masonhq.com/changes.html.
 - Implemented configuration of Mason from httpd.conf via PerlSetVar
 directives.  This removes the need for a handler.pl file in many
 cases.  L{Admin/CONFIGURING MASON VIA httpd.conf}.
+- Added two new parameters to the Interp object, 'use_autohandlers'
+and 'use_dhandlers'.
 - Added a new parameter to the Interp object, 'die_handler'.  This
 allows you to install your own subroutine as $SIG{__DIE__} to catch
 errors during components execution.  Alternately, you can simply turn
