@@ -588,8 +588,9 @@ sub handle_request {
 	if ($self->error_mode eq 'fatal') {
 	    unless ($interp->die_handler_overridden) {
 		$err =~ s/\n/\t/g;
+		$err =~ s/\t$//g;
 	    }
-	    die $err;
+	    die "$err\n";
 	} elsif ($self->error_mode eq 'html') {
 	    unless ($interp->die_handler_overridden) {
 		if ($debugMode eq 'error' or $debugMode eq 'all') {

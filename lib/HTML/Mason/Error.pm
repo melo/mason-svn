@@ -109,7 +109,6 @@ sub error_process {
 		($line =~ /^could not find component for path '(\S*)'/);
 	    $error_info{'undef_component'} = $component;
 	    $error_info{'err_type'} = $conf{'component_error'};
-	    $error_info{'err_descr'} = $line;
 	}
 
 	# Handle compilation errors.
