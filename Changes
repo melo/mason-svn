@@ -17,6 +17,14 @@ output to be generated.
 - A comment in the last line of a component call with content caused a
 syntax error in the compiled component.  Reported by Todd Goldenbaum.
 
+- The various request handling methods in CGIHandler once again return
+the value of calling the Interp object's exec() method.
+
+- Explicitly handle redirect statuses when an abort exception is
+thrown from the Interp object's exec() method.  This fixes some
+problems when this module was used with David Wheeler's
+MasonX::Interp::WithCallbacks module.
+
 
 1.25  December 12, 2003
 
