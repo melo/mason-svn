@@ -16,6 +16,9 @@ id #538.
 - Component with subcomponents or methods were not getting freed when
 they were purged from the code cache.  Task id #549.
 
+- Component calls (<& &>) starting with a newline were compiled
+incorrectly. Repoted by Rick Delaney. Task id #564.
+
 - If both a parent request and subrequest had autoflush set, output
 from the subrequest wasn't actually flushed.  Reported by Tony
 Clayton.  Task id #550.
