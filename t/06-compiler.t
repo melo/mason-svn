@@ -1008,9 +1008,34 @@ EOF
 my $dh = $m->dhandler_name;
 </%shared>
 <% $dh %>
+This is the body.
 EOF
                           expect => <<'EOF',
 dhandler
+This is the body.
+EOF
+                        );
+
+#------------------------------------------------------------
+
+	$group->add_test( name => 'preamble_with_shared_in_package',
+			  description => 'Make sure $m works with %shared when in_package is set',
+		          interp_params =>
+                          { preamble =>
+                            qq{my \$msg = "This is the preamble.\\n"; \$m->print(\$msg);\n},
+                            in_package => 'HTML::Mason::Baz'
+	 	          },
+			  component => <<'EOF',
+<%shared>
+my $dh = $m->dhandler_name;
+</%shared>
+<% $dh %>
+This is the body.
+EOF
+                          expect => <<'EOF',
+This is the preamble.
+dhandler
+This is the body.
 EOF
                         );
 
