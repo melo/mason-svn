@@ -483,7 +483,7 @@ sub _get_code_param
 {
     my $self = shift;
     my $p = $_[0];
-    my $val = $self->_get_val(0, @_);
+    my $val = $self->_get_val(@_);
 
     return unless $val;
 
@@ -624,7 +624,7 @@ sub new
     unless ( $self->interp->resolver->can('apache_request_to_comp_path') )
     {
 	error "The resolver class your Interp object uses does not implement " .
-              "the 'resolve_backwards' method.  This means that ApacheHandler " .
+              "the 'apache_request_to_comp_path' method.  This means that ApacheHandler " .
               "cannot resolve requests.  Are you using a handler.pl file created ".
 	      "before version 1.10?  Please see the handler.pl sample " .
               "that comes with the latest version of Mason.";
@@ -859,11 +859,30 @@ sub prepare_request
     # If someone is using a custom request class that doesn't accept
     # 'ah' and 'apache_req' that's their problem.
     #
-    my $request = $interp->make_request( comp => $comp_path,
-					 args => [%$args],
-					 ah => $self,
-					 apache_req => $r,
-				       );
+    my $request = eval {
+        $interp->make_request( comp => $comp_path,
+                               args => [%$args],
+                               ah => $self,
+                               apache_req => $r,
+                             );
+    };
+    if (my $err = $@) {
+        # Mason doesn't currently throw any exceptions in the above, but some
+        # subclasses might. So be sure to handle them appropriately. We
+        # rethrow everything but TopLevelNotFound, Abort, and Decline errors.
+	if ( isa_mason_exception($err, 'TopLevelNotFound') ) {
+            # Return a 404.
+	    $r->log_error("[Mason] File does not exist: ", $r->filename .
+                          ($r->path_info || ""));
+	    return $self->return_not_found($r);
+	}
+        # Abort or decline.
+	my $retval = isa_mason_exception($err, 'Abort')   ? $err->aborted_value  :
+		     isa_mason_exception($err, 'Decline') ? $err->declined_value :
+		     rethrow_exception $err;
+        $r->send_http_header unless $retval and $retval != 200;
+	return $retval;
+    }
 
     my $final_output_method = ($r->method eq 'HEAD' ?
 			       sub {} :

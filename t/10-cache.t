@@ -188,7 +188,7 @@ EOF
 		      component => <<'EOF',
 <& support/cache_self_expires_in, x => 1 &>
 <& support/cache_self_expires_in, x => 2 &>
-% sleep 3;
+% sleep 5;
 <& support/cache_self_expires_in, x => 99 &>
 EOF
 		      expect => <<'EOF',
@@ -221,7 +221,7 @@ EOF
 		      component => <<'EOF',
 <& support/cache_self_expire_in, x => 1 &>
 <& support/cache_self_expire_in, x => 2 &>
-% sleep 3;
+% sleep 5;
 <& support/cache_self_expire_in, x => 99 &>
 EOF
 		      expect => <<'EOF',
@@ -454,13 +454,32 @@ EOF
 my $time = time;
 my $cache = $m->cache;
 $cache->set('main', 'gardenia', 0);
-sleep(1);
-my $value1 = $cache->get('main', busy_lock=>10);
+my $value1 = $cache->get('main', busy_lock=>'10 sec');
 my $value2 = $cache->get('main');
 </%init>
 EOF
 		      expect => <<'EOF',
 undef, gardenia
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'busy_lock_expiration',
+		      description => 'test busy_lock expiration',
+		      component => <<'EOF',
+<% join(', ', $value1 || 'undef', $value2 || 'undef') %>
+<%init>
+my $time = time;
+my $cache = $m->cache;
+$cache->set('main', 'gardenia', 0);
+my $value1 = $cache->get('main', busy_lock=>'1 sec');
+sleep(1);
+my $value2 = $cache->get('main');
+</%init>
+EOF
+		      expect => <<'EOF',
+undef, undef
 EOF
 		    );
 
