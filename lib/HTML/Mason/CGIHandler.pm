@@ -50,7 +50,11 @@ sub new {
 				    error_format => 'html',
 				    %p);
 
-    $self->{custom_out_method} = $p{out_method} ? 1 : 0;
+    # If the user passed an out_method parameter, then we don't want
+    # to overwrite it later.  This doesn't handle the case where the
+    # user creates their own Interp object with a custom out_method
+    # and passes that to this method, though (grrr).
+    $self->{has_custom_out_method} = $p{out_method} ? 1 : 0;
 
     $self->interp->compiler->add_allowed_globals('$r');
     
@@ -84,7 +88,7 @@ sub _handler {
     if (@_) {
         $self->{output} = '';
         $self->interp->out_method( \$self->{output} );
-    } elsif (! $self->{custom_out_method}) {
+    } elsif (! $self->{has_custom_out_method}) {
         my $sent_headers = 0;
 
         my $out_method = sub {
