@@ -264,8 +264,7 @@ Mason provides an object API for components, allowing you to query a
 component's various asociated files, arguments, etc. For a description
 of all methods see
 B<L<HTML::Mason::Component|HTML::Mason::Component>>.  Typically you
-get a handle on a component object from request methods like C<<
-$m->current_comp >> and C<< $m->fetch_comp >>.
+get a handle on a component object from request methods like C<< $m->current_comp >> and C<< $m->fetch_comp >>.
 
 Note that for many basic applications all you'll want to do with
 components is call them, for which no object method is needed. See
@@ -688,16 +687,14 @@ can let in directory requests as well; see ADMIN<allowing directory
 requests>.
 
 A component or dhandler that does not want to handle a particular
-request may defer control to the next dhandler by calling C<<
-$m->decline >>.
+request may defer control to the next dhandler by calling C<< $m->decline >>.
 
 When using dhandlers under mod_perl, you may find that sometimes
 Apache will not set a content type for a response.  This usually
 happens when a dhandler handles a request for a non-existent file or
 directory.  You can add a C<< <Location> >> or C<< <LocationMatch> >>
 block containing a C<SetType> directive to your Apache config file, or
-you can just set the content type dynamically by calling C<<
-$r->content_type >>.
+you can just set the content type dynamically by calling C<< $r->content_type >>.
 
 The administrator can customize the file name used for dhandlers with
 the P<dhandler_name> parameter.
@@ -1073,8 +1070,8 @@ In the current implementation, the scope sharing is done with
 closures, so variables will only be shared if they are visible at
 compile-time in the other parts of the component.  In addition, you
 can't rely on the specific destruction time of the shared variables,
-because they may not be destroyed until the first time the C<<
-<%shared> >> section executes in a future request.  C<< <%init> >>
+because they may not be destroyed until the first time the C<< <%shared> >>
+section executes in a future request.  C<< <%init> >>
 offers a more predictable execution and destruction time.
 
 Currently any component with a C<< <%shared> >> section incurs an
