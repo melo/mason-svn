@@ -182,6 +182,8 @@ sub exec
 
     eval { $retval = $self->SUPER::exec(@_) };
 
+    rethrow_exception $@ if $@;
+
     # On a success code, send headers if they have not been sent and
     # if we are the top-level request. Since the out_method sends
     # headers, this will typically only apply after $m->abort.
