@@ -305,9 +305,13 @@ EOF
 
 #------------------------------------------------------------
 
-    $group->add_test( name => 'subrequest_error',
-		      description => 'check error handling for provision subrequest mechanism',
-		      component => <<'EOF',
+
+    # 5.6.0 is evil
+    unless ($] == 5.006)
+    {
+	$group->add_test( name => 'subrequest_error',
+			  description => 'check error handling for provision subrequest mechanism',
+			  component => <<'EOF',
 <%def .helper>
 % my $interp = $m->interp;
 % $interp->exec('/request/support/subrequest_error_test');
@@ -323,7 +327,7 @@ Back from error, checking request state:
 <& support/display_req_obj &>
 % }
 EOF
-		      expect => <<'EOF',
+			  expect => <<'EOF',
 
 Calling helper
 
@@ -344,8 +348,8 @@ My stack looks like:
 
 
 EOF
-		    );
-
+			);
+    }
 
 #------------------------------------------------------------
 
