@@ -662,7 +662,9 @@ sub comp {
 	$self->{error_backtrace} ||= [reverse(map($_->{'comp'},@$stack))];
 	$self->{error_clean}     ||= $err;
 	pop(@$stack);
-	$err .= "\n" if $err !~ /\n$/;
+	unless ($self->interp->die_handler_overridden) {
+	    $err .= "\n" if $err !~ /\n$/;
+	}
 	die $err;
     }
 

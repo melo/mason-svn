@@ -589,8 +589,9 @@ sub handle_request {
 	    unless ($interp->die_handler_overridden) {
 		$err =~ s/\n/\t/g;
 		$err =~ s/\t$//g;
+		$err .= "\n" if $err !~ /\n$/;
 	    }
-	    die "$err\n";
+	    die $err;
 	} elsif ($self->error_mode eq 'html') {
 	    unless ($interp->die_handler_overridden) {
 		if ($debugMode eq 'error' or $debugMode eq 'all') {
