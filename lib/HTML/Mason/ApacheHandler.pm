@@ -581,18 +581,24 @@ sub handle_request {
 	}
 
 	#
-	# Process error. If fatal mode, simply die with error. If html
-	# mode, call error_display_html and print result.
+	# If fatal mode, compress error to one line (for Apache logs) and die.
+	# If html mode, call error_display_html and print result.
+	# Do not process error at all if die handler was overriden.
 	#
 	if ($self->error_mode eq 'fatal') {
+	    unless ($interp->die_handler_overridden) {
+		$err =~ s/\n/\t/g;
+	    }
 	    die $err;
 	} elsif ($self->error_mode eq 'html') {
-	    if ($debugMode eq 'error' or $debugMode eq 'all') {
-		my $debug_msg = $self->write_debug_file($apreq,$debug_state);
-		$err .= "Debug info: $debug_msg\n";
+	    unless ($interp->die_handler_overridden) {
+		if ($debugMode eq 'error' or $debugMode eq 'all') {
+		    my $debug_msg = $self->write_debug_file($apreq,$debug_state);
+		    $err .= "Debug info: $debug_msg\n";
+		}
+		$err = error_display_html($err);
 	    }
-	    $err = error_display_html($err);
-	    
+	    # Send HTTP headers if they have not been sent.
 	    if (!http_header_sent($apreq)) {
 		$apreq->content_type('text/html');
 		$apreq->send_http_header();

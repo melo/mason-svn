@@ -3,8 +3,8 @@
 # under the same terms as Perl itself.
 
 #
-# Error message formatter. Modified version of code by Matthew
-# Lewinski at AvantGo, Inc.
+# Error message formatter. Created originally by Matthew Lewinski at
+# AvantGo, Inc.
 #
 
 package HTML::Mason::Error;
@@ -37,12 +37,12 @@ sub error_process {
     my @errors = ();
     my @misc_info = ();
 
-# Remove junk underneath HTML::Mason::Request::exec, since this is always the same
+    # Remove junk underneath HTML::Mason::Request::exec, since this is always the same
     if ((my $i = index($error,'HTML::Mason::Request::exec'))!=-1) {
 	$error = substr($error,0,$i);
     }
 
-# Get backtrace information
+    # Get backtrace information
     if ($req->{error_backtrace} and @{$req->{error_backtrace}}) {
         @backtrace = map({component=>($_->title)},@{$req->{error_backtrace}});
 	$error_info{'component'} = $backtrace[-1];
@@ -50,47 +50,52 @@ sub error_process {
 
     my @error = split(/\n/, $error);
     foreach my $line (@error) {
-# Handle the call stack lines.
+	# Handle the call stack lines.
 	if ($line =~ /called at/) {
 	    my ($func, $file, $linenum) =
 		($line =~ /\t(.*) called at (\S*) line (\d*)/);
 
-# Ignore superfluous call stack entries.
+	    # Ignore superfluous call stack entries.
 	    next if $file =~ m#/dev/null#;
 	    next if $file =~ m#HTML/Mason/ApacheHandler#;
 	    next if $func =~ m#eval|require 0# and $file =~ m#HTML/Mason/Request#;
-	    next if $func =~ m#HTML::Mason::Request::comp#;
 	    next if $func =~ m#HTML::Mason::Request::exec#;
 	    next if $func =~ m#HTML::Mason::Component::run#;
 	    next if $func =~ m#HTML::Mason::ApacheHandler#;
 	    next if $func =~ m#FileBased=HASH#;
 	    next if $func =~ m#__ANON__#;
-	    
+
 	    my $last = $callstack[ scalar(@callstack) - 1 ];
 	    next if ($last && ($last->{'line'} eq $linenum) && ($last->{'file'} eq $file));
-			
+
 	    push @callstack, { "function" => $func, "file" => $file, "line" => $linenum };
 	}
-	
-# Sometimes the perl warnings span multiple lines. This should do the 
-# right thing by appending the rest of the error to the last message.
+
+	# Sometimes the perl warnings span multiple lines. This should do the 
+	# right thing by appending the rest of the error to the last message.
 	elsif($line =~ /^\t/) {
 	    if (@errors) {
 		$errors[-1]->{'message'} .= $line;
 	    }
 	}
 	
-# Handle information about what file Mason was trying to compile.
-# This error is redundant and we do not actually use the information,
-# but we need to handle the case so it doesn't get pushed into the
-# unparsable information structure.
+	# Handle information about what file Mason was trying to compile.
+	# This error is redundant and we do not actually use the information,
+	# but we need to handle the case so it doesn't get pushed into the
+	# unparsable information structure.
 	elsif($line =~ /loading/) {
 	    my ($document) =
 		($line =~ /loading '(\S*)' at/);
 	    $error_info{'err_type'} = $conf{'runtime_error'};
+	    $error_info{'err_descr'} = "while loading $document";
+	}
+
+	elsif($line =~ /while executing (\S*):/) {
+	    $error_info{'err_type'} = $conf{'runtime_error'};
+	    $error_info{'err_descr'} = "while executing $1";
 	}
 	
-# Handle perl's errors and 'die' statements.
+	# Handle perl's errors and 'die' statements.
 	elsif($line =~ /at (\S*) line (\d*)/) {
 	    my ($message, $file, $linenum) =
 		($line =~ /(.*) at (\S*) line (\d*)/);
@@ -98,23 +103,25 @@ sub error_process {
 	    $error_info{'err_file'} = $file;
 	}
 
-# Handle undefined components.
+	# Handle undefined components.
 	elsif($line =~ /^could not find component/) {
 	    my ($component) = 
 		($line =~ /^could not find component for path '(\S*)'/);
+	    $error_info{'undef_component'} = $component;
 	    $error_info{'err_type'} = $conf{'component_error'};
-	    push @errors, { "message" => "component not found: $component", "line" => "general" };
+	    $error_info{'err_descr'} = $line;
 	}
 
-# Handle compilation errors.
-# Mason compile errors don't follow the same format as other errors, and the
-# format of the different errors are not necessarily the same, so we have to
-# handle them by checking if the error type is a compilation error.
+	# Handle compilation errors.
+	# Mason compile errors don't follow the same format as other errors, and the
+	# format of the different errors are not necessarily the same, so we have to
+	# handle them by checking if the error type is a compilation error.
 	elsif($line =~ /during compilation/) {
 	    my ($file) =
 		($line =~ /compilation of (\S*):/);
 	    $error_info{'err_file'} = $file;
 	    $error_info{'err_type'} = $conf{'compile_error'};
+	    $error_info{'err_descr'} = "during compilation of $file";
 	}
 	elsif(defined($error_info{'err_type'}) and $error_info{'err_type'} eq $conf{'compile_error'}) {
 	    if($line =~ /\(line (\d*)\)/) {
@@ -126,59 +133,74 @@ sub error_process {
 	    }
 	}
 	
-# Put everything we can't handle into an extra array.
+	# Put everything we can't handle into an extra array.
 	else {
 	    push @misc_info, $line;
 	}
     }
 
-# If we have a component error, it is nice to have a context for the error, so
-# create an error from the call stack information.
+    # If we have a component error, it is nice to have a context for the error, so
+    # create an error from the call stack information.
     if($error_info{'err_type'} and ($error_info{'err_type'} eq $conf{'component_error'})) {
-	my $ref = $error_info{'callstack'}->[0];
+	my $ref = $callstack[0];
         $error_info{'err_file'} = $ref->{'file'};
-        push @{$error_info{'errors'}}, { 'message' => qq(Unable to locate component "$error_info{'undef_component'}"), 'line' => $ref->{'line'} };
+        push @errors, { 'message' => qq(Unable to locate component "$error_info{'undef_component'}"), 'line' => $ref->{'line'} };
     }
 
-# Save our results.
+    if(@errors==1) {
+	my $err = $errors[0];
+	if (!$callstack[0] or $callstack[0]->{"file"} ne $error_info{'err_file'}) {
+	    unshift(@callstack,{"file"=>$error_info{'err_file'},line=>$errors[0]->{"line"}});
+	}
+    }
+
+    # Save our results.
     $error_info{'callstack'} = [ @callstack ];
-    $error_info{'errors'} = [ @errors ];
+    $error_info{'errors'} =    [ @errors ];
     $error_info{'backtrace'} = [ @backtrace ];
     $error_info{'misc_info'} = [ @misc_info ];
 
     my @lines;
 
-    if (my $type = $error_info{'err_type'}) {
-	push(@lines,"HTML::Mason Error ($type)");
+    if (my $descr = $error_info{'err_descr'}) {
+	push(@lines,"Mason error ($descr)");
+    } else {
+	push(@lines,"Mason error");
     }
 
     if (my $file = $error_info{'err_file'}) {
 	push(@lines,"File: $file");
     }
 
-    my $err = '';
-    foreach my $ref (@{$error_info{'errors'}}) {
-        $err .= '[' . $ref->{'line'} . ':' . $ref->{'message'} . '], ';
+    if (@{$error_info{'errors'}}) {
+	my $err = '';
+	foreach my $ref (@{$error_info{'errors'}}) {
+	    $err .= '[' . $ref->{'line'} . ':' . $ref->{'message'} . '], ';
+	}
+	$err =~ s/, $//;
+	$err =~ s/\t//g;
+	push(@lines,"Errors: $err");
     }
-    $err =~ s/, $//;
-    $err =~ s/\t//g;
-    push(@lines,"Errors: $err");
 
-    my $bt = '';
-    foreach my $ref (@{$error_info{'backtrace'}}) {
-        $bt .= $ref->{'component'} . ', ';
+    if (@{$error_info{'backtrace'}}) {
+	my $bt = '';
+	foreach my $ref (@{$error_info{'backtrace'}}) {
+	    $bt .= $ref->{'component'} . ', ';
+	}
+	$bt =~ s/, $//;
+	$bt =~ s/\t//g;
+	push(@lines,"Component stack: $bt");
     }
-    $bt =~ s/, $//;
-    $bt =~ s/\t//g;
-    push(@lines,"Backtrace: $bt");
 
-    my $cs;
-    foreach my $ref (@{$error_info{'callstack'}}) {
-        $cs .= '[' . $ref->{'file'} . ':' . $ref->{'line'} . '], ';
+    if (@{$error_info{'callstack'}}) {
+	my $cs = '';
+	foreach my $ref (@{$error_info{'callstack'}}) {
+	    $cs .= '[' . $ref->{'file'} . ':' . $ref->{'line'} . '], ';
+	}
+	$cs =~ s/, $//;
+	$cs =~ s/\t//g;
+	push(@lines,"Code stack: $cs");
     }
-    $cs =~ s/, $//;
-    $cs =~ s/\t//g;
-    push(@lines,"Calltrace: $cs");
     
     if (@{$error_info{'misc_info'}}) {
 	push(@lines,"Misc info: " . $error_info{'misc_info'}->[0]);
@@ -255,7 +277,8 @@ sub error_calltrace_html {
 
     $call_trace .= qq(<table border="0" cellpadding="0" cellspacing="0">);
     foreach my $ref (@{$error_info->{'calltrace'}}) {
-	$call_trace .= $conf->{'table_entry'}->("location:", html_escape("$ref->{'file'}:$ref->{'line'}"));
+	$call_trace .= html_escape("$ref->{'file'}:$ref->{'line'}")."<br>";
+	# $call_trace .= $conf->{'table_entry'}->("location:", html_escape("$ref->{'file'}:$ref->{'line'}"));
 	
 	# We stop when we reach sys_handler.pl because anything higher on the stack
 	# is called regardless of what component we are in.
@@ -293,7 +316,7 @@ sub error_conf {
 		    notes           => "",
 		    context         => "context: ",
 		    component_stack => "component stack: ", 
-		    call_trace      => "call trace: ",
+		    call_trace      => "code stack: ",
 		    misc_info       => "misc info: ",
 		    debug_info      => "debug info: ",
 		},
@@ -327,8 +350,8 @@ sub create_context_html {
 
     my $context .= qq(<table border="0" cellpadding="0" cellspacing="0">);
     
-    my $fh = new IO::File($file);
-
+    my $fh = do { local *FH; *FH; };
+    open $fh, $file;
     unless($fh) {
 	$context = "unable to open file";
     } else {
@@ -430,8 +453,8 @@ sub error_parse {
 
     my @error = split(/\n/, $error);
     foreach my $line (@error) {
-	if($line =~ /^HTML::Mason Error/) {
-	    ($error_info->{'type'}) = ($line =~ /^HTML::Mason Error \((.*)\)/);
+	if($line =~ /^Mason error/) {
+	    ($error_info->{'type'}) = ($line =~ /^Mason Error \((.*)\)/);
 
 	} elsif($line =~ /^File:/) {
 	    ($error_info->{'file'}) = ($line =~ /^File: (\S+)/);
@@ -445,8 +468,8 @@ sub error_parse {
 		push @{$error_info->{'errors'}}, { line => $line, message => $message };
 	    }
 
-	} elsif($line =~ /^Backtrace:/) {
-	    my ($backtrace) = ($line =~ /^Backtrace: (.*)/);
+	} elsif($line =~ /^Component stack:/) {
+	    my ($backtrace) = ($line =~ /^Component stack: (.*)/);
 	    my @entries = split(/, /, $backtrace);
 	    foreach my $entry (@entries) {
 		my ($project, $component);
@@ -458,8 +481,8 @@ sub error_parse {
 		push @{$error_info->{'backtrace'}}, { project => $project, component => $component };
 	    }
 	    
-	} elsif($line =~ /^Calltrace:/) {		
-	    my ($calltrace) = ($line =~ /^Calltrace: (.*)/);
+	} elsif($line =~ /^Code stack:/) {		
+	    my ($calltrace) = ($line =~ /^Code stack: (.*)/);
 	    my @entries = split(/, /, $calltrace);
 	    foreach my $entry (@entries) {
 		my ($file, $line) = ($entry =~ /\[(\S+):(\d+)\]/);

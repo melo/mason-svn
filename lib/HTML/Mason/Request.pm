@@ -192,7 +192,14 @@ sub exec {
 
     error:
     # don't mess with error message if default $SIG{__DIE__} was overridden
-    $err = error_process ($err, $self) unless ($interp->die_handler_overridden);
+    unless ($interp->die_handler_overridden) {
+	$err = $self->{error_clean} if $self->{error_clean};
+	if ($self->{error_backtrace}) {
+	    my $title = $self->{error_backtrace}->[0]->title;
+	    $err = "error while executing $title:\n$err";
+	}
+	$err = error_process ($err, $self);
+    }
     die $err;
 }
 
@@ -651,10 +658,12 @@ sub comp {
     # Put current component stack in error backtrace unless this has already
     # been done higher up.
     #
-    if ($@) {
+    if (my $err = $@) {
 	$self->{error_backtrace} ||= [reverse(map($_->{'comp'},@$stack))];
+	$self->{error_clean}     ||= $err;
 	pop(@$stack);
-	die $@;
+	$err .= "\n" if $err !~ /\n$/;
+	die $err;
     }
 
     #
