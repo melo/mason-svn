@@ -174,7 +174,7 @@ sub exec {
 	    $err = substr($err,0,$i) if $i!=-1;
 	    $err =~ s/^\s*(HTML::Mason::Commands::__ANON__|HTML::Mason::Request::call).*\n//gm;
 	    # Get backtrace information
-	    if (@{$self->{error_backtrace}}) {
+	    if ($self->{error_backtrace} and @{$self->{error_backtrace}}) {
 		my @titles = map($_->title,@{$self->{error_backtrace}});
 		my $errmsg = "error while executing $titles[-1]:\n";
 		$errmsg .= $err."\n";
