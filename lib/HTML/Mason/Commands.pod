@@ -19,82 +19,82 @@ limited time but will eventually go away.
 
 =over
 
-=item
+=item *
 
 C<mc_abort> becomes C<$m-E<gt>abort>
 
-=item
+=item *
 
 C<mc_auto_comp> becomes C<$m-E<gt>fetch_next-E<gt>path>
 
-=item
+=item *
 
 C<mc_auto_next> becomes C<$m-E<gt>call_next>
 
-=item
+=item *
 
 C<mc_cache> becomes C<$m-E<gt>cache>
 
-=item
+=item *
 
 C<mc_cache_self> becomes C<$m-E<gt>cache_self>
 
-=item
+=item *
 
 C<mc_caller> becomes C<$m-E<gt>callers(1)-E<gt>path>
 
-=item
+=item *
 
 C<mc_call_self> becomes C<$m-E<gt>call_self>
 
-=item
+=item *
 
 C<mc_comp> becomes C<$m-E<gt>comp>
 
-=item
+=item *
 
 C<mc_comp_exists> becomes C<$m-E<gt>comp_exists>
 
-=item
+=item *
 
 C<mc_comp_source()> becomes C<$m-E<gt>current_comp-E<gt>source_file>
 
-=item
+=item *
 
 C<mc_comp_source(path)> becomes
 C<$m-E<gt>fetch_comp(path)-E<gt>source_file>. This no longer
 works with nonexistent components as it used to.
 
-=item
+=item *
 
 C<mc_comp_stack> becomes C<map($_-E<gt>title,$m-E<gt>callers)>
 
-=item
+=item *
 
 C<mc_date> goes away, this was a legacy function. Replace by calling
 the date formatting function of your choice on C<$m-E<gt>time>.
 
-=item
+=item *
 
 C<mc_dhandler_arg> becomes C<$m-E<gt>dhandler_arg>
 
-=item
+=item *
 
 C<mc_file> becomes C<$m-E<gt>file>
 
-=item
+=item *
 
 C<mc_file_root> becomes C<$m-E<gt>file_root>
 
-=item
+=item *
 
 C<mc_out> becomes C<$m-E<gt>out>
 
-=item
+=item *
 
 C<mc_time> becomes C<$m-E<gt>time>
 
-=item
+=item *
 
 C<mc_suppress_http_header> (with or without argument) no longer has
 any effect and can simply be removed. See L<Devel/Sending HTTP
