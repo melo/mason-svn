@@ -537,11 +537,36 @@ sub _success
     print "Result for $self->{name}: $test->{name}\nok $self->{test_count}\n";
 }
 
+#
+# We use our own rm_tree, rather than File::Path::rmtree, so that we
+# can silently fail to entirely remove directories. On some systems
+# .nfs files prevent total removal of directories but should not
+# otherwise interfere with tests.
+#
+sub rm_tree {
+    my ($path, $debug) = @_;
+    $path =~ s#/$##;
+    if (-d $path) {
+	local *DIR;
+	opendir DIR, $path or warn "Can't open $path: $!";
+	while (defined(my $file = readdir DIR)) {
+	    next if $file eq '.' or $file eq '..';
+	    rm_tree("$path/$file");
+	}
+	closedir DIR;
+	rmdir $path;
+    } elsif (-f $path) {
+	unlink $path;
+    } else {
+	warn "Can't find $path to remove";
+    }
+}
+
 sub _cleanup
 {
     my $self = shift;
 
-    rmtree ($self->{base_path}, $DEBUG, 1) if $self->{base_path};
+    rm_tree ($self->{base_path}, $DEBUG) if $self->{base_path};
 }
 
 1;
