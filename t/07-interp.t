@@ -41,6 +41,20 @@ Hello World!
 EOF
 		    );
 
+#------------------------------------------------------------
+
+    $group->add_test( name => 'no autohandlers',
+		      description => 'tests turning off autohandlers by setting name to ""',
+		      call_path => '/autohandler_test/subdir/hello',
+		      interp_params => { autohandler_name => '' },
+		      component => <<'EOF',
+Hello World!
+EOF
+		      expect => <<'EOF',
+Hello World!
+EOF
+		    );
+
 
 #------------------------------------------------------------
 
@@ -609,6 +623,36 @@ dhandler arg = <% $m->dhandler_arg %>
 EOF
 		      expect => <<'EOF',
 dhandler arg = foo/blag
+EOF
+		    );
+
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'dhandler_name2',
+		      description => 'Shut off dhandlers',
+		      path => 'dhandler_test/plainfile',
+		      call_path => 'dhandler_test/foo/blag',
+		      interp_params => { dhandler_name => '' },
+		      component => 'foo',
+		      expect_error => qr{could not find component},
+		    );
+
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'dhandler_name0',
+		      description => 'dhandler_name => 0 should not shut off dhandlers',
+		      path => 'dhandler_test/0',
+		      call_path => 'dhandler_test/foo/blag',
+		      interp_params => { dhandler_name => '0' },
+		      component => <<'EOF',
+dhandler arg = <% $m->dhandler_arg %>
+comp = <% $m->current_comp->name %>
+EOF
+		      expect => <<'EOF',
+dhandler arg = foo/blag
+comp = 0
 EOF
 		    );
 

@@ -196,12 +196,33 @@ EOF
 my $time = time;
 $m->cache(value=>'gardenia', action=>'store', expire_at=>time);
 sleep(1);
-my $value1 = $m->cache(busy_lock=>10);
+my $value1 = $m->cache(busy_lock=>'10 sec');
 my $value2 = $m->cache;
 </%init>
 EOF
 		      expect => <<'EOF',
 undef, gardenia
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'busy_lock_expiration',
+		      description => 'test busy_lock expiration',
+		      interp_params => { data_cache_api => '1.0' },
+		      component => <<'EOF',
+<% join(', ', $value1 || 'undef', $value2 || 'undef') %>
+<%init>
+my $time = time;
+$m->cache(value=>'gardenia', action=>'store', expire_at=>time);
+sleep(1);
+my $value1 = $m->cache(busy_lock=>'1 sec');
+sleep(1);
+my $value2 = $m->cache;
+</%init>
+EOF
+		      expect => <<'EOF',
+undef, undef
 EOF
 		    );
 

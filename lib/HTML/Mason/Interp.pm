@@ -588,6 +588,12 @@ sub object_file {
 	undef;
 }
 
+sub use_autohandlers
+{
+    my $self = shift;
+    return defined $self->{autohandler_name} and length $self->{autohandler_name};
+}
+
 # Generate HTML that describes Interp's current status.
 # This is used in things like Apache::Status reports.  Currently shows:
 # -- Interp properties
@@ -789,7 +795,10 @@ the only user method is the new() constructor.
 
 =item autohandler_name
 
-File name used for L<autohandlers|HTML::Mason::Devel/autohandlers>. Default is "autohandler".
+File name used for
+L<autohandlers|HTML::Mason::Devel/autohandlers>. Default is
+"autohandler".  If this is set to an empty string ("") then
+autohandlers are turned off entirely.
 
 =item code_cache_max_size
 
@@ -960,6 +969,7 @@ which will return a subroutine reference.
 When setting these with C<PerlSetVar> directives in an Apache
 configuration file, you can set them like this:
 
+  PerlSetVar  MasonEscapeFlags  "h => \&HTML::Mason::Escapes::basic_html_escape"
   PerlSetVar  MasonEscapeFlags  "flag  => \&subroutine"
   PerlSetVar  MasonEscapeFlags  "uc    => sub { ${$_[0]} = uc ${$_[0]}; }"
   PerlAddVar  MasonEscapeFlags  "thing => other_thing"
@@ -1041,6 +1051,25 @@ Example of usage:
     die $@ if $@;
 
     $m->comp($anon_comp);
+
+=for html <a name="item_make_request"></a>
+
+=item make_request (@request_params)
+
+This method creates a Mason request object. The arguments to be passed
+are the same as those for the C<< HTML::Mason::Request->new >>
+constructor or its relevant subclass. This method will likely only be
+of interest to those attempting to write new handlers or to subclass
+C<HTML::Mason::Interp>.  If you want to create a I<subrequest>, see
+L<subrequests|HTML::Mason::Devel/Subrequests> instead.
+
+=for html <a name="purge_code_cache"></a>
+
+=item purge_code_cache ()
+
+Called during request execution in order to clear out the code
+cache. Mainly useful to subclasses that may want to take some custom
+action upon clearing the cache.
 
 =for html <a name="item_set_global"></a>
 

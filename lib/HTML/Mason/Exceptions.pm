@@ -72,6 +72,8 @@ BEGIN
 use Exception::Class (%e);
 
 HTML::Mason::Exception->Trace(1);
+
+# To avoid circular reference between exception and request.
 HTML::Mason::Exception->NoRefs(1);
 
 # The import() method allows this:
@@ -312,6 +314,9 @@ sub as_html
 
     my $out;
     my $interp = HTML::Mason::Interp->new(out_method => \$out);
+
+    # Can't use |h escape in here because if we fail to load
+    # HTML::Entities we end up in an endless loop.
     my $comp = $interp->make_component(comp_source => <<'EOF');
 
 <%args>
@@ -343,9 +348,10 @@ sub as_html
 %   foreach my $entry (@{$info->{context}}) {
 %	my ($line_num, $line, $highlight) = @$entry;
 %	$line = '' unless defined $line;
+%       HTML::Mason::Escapes::basic_html_escape(\$line);
     <tr>
      <td nowrap="nowrap" align="left" valign="top"><b><% $line_num %></b>&nbsp;</td>
-     <td align="left" valign="top" nowrap="nowrap"><% $highlight ? "<font color=red>" : "" %><% $line |h %><% $highlight ? "</font>" : "" %></td>
+     <td align="left" valign="top" nowrap="nowrap"><% $highlight ? "<font color=red>" : "" %><% $line %><% $highlight ? "</font>" : "" %></td>
     </tr>
 
 %    }
@@ -357,7 +363,9 @@ sub as_html
   <td align="left" valign="top" nowrap="nowrap"><b>code stack:</b>&nbsp;</td>
   <td align="left" valign="top" nowrap="nowrap">
 %    foreach my $frame (@{$info->{frames}}) {
-	<% $frame->filename |h %>:<% $frame->line |h %><br>
+%        my $f = $frame->filename; HTML::Mason::Escapes::basic_html_escape(\$f);
+%        my $l = $frame->line; HTML::Mason::Escapes::basic_html_escape(\$l);
+	<% $f %>:<% $l %><br>g
 %    }
   </td>
  </tr>
@@ -402,7 +410,7 @@ sub as_html
 
 <a name="raw"></a>
 
-<pre><% $raw |h %></pre>
+<pre><% $raw %></pre>
 
 </body></html>
 EOF
@@ -443,7 +451,7 @@ HTML::Mason::Exceptions - Exception objects thrown by Mason
 
 =head1 SYNOPSIS
 
-  use HTML::Mason::Exceptions qw(system_error);
+  use HTML::Mason::Exceptions ( abbr => [ qw(system_error) ] );
 
   open FH, 'foo' or system_error "cannot open foo: $!";
 
