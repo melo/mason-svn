@@ -28,10 +28,10 @@ local $| = 1;
 kill_httpd(1);
 test_load_apache();
 
-my $tests = 19; # multi conf & taint tests
-$tests += 59 if my $have_libapreq = have_module('Apache::Request');
-$tests += 40 if my $have_cgi      = have_module('CGI');
-$tests += 15 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
+my $tests = 20; # multi conf & taint tests
+$tests += 63 if my $have_libapreq = have_module('Apache::Request');
+$tests += 42 if my $have_cgi      = have_module('CGI');
+$tests += 16 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
 $tests++ if $have_cgi && $mod_perl::VERSION >= 1.24;
 $tests++ if my $have_filter = have_module('Apache::Filter');
 
@@ -41,15 +41,15 @@ print STDERR "\n";
 
 write_test_comps();
 
-if ($have_libapreq) {        # 59 tests
+if ($have_libapreq) {        # 63 tests
     cleanup_data_dir();
-    apache_request_tests(1); # 22 tests
+    apache_request_tests(1); # 23 tests
 
     cleanup_data_dir();
-    apache_request_tests(0); # 22 tests
+    apache_request_tests(0); # 23 tests
 
     cleanup_data_dir();
-    no_config_tests();       # 15 tests
+    no_config_tests();       # 16 tests
 
     if ($have_filter) {
         cleanup_data_dir();
@@ -59,18 +59,18 @@ if ($have_libapreq) {        # 59 tests
 
 if ($have_tmp) {
     cleanup_data_dir();
-    single_level_serverroot_tests();  # 15 tests
+    single_level_serverroot_tests();  # 16 tests
 }
 
 cleanup_data_dir();
-taint_tests();           # 15 tests
+taint_tests();           # 16 tests
 
-if ($have_cgi) {             # 40 tests (+ 1?)
+if ($have_cgi) {             # 42 tests (+ 1?)
     cleanup_data_dir();
-    cgi_tests(1);            # 22 tests + 1 if mod_perl version > 1.24
+    cgi_tests(1);            # 23 tests + 1 if mod_perl version > 1.24
 
     cleanup_data_dir();
-    cgi_tests(0);            # 18 tests
+    cgi_tests(0);            # 19 tests
 }
 
 cleanup_data_dir();
@@ -228,6 +228,13 @@ EOF
     write_comp( 'redirect', <<'EOF',
 <%init>
 $m->redirect('/comps/basic');
+</%init>
+EOF
+	      );
+
+    write_comp( 'redirect_with_scomp', <<'EOF',
+<%init>
+$m->scomp('/redirect');
 </%init>
 EOF
 	      );
@@ -795,6 +802,25 @@ Interp class: $expected_class
 Status code: 0
 EOF
                                                );
+    ok($success);
+
+    $path = '/comps/redirect_with_scomp';
+    $path = "/ah=0$path" if $with_handler;
+
+    $response = Apache::test->fetch($path);
+    $actual = filter_response($response, $with_handler);
+    $success = HTML::Mason::Tests->tests_class->check_output( actual => $actual,
+							      expect => <<'EOF',
+X-Mason-Test: Initial value
+Basic test.
+2 + 2 = 4.
+uri = /basic.
+method = GET.
+
+
+Status code: 0
+EOF
+						  );
     ok($success);
 }
 
