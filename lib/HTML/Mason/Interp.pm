@@ -992,9 +992,12 @@ value indicating whether or not a component exists for that path.
 =item comp_root (comp_root)
 
 This is a convenience method which simply calls the C<comp_root>
-method in the resolver object.  Obviously, if you are using a custom
-resolver class which does not have a C<comp_root> method, then this
-convenience method will not work.
+method in the resolver object, which by default is in the
+HTML::Mason::Resolver::File class.
+
+Obviously, if you are using a custom resolver class which does not
+have a C<comp_root> method, then this convenience method will not
+work.
 
 =for html <a name="item_exec"></a>
 

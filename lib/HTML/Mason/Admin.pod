@@ -1040,10 +1040,12 @@ the result to standard output:
     use strict;
 
     my $interp = HTML::Mason::Interp->new ();
-    $interp->exec(<relative path to file>, <args>...);
+    $interp->exec(<path-to-file-from-cwd>, <args>...);
 
 Because no component root was specified, the root is set to your
-current working directory.  If you have a well defined and contained
+current working directory. (The path supplied to C<exec> still needs
+to start with a slash, even though it is effectively a relative path
+from the current directory.) If you have a well defined and contained
 component tree, you'll probably want to specify a component root.
 
 Because no data directory was specified, object files will not be

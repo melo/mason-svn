@@ -154,7 +154,7 @@ on the filesystem, which is the norm for most Mason-based applications.
 
 =head1 PARAMETERS TO THE new() CONSTRUCTOR
 
-The C<new> method takes a single mandatory parameter, C<comp_root>.
+The C<new> method takes a single parameter, C<comp_root>.
 
 =over
 
@@ -181,6 +181,9 @@ root. If it is an array reference, it should be of the following form:
 The "keys" for each path must be unique names and their "values" must
 be filesystem paths.  These paths will be searched in the provided
 order whenever a component path must be resolved to a filesystem path.
+
+If no component root is specified, the current working directory is
+used.
 
 =back
 
