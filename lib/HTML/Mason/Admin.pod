@@ -59,17 +59,302 @@ field Mason requests. See the synopsis in B<L<HTML::Mason>> for a
 simple example. The next section discusses in detail how to configure
 this file.
 
-=head1 CONFIGURING THE HANDLER SCRIPT
+Previous versions of Mason required you to use the C<handler.pl> file
+to pass web requests to the Mason code.  This is no longer necessary,
+as Mason can now be configured via your httpd.conf file.  However,
+more complicated setups may still benefit from using custom code.
 
-Handler.pl is the most important file in your Mason configuration.  It
-is responsible for creating the three Mason objects and supplying the
-many parameters that control how your components are parsed and
-executed. It also provides the opportunity to execute arbitrary code
-at three important junctures: the server initialization, the beginning
-of a request, and the end of a request.  A wide set of behaviors can
-be implemented with a mere few lines of well-placed Perl in your
-handler.pl.  In this section we present the basics of setting up
-handler.pl as well as some ideas for more advanced applications.
+=head1 CONFIGURING MASON VIA httpd.conf
+
+The configuration directives that Mason uses are all set via the
+C<PerlSetVar> and C<PerlAddVar> directives provided by mod_perl.
+Though these arguments are all strings, Mason treats them in different
+ways.  The different argument types are:
+
+=over 4
+
+=item * string
+
+The variable's value is simply taken literally and used.  Quotes are
+necessary if the string contains spaces.
+
+=item * boolean
+
+The variable's value is used as a boolean, and is subject to Perl's
+rules on truth/falseness.  It is recommended that you use 0 (false) or
+1 (true) for these arguments.
+
+=item * code
+
+The string is treated as a piece of code.  This is used for parameters
+that expect code references.  For example, an anonymous sub might look
+like:
+
+ PerlSetVar  MasonDieHandler  "sub { die join ' -- ', @_ }"
+
+To call a named sub you have to be a little tricky and wrap it in an
+anonymous subroutine, like this:
+
+ PerlSetVar  MasonDieHandler  "sub { Carp::croak(@_) }"
+
+Attempting to just pass a reference like this:
+
+ PerlSetVar  MasonDieHandler  "\&Carp::croak"
+
+B<does not work> correctly.  The problem is that it loses any
+arguments that should be passed to the subroutine.  So don't try to do
+this.
+
+=item * list
+
+Some parameters are multi-values, such as MasonPreloads.  To set those
+simple use C<PerlSetVar> for the first value and then C<PerlAddVar>
+for all subsequent values, like this:
+
+ PerlSetVar  MasonPreloads  /foo/bar/baz.comp
+ PerlAddVar  MasonPreloads  /foo/bar/quux.comp
+
+=back
+
+The parameters that can be set are all the initialization parameters
+for the B<L<HTML::Mason::Parser|HTML::Mason::Parser>>,
+B<L<HTML::Mason::Interp|HTML::Mason::Interp>>, and
+B<L<HTML::Mason::ApacheHandler|HTML::Mason::ApacheHandler>> objects.
+These parameters are simply passed to the constructors for each of
+these objects.  In addition, there are two more parameters that can be
+set that affect Mason's behavior.  All parameters start with a
+C<Mason> prefix.  The rest of the name is derived from the name of the
+parameter given to the constructor.
+
+All of the parameters are optional except for C<MasonCompRoot> and
+C<MasonDataDir>.
+
+The default values are the same as those when these parameters are
+specified as object constructors and as such the defaults will not be
+specified here.
+
+=head2 Special Parameters
+
+=over 4
+
+=item * MasonArgsMethod - string
+
+Valid values for this parameter are C<CGI> or C<mod_perl>.  This
+determines whether to use the C<CGI> or C<Apache::Request> module for
+argument handling.  Please see L<the HTML::Mason::ApacheHandler
+docs|HTML::Mason::ApacheHandler/PARAMETERS TO THE use() DECLARATION>
+for more details.
+
+This can only be set once, regardless of how you set
+MasonMultipleConfig.
+
+Defaults to C<CGI>.
+
+=item * MasonMultipleConfig - boolean
+
+If this parameter is true then Mason assumes that you may have
+multiple sets of configuration directives defined, perhaps for
+multiple locations or virtual hosts.  This means that Mason will
+create a new set of parser/interp/handler objects for every request.
+Otherwise Mason simply creates a single set at server startup to
+maximize shared memory.
+
+Defaults to false.
+
+=back
+
+=head2 Parser Parameters
+
+=over 4
+
+=item * MasonAllowGlobals - list
+
+Corresponds to the C<allow_globals> parameter.
+
+=item * MasonDefaultEscapeFlags - string
+
+Corresponds to the C<default_escape_flags> parameter.
+
+=item * MasonIgnoreWarningsExpr - string
+
+Corresponds to the C<ignore_warnings_expr> parameter.
+
+=item * MasonInPackage - string
+
+Corresponds to the C<in_package> parameter.
+
+=item * MasonPostamble - string
+
+Corresponds to the C<postamble> parameter.
+
+=item * MasonPreamble - string
+
+Corresponds to the C<preamble> parameter.
+
+=item * MasonTaintCheck - boolean
+
+Corresponds to the C<taint_check> parameter.
+
+=item * MasonUseStrict - boolean
+
+Corresponds to the C<use_strict> parameter.
+
+=item * MasonPreprocess - code
+
+Corresponds to the C<preprocess> parameter.
+
+=item * MasonPostprocess - code
+
+Corresponds to the C<postprocess> parameter.
+
+=back
+
+=head2 Interp Parameters
+
+=over 4
+
+=item * MasonCompRoot - list (special)
+
+This parameter is B<required>.  It correponds to the C<comp_root>
+parameter.  This parameter can either be a single value, such as
+'/foo/comp/root', or a list of keys and values such as:
+
+ PerlSetVar  MasonCompRoot  "root1 => /foo/comp/root1"
+ PerlAddVar  MasonCompRoot  "shared => /my/shared/comps"
+
+See the L<HTML::Mason::Interp
+documentation|HTML::Mason::Interp/comp_root> for more details on
+multiple component roots.
+
+=item * MasonDataDir - string (required)
+
+Corresponds to the C<data_dir> parameter.
+
+=item * MasonAllowRecursiveAutohandlers - boolean
+
+Corresponds to the C<allow_recursive_autohandlers> parameter.
+
+=item * MasonAutohandlerName - string
+
+Corresponds to the C<autohandler_name> parameter.
+
+=item * MasonCodeCacheMaxSize - string
+
+Corresponds to the C<code_cache_max_size> parameter.
+
+=item * MasonCurrentTime - string
+
+Corresponds to the C<current_time> parameter.
+
+=item * MasonDataCacheDir - string
+
+Corresponds to the C<data_cache_dir> parameter.
+
+=item * MasonDieHandler - code (special)
+
+Corresponds to the C<die_handler> parameter.  B<NOTE>: This parameter
+can also be set as C<0>.  See the L<HTML::Mason::Interp
+documentation|HTML::Mason::Interp/die_handler> for more details.
+
+=item * MasonMaxRecurse - string
+
+Corresponds to the C<max_recurse> parameter.
+
+=item * MasonOutMethod - code
+
+Corresponds to the C<out_method> parameter.
+
+=item * MasonOutMode - string
+
+Corresponds to the C<out_mode> parameter.
+
+=item * MasonPreloads - list
+
+Corresponds to the C<preloads> parameter.
+
+=item * MasonStaticFileRoot - string
+
+Corresponds to the C<static_file_root> parameter.
+
+=item * MasonSystemLogEvents - string
+
+Corresponds to the C<system_log_events> parameter.
+
+=item * MasonSystemLogFile - string
+
+Corresponds to the C<system_log_file> parameter.
+
+=item * MasonSystemLogSeparator - string
+
+Corresponds to the C<system_log_separator> parameter.
+
+=item * MasonUseDataCache - boolean
+
+Corresponds to the C<use_data_cache> parameter.
+
+=item * MasonUseObjectFiles - boolean
+
+Corresponds to the C<use_object_files> parameter.
+
+=item * MasonUseReloadFile - boolean
+
+Corresponds to the C<use_reload_file> parameter.
+
+=item * MasonVerboseCompileError - boolean
+
+Corresponds to the C<verbose_compile_error> parameter.
+
+=back
+
+=head2 ApacheHandler Parameters
+
+=over 4
+
+=item * MasonApacheStatusTitle - string
+
+Correponds to the C<apache_status_title> parameter.
+
+=item * MasonAutoSendHeaders - boolean
+
+Correponds to the C<auto_send_headers> parameter.
+
+=item * MasonDebugHandlerProc - string
+
+Correponds to the C<debug_handler_proc> parameter.
+
+=item * MasonDebugHandlerScript - string
+
+Correponds to the C<debug_handler_script> parameter.
+
+=item * MasonDebugMode - string
+
+Correponds to the C<debug_mode> parameter.
+
+=item * MasonDebugPerlBinary - string
+
+Correponds to the C<debug_perl_binary> parameter.
+
+=item * MasonErrorMode - string
+
+Correponds to the C<error_mode> parameter.
+
+=item * MasonTopLevelPredicate - code
+
+Correponds to the C<top_level_predicate> parameter.
+
+=back
+
+=head1 CONFIGURING MASON VIA A HANDLER SCRIPT
+
+The handler.pl file is responsible for creating the three Mason
+objects and supplying the many parameters that control how your
+components are parsed and executed. It also provides the opportunity
+to execute arbitrary code at three important junctures: the server
+initialization, the beginning of a request, and the end of a request.
+A wide set of behaviors can be implemented with a mere few lines of
+well-placed Perl in your handler.pl.  In this section we present the
+basics of setting up handler.pl as well as some ideas for more
+advanced applications.
 
 =head2 Creating the Mason objects
 
