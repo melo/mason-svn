@@ -880,8 +880,8 @@ sub prepare_request
 	my $retval = isa_mason_exception($err, 'Abort')   ? $err->aborted_value  :
 		     isa_mason_exception($err, 'Decline') ? $err->declined_value :
 		     rethrow_exception $err;
-        $r->send_http_header unless $retval and $retval != 200;
-	return $retval;
+        $r->send_http_header unless $r->header_out("Content-type")
+          || ($retval and $retval != 200);
     }
 
     my $final_output_method = ($r->method eq 'HEAD' ?
