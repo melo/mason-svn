@@ -476,13 +476,7 @@ sub error_parse {
 	    my ($backtrace) = ($line =~ /^Component stack: (.*)/);
 	    my @entries = split(/, /, $backtrace);
 	    foreach my $entry (@entries) {
-		my ($project, $component);
-		if ($entry =~ /:/) {
-		    ($project, $component) = ($entry =~ /\[(\S+):(\S+)\]/);
-		} else {
-		    ($project, $component) = (undef,$entry);
-		}
-		push @{$error_info->{'backtrace'}}, { project => $project, component => $component };
+		push @{$error_info->{'backtrace'}}, { component => $entry };
 	    }
 	    
 	} elsif($line =~ /^Code stack:/) {		
