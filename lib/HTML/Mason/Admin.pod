@@ -312,6 +312,10 @@ Correponds to the C<debug_mode> parameter.
 
 Correponds to the C<debug_perl_binary> parameter.
 
+=item * MasonDeclineDirs - boolean
+
+Corresponds to the C<decline_dirs> parameter.
+
 =item * MasonErrorMode - string
 
 Correponds to the C<error_mode> parameter.
