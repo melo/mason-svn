@@ -20,18 +20,21 @@ two each time.
 directives.  This removes the need for a handler.pl file in many
 cases.  L{Admin/CONFIGURING MASON VIA httpd.conf}.
 - Document that you cannot call return() from a <%shared> or <%once>
-section.  (reported by Paolo Campanella [paolo@mighty.co.za])
-** Fixed the discrepancy in handling mixed GET/POST requests via
-CGI.pm vs. mod_perl.  Previously, when handling arguments via CGI.pm
-the query string portion of a mixed request was ignored, while it was
+section.  (reported by Paolo Campanella [paolo@mighty.co.za]) ** Fixed
+the discrepancy in handling mixed GET/POST requests via CGI.pm
+vs. mod_perl.  Previously, when handling arguments via CGI.pm the
+query string portion of a mixed request was ignored, while it was
 included when using mod_perl.  As of this version all arguments are
 always available via %ARGS, no matter how argument processing is being
-done.
+done.  This is an incompatible change only for those whose code relied
+on this explicitly _not_ happening with CGI.pm.
 - Fixed incorrect code for using mod_perl args method in
 eg/session_handler.pl.
 - Fixed broken call_method link in Component.pod.
 - Fixed documentation of escaped newline behavior.
-
+- Wrap each component call in eval.  This allowed us to simplify the
+code related to tracking the current request depth.  This should not
+affect end users.
 
 1.0  Wed Jan 31 08:56:31 PST 2001
 
