@@ -12,6 +12,9 @@ sub make_tests
     my $group = HTML::Mason::Tests->new( name => 'component',
 					 description => 'Component object functionality' );
 
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'comp_obj',
 		      path => 'comp_obj_test/comp_obj',
 		      call_path => 'comp_obj_test/comp_obj',
@@ -121,6 +124,9 @@ My title is [anon something].
 EOF
 		     );
 
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'context',
 		      description => 'Tests list/scalar context propogation in comp calls',
 		      component => <<'EOF',
@@ -156,12 +162,15 @@ scalar
 EOF
 		    );
 
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'scomp',
 		      description => 'Test scomp Request method',
 		      component => <<'EOF',
 
 % my $text = $m->scomp('.subcomp', 1,2,3);
---------------------
+-----
 <% $text %>
 
 <%def .subcomp>
@@ -170,7 +179,7 @@ EOF
 EOF
 		      expect => <<'EOF',
 
---------------------
+-----
 
  Hello, you say 123.
 
@@ -178,13 +187,16 @@ EOF
 EOF
 		    );
 
+
+#------------------------------------------------------------
+
     $group->add_test( name => 'STORE',
 		      description => 'Test STORE parameter to component call',
 		      component => <<'EOF',
 
 % my $buffy;
 % $m->comp('.subcomp', 1,2,3,4, STORE=>\$buffy);
---------------------
+-----
 <% $buffy %>
 
 <%def .subcomp>
@@ -193,13 +205,15 @@ EOF
 EOF
 		      expect => <<'EOF',
 
---------------------
+-----
 
  Hello, you say 1234.
 
 
 EOF
 		    );
+
+#------------------------------------------------------------
 
     return $group;
 }
