@@ -43,7 +43,7 @@ local $| = 1;
     my $both_no_handler_tests = 8;
     my $cgi_only_no_handler_tests = 2;
     my $apr_only_no_handler_tests = 2;
-    my $multi_conf_tests = 4;
+    my $multi_conf_tests = 5;
 
     my $total = $both_tests + $both_no_handler_tests;
     $total += $cgi_only_tests + $cgi_only_no_handler_tests;
@@ -196,6 +196,11 @@ EOF
 
     write_comp( '__top_level_predicate', <<'EOF',
 Shouldn't ever run
+EOF
+	      );
+
+    write_comp( 'multiconf3/compile_error', <<'EOF',
+<% if { %>
 EOF
 	      );
 }
@@ -542,6 +547,11 @@ EOF
     $actual = filter_response($response, 0);
     ok( $actual =~ /404 not found/i,
 	"Attempt to request a non-existent component should not work with dhandlers turned off" );
+
+    $response = Apache::test->fetch('/comps/multiconf3/compile_error');
+    $actual = filter_response($response, 0);
+    ok( $actual =~ /1: &lt;% if { %&gt;/,
+	"A compile error occurred but the component file's source wasn't shown" );
 
     kill_httpd(1);
 }
