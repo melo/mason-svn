@@ -1406,8 +1406,6 @@ I<html> - a fancy html format
 
 =back
 
-=back
-
 The default format under L<Apache|HTML::Mason::ApacheHandler> and
 L<CGI|HTML::Mason::CGIHandler> is either I<line> or I<html> depending
 on whether the error mode is I<fatal> or I<output>, respectively. The
@@ -1418,6 +1416,8 @@ as_I<format>. You can define your own format by creating an
 appropriately named method; for example, to define an "xml" format,
 create a method C<HTML::Mason::Exception::as_xml> patterned after one of
 the built-in methods.
+
+=back
 
 =over
 
