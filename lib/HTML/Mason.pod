@@ -2,6 +2,17 @@
 
 Mason - High-performance, dynamic web site authoring system 
 
+=head1 SYNOPSIS
+
+    PerlSetVar MasonCompRoot /usr/local/www/htdocs
+    PerlSetVar MasonDataDir /usr/local/www/mason
+    PerlModule HTML::Mason::ApacheHandler
+
+    <FilesMatch "*.html">
+        SetHandler perl-script
+        PerlHandler HTML::Mason::ApacheHandler
+    </FilesMatch>
+
 =head1 DESCRIPTION
 
 Mason is a tool for building, serving and managing large web
@@ -105,18 +116,15 @@ file for details.
 
 =head1 CONFIGURING MASON
 
-The paragraphs below assume some knowledge of mod_perl and Apache
-configuration. If you're rusty on any these topics, bone up by reading
-the documentation available at http://www.apache.org (Apache) and
-http://perl.apache.org (mod_perl). Here you will also find
-subscription details for the mod_perl mailing list--in my view the
-best mod_perl resource around.
-
-=head2 Single Site Configuration
+This section assumes that you are able to install and configure a
+mod_perl server. Relevant documentation is available at
+http://www.apache.org (Apache) and http://perl.apache.org
+(mod_perl). The mod_perl mailing list, archive, and guide are also
+great resources.
 
 The simplest configuration of Mason requires a few lines in your
 httpd.conf. You can find an annotated version of these lines in
-eg/httpd.conf in your distribution.
+C<eg/httpd.conf> in your distribution.
 
     PerlSetVar MasonCompRoot /usr/local/www/htdocs
     PerlSetVar MasonDataDir /usr/local/www/mason

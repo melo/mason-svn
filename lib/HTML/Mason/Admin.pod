@@ -1199,8 +1199,7 @@ Consider reload files only for frequently visited production sites.
 
 =head1 CONFIGURING VIRTUAL SITES 
 
-These examples extend the L<Mason/single site configuration>
-example in B<HTML::Mason>.
+These examples extend the single site configurations given so far.
 
 =head2 Multiple sites, one component root
 
