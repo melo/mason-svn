@@ -118,9 +118,14 @@ sub _handler {
 
     my %args = $self->request_args($r);
 
-    # Discarding the return value of the exec is different than what
-    # ApacheHandler does.  What a mess.
-    eval { $self->interp->exec($p->{comp}, %args) };
+    my @result;
+    if (wantarray) {
+        @result = eval { $self->interp->exec($p->{comp}, %args) };
+    } elsif ( defined wantarray ) {
+        $result[0] = eval { $self->interp->exec($p->{comp}, %args) };
+    } else {
+        eval { $self->interp->exec($p->{comp}, %args) };
+    }
 
     if (my $err = $@) {
 
@@ -136,6 +141,8 @@ sub _handler {
 	# away) because it's just a hack for the test suite.
 	$_[0] .= $r->http_header . $self->{output};
     }
+
+    return wantarray ? @result : defined wantarray ? $result[0] : undef;
 }
 
 # This is broken out in order to make subclassing easier.
