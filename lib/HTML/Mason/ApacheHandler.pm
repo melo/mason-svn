@@ -51,7 +51,11 @@ sub cgi_object
 {
     my ($self) = @_;
 
-    if ($HTML::Mason::ApacheHandler::ARGS_METHOD eq 'CGI')
+    if (@_)
+    {
+	$self->{cgi_object} = shift;
+    }
+    elsif ($HTML::Mason::ApacheHandler::ARGS_METHOD eq 'CGI')
     {
 	$self->{cgi_object} ||= CGI->new('');
     }
@@ -315,7 +319,6 @@ sub handle_request {
 	(ah=>$self,
 	 interp=>$interp,
 	 apache_req=>$apreq,
-	 cgi_object=>$self->{cgi_object},
 	 );
     
     eval { $retval = $self->handle_request_1($apreq, $request, $debug_state) };
@@ -576,6 +579,8 @@ sub handle_request_1
     }
     $debug_state->{args_hash} = \%args if $debug_state;
 
+    $request->cgi_object( $self->{cgi_object} ) if $self->{cgi_object};
+
     #
     # Deprecated output_mode parameter - just pass to request out_mode.
     #
@@ -657,6 +662,7 @@ sub _cgi_args
 
     my $r = $$rref;
     my $q;
+    undef $self->{cgi_object};
     unless ($r->method eq 'GET' && !scalar($r->args)) {
         $self->{cgi_object} = CGI->new;
     }
