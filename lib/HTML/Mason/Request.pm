@@ -1772,6 +1772,11 @@ Returns 1 if I<comp_path> is the path of an existing component, 0
 otherwise.  That path given may be relative, in which case the current
 component's directory path will be prepended.
 
+comp_exists does not work with special paths (SELF, PARENT, REQUEST)
+or with subcomponents or methods. See
+L<method_exists|HTML::Mason::Component/item_method_exists> to handle
+the latter.
+
 =for html <a name="content"></a>
 
 =item content
