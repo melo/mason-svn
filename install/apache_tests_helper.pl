@@ -80,6 +80,17 @@ sub write_apache_conf
 	or die "Can't make dir '$APACHE{conf_dir}': $!";
     mkdir $APACHE{log_dir}, 0755
 	or die "Can't make dir '$APACHE{log_dir}': $!";
+    if (!$<) {
+	# set data_dir permissions when running as root
+	my $uid = getpwnam($APACHE{user});
+	my $gid = getgrnam($APACHE{group});
+	my $default_data_dir = File::Spec->catdir( $APACHE{apache_dir}, 'mason' );
+	eval {
+            chown $uid,$gid, $APACHE{data_dir};
+            mkdir $default_data_dir, 0755;
+            chown $uid,$gid, $default_data_dir;
+	};
+    }
 
     my $libs = _libs();
 
@@ -87,6 +98,7 @@ sub write_apache_conf
         File::Spec->catfile( $APACHE{apache_dir}, 'mason_handler_CGI.pl' );
     my $mod_perl_handler =
         File::Spec->catfile( $APACHE{apache_dir}, 'mason_handler_mod_perl.pl' );
+    my $default_args_method = (Apache::test::have_module('Apache::Request') ? 'mod_perl' : 'CGI');
 
     my %multiconf;
     $multiconf{1}{comp_root} = File::Spec->catfile( $APACHE{comp_root}, 'multiconf1' );
@@ -94,13 +106,19 @@ sub write_apache_conf
     $multiconf{2}{comp_root} = File::Spec->catfile( $APACHE{comp_root}, 'multiconf2' );
     $multiconf{2}{data_dir}  = File::Spec->catfile( $APACHE{data_dir}, 'multiconf2' );
 
+    # Apache2 tweaks
+    my $PerlTaintCheck = 'PerlTaintCheck On';
+    if ($APACHE{version} =~ m/^2\./) {
+	$PerlTaintCheck = 'PerlSwitches -T';
+    }
+
     my $include .= <<"EOF";
 ServerRoot $APACHE{apache_dir}
 
 # tainting has to be turned on before any Perl code is loaded
 <IfDefine taint>
   PerlSetEnv PATH /bin:/usr/bin
-  PerlTaintCheck On
+  $PerlTaintCheck
 </IfDefine>
 
 <Perl>
@@ -162,14 +180,14 @@ EOF
 </IfDefine>
 
 <IfDefine multi_config>
-  PerlSetVar MasonArgsMethod CGI
+  PerlSetVar MasonArgsMethod $default_args_method
+  PerlModule  HTML::Mason::ApacheHandler
 
   <Location /comps/multiconf1>
     PerlSetVar  MasonCompRoot "$multiconf{1}{comp_root}"
     PerlSetVar  MasonDataDir  "$multiconf{1}{data_dir}"
     PerlSetVar  MasonAutohandlerName no_such_file
     SetHandler  perl-script
-    PerlModule  HTML::Mason::ApacheHandler
     PerlHandler HTML::Mason::ApacheHandler
   </Location>
 
@@ -178,7 +196,6 @@ EOF
     PerlSetVar  MasonDataDir  "$multiconf{2}{data_dir}"
     PerlSetVar  MasonDhandlerName no_such_file
     SetHandler  perl-script
-    PerlModule  HTML::Mason::ApacheHandler
     PerlHandler HTML::Mason::ApacheHandler
   </Location>
 
@@ -193,11 +210,13 @@ EOF
   ServerRoot /tmp
   SetHandler perl-script
   PerlSetVar MasonDataDir /tmp/one/two
+  PerlSetVar  MasonArgsMethod $default_args_method
   PerlHandler HTML::Mason::ApacheHandler
 </IfDefine>
 
 <IfDefine taint>
   SetHandler  perl-script
+  PerlSetVar  MasonArgsMethod $default_args_method
   PerlHandler HTML::Mason::ApacheHandler
 </IfDefine>
 
@@ -211,7 +230,10 @@ EOF
 </IfDefine>
 EOF
 
-    if ( load_pkg('Apache::Filter') )
+# Apache::Filter is reported to not work with mod_perl 2
+# also Apache-2.0.40 chokes on <Perl> inside <IfDefine> (2.0.49 is ok)
+    if ( load_pkg('Apache::Filter') && Apache::Filter->VERSION >= 1.021 &&
+	$APACHE{version} !~ m/^2\./)
     {
         my $filter_handler = <<'EOF';
   sub FilterTest::handler
@@ -293,7 +315,7 @@ sub make_request {
       || \$self->delayed_object_params('request', 'apache_req')
       || \$self->delayed_object_params('request', 'cgi_request');
     \$r->content_type( 'text/fooml' );
-    \$r->send_http_header;
+    \$r->send_http_header if \$mod_perl::VERSION < 1.99;
     HTML::Mason::Exception::Abort->throw(error => 'foo', aborted_value => 200);
 }
 
@@ -301,7 +323,7 @@ package HTML::Mason;
 
 $libs
 
-use Apache::Constants qw(REDIRECT);
+use constant REDIRECT => 302;
 
 use HTML::Mason::ApacheHandler;
 use HTML::Mason;
@@ -383,7 +405,7 @@ for (my \$x = 0; \$x <= \$#ah_params; \$x++)
 	      \%res_params,
             );
 
-    chown Apache->server->uid, Apache->server->gid, \$ah->interp->files_written;
+    chown \$ah->get_uid_gid, \$ah->interp->files_written;
 
     push \@ah, \$ah;
 }
@@ -391,7 +413,7 @@ for (my \$x = 0; \$x <= \$#ah_params; \$x++)
 sub handler
 {
     my \$r = shift;
-    \$r->header_out('X-Mason-Test' => 'Initial value');
+    \$r->headers_out->{'X-Mason-Test'} = 'Initial value';
 
     my (\$ah_index) = \$r->uri =~ /ah=(\\d+)/;
 
@@ -412,6 +434,7 @@ sub handler
     my \$status = \$ah[\$ah_index]->handle_request(\$r);
     return \$status if \$status == REDIRECT;
     \$r->print( "Status code: \$status\\n" );
+    return \$status;
 }
 
 1;
