@@ -1,8 +1,14 @@
 UPGRADE GUIDE for Mason
 
 Hints about upgrading to various major revisions of Mason. To be
-completely safe, always read carefully through the Changes file and
-upgrade first on a test server.
+completely safe, always read through the Changes file
+(incompatibilities are marked with **) and upgrade first on a test
+server.
+
+Version 0.895
+
+If you use a handler.pl file, it is now necessary to explicitly 'use'
+the HTML::Mason::ApacheHandler module.
 
 Version 0.85
 
