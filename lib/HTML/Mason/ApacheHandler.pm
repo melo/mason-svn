@@ -437,7 +437,7 @@ BEGIN {
 	close $tmonout or die "can't close file: tmon.out: $!";
         close $tmontmp or die "can't close file: tmon.tmp: $!";
 	copy('tmon.tmp' => 'tmon.out') or die "$!";
-	unlink('tmon.tmp') or warn "can't remove file: tmon.tmp: $!"
+	unlink('tmon.tmp') or warn "can't remove file: tmon.tmp: $!";
         print STDERR "\nRunning dprofpp ...\n";
 	exec('dprofpp') or die "Couldn't execute dprofpp";
     }
