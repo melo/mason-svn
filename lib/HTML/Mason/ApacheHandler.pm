@@ -268,8 +268,11 @@ sub _make_interp
     my $interp = HTML::Mason::Interp->new( parser => _make_parser(),
 					   %p,
 					 );
-    chown Apache->server->uid, Apache->server->gid, $interp->files_written
-	or die "Can't change ownership of files written by interp object\n";
+    if ($interp->files_written)
+    {
+	chown Apache->server->uid, Apache->server->gid, $interp->files_written
+	    or die "Can't change ownership of files written by interp object\n";
+    }
 
     return $interp;
 }
@@ -996,17 +999,8 @@ sub handler
 {
     my $r = shift;
 
-    my $ah;
-    if ($r->dir_config('MasonMultipleConfig'))
-    {
-	$ah = _make_ah;
-    }
-    else
-    {
-	die "This function cannot be called except by defining HTML::Mason::ApacheHandler as a content handler in you Apache configuration file\n"
-	    unless $AH;
-	$ah = $AH;
-    }
+    my $ah = _make_ah;
+    __PACKAGE__->import unless $ARGS_METHOD;
 
     return $ah->handle_request($r);
 }
