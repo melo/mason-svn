@@ -15,11 +15,6 @@ chk_version(Data::Dumper => '2.08') or
 	. "*** Mason requires version 2.08, or later, of Data::Dumper\n"
 	. "    from CPAN/modules/by-module/Data/Data-Dumper-x.x.tar.gz\n\n";
 
-chk_version(File::Spec => '0.80') or
-    warn  "\n"
-	. "*** Mason requires version 0.80, or later, of File::Spec\n"
-	. "    from CPAN/modules/by-module/Data/File-Spec-x.x.tar.gz\n\n";
-
 chk_version(Params::Validate => '0.02') or
     warn  "\n"
 	. "*** Mason requires version 0.02, or later, of Params::Validate\n"
@@ -36,7 +31,7 @@ setup_mod_perl_tests();
 WriteMakefile(
     'NAME'    => 'HTML::Mason',
     'VERSION_FROM' => 'lib/HTML/Mason.pm', # finds $VERSION
-    'PREREQ_PM' => { MLDBM => 2.0, Data::Dumper => 2.08, 'File::Spec' => 0.8, 'Params::Validate' => 0.02 },
+    'PREREQ_PM' => { MLDBM => 2.0, Data::Dumper => 2.08, 'Params::Validate' => 0.02 },
 
     # %APACHE is created when setup_mod_perl_tests() is called.  The
     # code that does this creation is in makeconfig.pl.
