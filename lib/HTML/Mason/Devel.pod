@@ -289,7 +289,7 @@ relevant parameter.
 Mason pages often are built not from a single component, but from
 multiple components that call each other in a hierarchical fashion.
 
-=head2 Components that output HTML
+=head2 Components that Output HTML
 
 To call one component from another, use the <& &> tag:
 
@@ -491,7 +491,7 @@ list_items component:
     <% $m->content %>
     % }
 
-=head2 Components that return values
+=head2 Components that Return Values
 
 So far you have seen components used solely to output HTML.  However,
 components may also be used to return values.
@@ -907,7 +907,7 @@ The following examples illustrate the different ways to pass and receive paramet
     query string, there is no detectable difference between a list or
     hash.)
 
-=head2 Using @_ instead
+=head2 Using @_ Instead
 
 If you don't like named parameters, you can pass a traditional
 list of ordered parameters:
@@ -1298,7 +1298,7 @@ C<< </%text> >> itself! When all else fails, use C<< $m->print >>:
 
     % $m->print('The tags are <%text> and </%text>.');
 
-=head2 Escaping expressions
+=head2 Escaping Expressions
 
 Mason has facilities for I<escaping> the output from C<< <% %> >>
 tags, on either a site-wide or a per-expression basis.
@@ -1403,7 +1403,7 @@ method|HTML::Mason::Interp/item_apply_escapes>. e.g.
 
     $m->interp->apply_escapes( 'some html content', 'h' );
 
-=head2 Backslash at end of line
+=head2 Backslash at End of Line
 
 A backslash (\) at the end of a line suppresses the newline. In HTML
 components, this is mostly useful for fixed width areas like C<< <pre> >>
@@ -1860,7 +1860,7 @@ implements them in a shallow way to solve a particular set of
 problems. Future redesigns may incorporate a deeper object
 architecture if the current prototype proves successful.
 
-=head2 Determining inheritance
+=head2 Determining Inheritance
 
 Every component may have a single I<parent>. The default parent is a
 component named C<autohandler> in the closest parent directory.  This
@@ -1880,7 +1880,7 @@ no one.  This is how to suppress templates.
 Currently there is no way to specify a parent dynamically at run-time,
 or to specify multiple parents.
 
-=head2 Content wrapping
+=head2 Content Wrapping
 
 At page execution time, Mason builds a chain of components from the
 called component, its parent, its parent's parent, and so
@@ -1889,7 +1889,7 @@ C<< $m->call_next >> passes control to the next component in the chain.  This
 is the familiar autohandler "wrapping" behavior, generalized for any
 number of arbitrarily named templates.
 
-=head2 Accessing methods and attributes
+=head2 Accessing Methods and Attributes
 
 A template can access methods and/or attributes of the requested
 page. First, use C<< $m->request_comp >> to get a handle on the
@@ -1978,7 +1978,7 @@ questionable attributes:
 
     my $color = $self->attr_if_exists('color'); # if it doesn't exist $color is undef
 
-=head2 Sharing data
+=head2 Sharing Data
 
 A component's main body and its methods occupy separate lexical
 scopes. Variables declared, say, in the C<< <%init> >> section of the main
