@@ -69,6 +69,7 @@ sub have_pkg
 {
     my ($pkg) = @_;
     eval { my $p; ($p = $pkg . ".pm") =~ s|::|/|g; require $p; };
+    no strict 'refs';
     return ${"${pkg}::VERSION"} ? 1 : 0;
 }
 
