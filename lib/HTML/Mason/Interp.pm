@@ -103,6 +103,7 @@ sub new
 		max_recurse => { type => SCALAR, optional => 1 },
 		parser => { isa => 'HTML::Mason::Parser', optional => 1 },
 		preloads => { type => ARRAYREF, optional => 1 },
+		resolver => { isa => 'HTML::Mason::Resolver', optional => 1 },
 		static_file_root => { type => SCALAR, optional => 1 },
 		system_log_events => { type => SCALAR | UNDEF, optional => 1 },
 		system_log_file => { type => SCALAR, optional => 1 },
