@@ -10,7 +10,7 @@ use Carp;
 use File::Path;
 use File::Basename;
 use HTML::Mason::Parser;
-use HTML::Mason::Tools qw(is_absolute_path);
+use HTML::Mason::Tools qw(is_absolute_path read_file);
 use HTML::Mason::Commands qw();
 use HTML::Mason::Config;
 use HTML::Mason::Resolver::File;
@@ -323,7 +323,7 @@ sub load {
 	
 	$self->write_system_log('COMP_LOAD', $fq_path);	# log the load event
 	my $comp = $self->{parser}->eval_object_text(object_file=>$objfile, error=>\$err)
-	    or die "Error while loading '$objfile' at runtime:\n$err\n";
+	    or $self->_compilation_error($objfile, $err);
 	$comp->assign_runtime_properties($self,$fq_path);
 	
 	$code_cache->{$fq_path}->{comp} = $comp;
@@ -356,7 +356,7 @@ sub load {
 	return $code_cache->{$fq_path}->{comp};
     } else {
 	$objfilemod = (defined($objfile) and $objisfile) ? $objstat[9] : 0;
-	
+	warn "OBJMOD: $objfilemod    SRCMOD: $srcmod\n";
 	#
 	# Load the component from source or object file.
 	#
@@ -374,7 +374,7 @@ sub load {
 		my @newfiles;
 		my @params = $resolver->get_source_params(@lookup_info);
 		my $objText = $parser->parse_component(@params,error=>\$err)
-		    or die sprintf("Error during compilation of %s:\n%s\n",$resolver->get_source_description(@lookup_info),$err);
+		    or $self->_compilation_error( $resolver->get_source_description(@lookup_info),$err );
 		$parser->write_object_file(object_text=>$objText, object_file=>$objfile);
 	    }
 	    $comp = $parser->eval_object_text(object_file=>$objfile, error=>\$err);
@@ -385,7 +385,7 @@ sub load {
 		    $objfilemod = 0;
 		    goto update_object;
 		} else {
-		    die "Error while loading '$objfile' at runtime:\n$err\n";
+		    $self->_compilation_error( $resolver->get_source_description(@lookup_info),$err );
 		}
 	    }
 	} else {
@@ -394,7 +394,7 @@ sub load {
 	    #
 	    my @params = $resolver->get_source_params(@lookup_info);
 	    $comp = $self->parser->make_component(@params,error=>\$err)
-		or die sprintf("Error during compilation of %s:\n%s\n",$resolver->get_source_description(@lookup_info),$err);
+		or $self->_compilation_error( $resolver->get_source_description(@lookup_info),$err );
 	}
 	$comp->assign_runtime_properties($self,$fq_path);
 
@@ -411,6 +411,23 @@ sub load {
 	}
 	return $comp;
     }
+}
+
+sub _compilation_error {
+    my ($self, $filename, $err) = @_;
+
+    my $msg = sprintf("Error during compilation of %s:\n%s\n",$filename, $err);
+
+    if ($self->verbose_compile_error) {
+	my $comp = read_file($filename);
+	my $x = 1;
+	my @lines = split /\n/, $comp;
+	my $max = length (scalar @lines);
+	$msg .= join "\n", map { sprintf("%-${max}s: %s", $x++, $_) } @lines;
+	$msg .= "\n";
+    }
+
+    die $msg;
 }
 
 #
