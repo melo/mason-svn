@@ -28,6 +28,8 @@ whose code relied on the arguments missing.
 - Fixed incorrect code for using mod_perl args method in
 eg/session_handler.pl.
 - Fixed broken call_method link in Component.pod.
+- Fixed broken "Allowing requests for directories" link in Devel.pod.
+(reported by Caleb Crome)
 - Fixed documentation of escaped newline behavior.
 - Wrapped each component call in eval, allowing us to simplify the
 request stack code.  No visible user change.
