@@ -78,7 +78,7 @@ sub SERVER_ERROR { return 500 }
 sub NOT_FOUND { return 404 }
 use Data::Dumper;
 use File::Path;
-use HTML::Mason::Interp;
+use HTML::Mason;
 use HTML::Mason::Commands;
 use HTML::Mason::FakeApache;
 use HTML::Mason::Tools qw(dumper_method html_escape pkg_installed);
