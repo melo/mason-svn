@@ -5,6 +5,19 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.26
+
+[ BUG FIXES ]
+
+- The fix to make CGIHandler support flush_buffer and autoflush caused
+it to not rethrow any exceptions created during request execution.  So
+if error_mode was set to 'fatal', then an error would simply cause no
+output to be generated.
+
+- A comment in the last line of a component call with content caused a
+syntax error in the compiled component.  Reported by Todd Goldenbaum.
+
+
 1.25  December 12, 2003
 
 [ BUG FIXES ]
