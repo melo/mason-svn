@@ -13,7 +13,6 @@ sub make_tests
     my $group = HTML::Mason::Tests->new( name => 'interp',
 					 description => 'interp object functionality' );
 
-
 #------------------------------------------------------------
 
     $group->add_support( path => '/autohandler_test/autohandler',
@@ -859,9 +858,24 @@ EOF
 #------------------------------------------------------------
 
     $group->add_test( name => 'process_comp_path',
-		      description => 'Test that component paths are processed properly',
+		      description => 'Test that component paths cannot be resolved outside the comp root',
 		      component => <<'EOF',
 <& ../../../../../interp/comp_path_test/a/b/c/../c/foo &>
+EOF
+		      expect => <<'EOF'
+I am foo!
+
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'process_comp_path2',
+		      description => 'Test that component paths containing /../ work as long they stay in the comp root',
+		      path => '/comp_path_test/a/b/d/process',
+		      call_path => '/comp_path_test/a/b/d/process',
+		      component => <<'EOF',
+<& ../c/foo &>
 EOF
 		      expect => <<'EOF'
 I am foo!
