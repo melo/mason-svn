@@ -258,7 +258,7 @@ sub _make_interp
 
     # If not defined we'll use the defaults
     foreach ( qw( allow_recursive_autohandlers autohandler_name
-		  code_cache_max_size current_time dhandler_name
+		  code_cache_max_size current_time dhandler_name die_handler
 		  system_log_separator out_mode max_recurse use_data_cache
 		  use_object_files use_reload_file verbose_compile_error
 		  out_method
