@@ -114,7 +114,7 @@ WriteMakefile(
     # %APACHE is created when setup_mod_perl_tests() is called.  The
     # code that does this creation is in apache_tests_helper.pl.
     clean => {
-	'FILES' => "apache_install.txt lib/HTML/Mason/Config.pm mason_tests $APACHE{comp_root} $APACHE{data_dir} $more_clean_files",
+	'FILES' => "apache_install.txt lib/HTML/Mason/Config.pm mason_tests $APACHE{comp_root} $APACHE{data_dir} $APACHE{conf_dir} $APACHE{log_dir} $more_clean_files",
     }
 );
 

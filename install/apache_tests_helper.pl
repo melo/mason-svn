@@ -32,7 +32,7 @@ sub setup_mod_perl_tests
 
 sub cleanup_files
 {
-    foreach ( qw( httpd httpd.conf mason_handler_CGI.pl mason_handler_mod_perl.pl ) )
+    foreach ( qw( httpd mason_handler_CGI.pl mason_handler_mod_perl.pl ) )
     {
 	my $file = File::Spec->catdir( 't', $_ );
 	if ( -e $file )
@@ -42,7 +42,7 @@ sub cleanup_files
 	}
     }
 
-    foreach ( qw( comps data ) )
+    foreach ( qw( comps data conf logs) )
     {
 	my $dir = File::Spec->catdir( 't', $_ );
 	if ( -d $dir )
@@ -61,17 +61,25 @@ sub write_apache_conf
     }
 
     my $cwd = cwd();
-    my $conf_file = File::Spec->catfile( $cwd, 't', 'httpd.conf' );
-    $APACHE{apache_dir} = dirname($conf_file);
+    $APACHE{apache_dir} = File::Spec->catdir( $cwd, 't' );
     $APACHE{apache_dir} =~ s,/$,,;
+
+    $APACHE{conf_dir} =  File::Spec->catdir( $APACHE{apache_dir}, 'conf' );
+    $APACHE{conf_file} = File::Spec->catfile( $APACHE{conf_dir}, 'httpd.conf' );
 
     $APACHE{comp_root} = File::Spec->catdir( $APACHE{apache_dir}, 'comps' );
     $APACHE{data_dir} = File::Spec->catdir( $APACHE{apache_dir}, 'data' );
+
+    $APACHE{log_dir} = File::Spec->catdir( $APACHE{apache_dir}, 'logs' );
 
     mkdir $APACHE{comp_root}, 0755
 	or die "Can't make dir '$APACHE{comp_root}': $!";
     mkdir $APACHE{data_dir}, 0755
 	or die "Can't make dir '$APACHE{data_dir}': $!";
+    mkdir $APACHE{conf_dir}, 0755
+	or die "Can't make dir '$APACHE{conf_dir}': $!";
+    mkdir $APACHE{log_dir}, 0755
+	or die "Can't make dir '$APACHE{log_dir}': $!";
 
     my $libs = _libs();
 
@@ -245,7 +253,7 @@ EOF
     local $^W;
     Apache::test->write_httpd_conf
 	    ( %APACHE,
-	      include => $include
+	      include => $include,
 	    );
 }
 
