@@ -195,6 +195,7 @@ sub compiled_component
 
 	$params->{dynamic_subs_init} =
 	    join '', ( "sub {\n",
+                       $self->_set_request,
 		       $self->_blocks('shared'),
 		       "return {\n",
 		       map( "'$_' => $subs{$_},\n", sort keys %subs ),
