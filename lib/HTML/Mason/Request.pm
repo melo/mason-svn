@@ -576,8 +576,10 @@ sub parser
 sub comp {
     my $self = shift;
 
-    # Clear error backtrace, in case we had an error which was caught by an eval.
+    # Clear error backtrace and message, in case we had an error which
+    # was caught by an eval.
     undef $self->{error_backtrace};
+    undef $self->{error_clean};
     
     # Get modifiers: optional hash reference passed in as first argument.
     my %mods = (ref($_[0]) eq 'HASH') ? %{shift()} : ();

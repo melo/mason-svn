@@ -174,7 +174,7 @@ sub error_process {
     if (@{$error_info{'errors'}}) {
 	my $err = '';
 	foreach my $ref (@{$error_info{'errors'}}) {
-	    $err .= '[' . ($ref->{'line'} || '') . ':' . ($ref->{'message'} || '') . '], ';
+	    $err .= '[' . ($ref->{'line'} ? $ref->{'line'}.':' : '') . $ref->{'message'} . '], ';
 	}
 	$err =~ s/, $//;
 	$err =~ s/\t//g;
@@ -194,7 +194,7 @@ sub error_process {
     if (@{$error_info{'callstack'}}) {
 	my $cs = '';
 	foreach my $ref (@{$error_info{'callstack'}}) {
-	    $cs .= '[' . ($ref->{'line'} || '') . ':' . ($ref->{'message'} || '') . '], ';
+	    $cs .= '[' . $ref->{'file'} . (defined($ref->{'line'}) ? ':'.$ref->{'line'} : '') . '], ';
 	}
 	$cs =~ s/, $//;
 	$cs =~ s/\t//g;

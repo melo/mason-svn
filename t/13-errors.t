@@ -61,7 +61,7 @@ EOF
 $m->comp('support/error_helper');
 </%init>
 EOF
-		      expect_error => q|horrible error at .+error2[^\000]+backtrace: /errors/backtrace <= /errors/support/error_helper <= /errors/support/error2|
+		      expect_error => q|horrible error.*\nComponent stack: /errors/support/error2, /errors/support/error_helper, /errors/backtrace|
 		    );
 
 #------------------------------------------------------------
