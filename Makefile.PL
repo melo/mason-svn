@@ -21,7 +21,7 @@ chk_version(Params::Validate => '0.04') or
 	. "    from CPAN/modules/by-authors/id/D/DR/DROLSKY/Params-Validate-x.x.tar.gz\n\n";
 
 make_config();
-setup_mod_perl_tests();
+setup_mod_perl_tests() unless $ARGV[0] eq '--no-prompts';
 
 # Get these into the MY namespace for the MY::test method
 %MY::APACHE = %APACHE;
