@@ -80,6 +80,16 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_support( path => 'subdir/call_next_helper',
+			 component => <<'EOF',
+<%init>
+# Making sure we can call_next from a helper component
+$m->call_next;
+</%init>
+EOF
+		       );
+#------------------------------------------------------------
+
     $group->add_support( path => 'subdir/autohandler',
 			 component => <<'EOF',
 <%method m2>m2 from level 2</%method>
@@ -96,7 +106,7 @@ a123=>'a123 from level 2'
 
 <& ../variants &>
 
-<% $m->call_next %>
+<& call_next_helper &>
 
 <%init>
 my $self = $m->base_comp;
