@@ -846,14 +846,14 @@ sub handle_request_1
     # When inside debug file, get arguments from special saved hash.
     # This circumvents POST content issues.
     #
-    my %args;
+    my ($args, $new_r);
     die "ARGS_METHOD not defined! Did you 'use HTML::Mason::ApacheHandler'?" unless defined($ARGS_METHOD);
     if ($HTML::Mason::IN_DEBUG_FILE) {
-	%args = %{$r->{args_hash}};
+	$args = $r->{args_hash};
     } else {
-	%args = $self->$ARGS_METHOD(\$r,$request);
+	($args, $new_r) = $self->$ARGS_METHOD($r,$request);
     }
-    $debug_state->{args_hash} = \%args if $debug_state;
+    $debug_state->{args_hash} = $args if $debug_state;
 
     #
     # Deprecated output_mode parameter - just pass to request out_mode.
@@ -865,7 +865,7 @@ sub handle_request_1
     #
     # Set up interpreter global variables.
     #
-    $interp->set_global(r=>$r);
+    $interp->set_global(r=>$new_r);
 
     #
     # Craft the out method for this request to handle automatic http
@@ -879,18 +879,18 @@ sub handle_request_1
 	    # Check to see if the headers have been sent, first by fast
 	    # variable check, then by slightly slower $r check.
 	    unless ($headers_sent) {
-		unless (http_header_sent($r)) {
+		unless (http_header_sent($new_r)) {
 		    # If header has not been sent, buffer initial whitespace
 		    # so as to delay headers.
 		    if ($_[0] !~ /\S/) {
 			$delay_buf .= $_[0];
 			return;
 		    } else {
-			$r->send_http_header();
+			$new_r->send_http_header();
 			
 			# If this is a HEAD request and our Mason request is
 			# still active, abort it.
-			if ($r->header_only) {
+			if ($new_r->header_only) {
 			    $request->abort if $request->depth > 0;
 			    return;
 			}
@@ -911,39 +911,37 @@ sub handle_request_1
 	};
 	$request->out_method($out_method);
 
-	$retval = $request->exec($comp_path, %args);
+	$retval = $request->exec($comp_path, %$args);
 
 	# On a success code, send headers and any buffered whitespace
 	# if it has not already been sent. On an error code, leave it
 	# to Apache to send the headers.
 	if (!$headers_sent and (!$retval or $retval==200)) {
-	    $r->send_http_header() unless http_header_sent($r);
+	    $new_r->send_http_header() unless http_header_sent($new_r);
 	    $interp->out_method->($delay_buf) unless $delay_buf eq '';
 	}
     } else {
-	$retval = $request->exec($comp_path, %args);
+	$retval = $request->exec($comp_path, %$args);
     }
     undef $request; # ward off leak
     return $retval;
 }
 
 #
-# Get %args hash via CGI package
+# Get $args hash via CGI package
 #
 sub _cgi_args
 {
-    my ($self, $rref, $request) = @_;
-
-    my $r = $$rref;
+    my ($self, $r, $request) = @_;
 
     # For optimization, don't bother creating a CGI object if request
     # is a GET with no query string
-    return if $r->method eq 'GET' && !scalar($r->args);
+    return ({}, $r) if $r->method eq 'GET' && !scalar($r->args);
 
     my $q = CGI->new;
     my %args = cgi_request_args($q, $r->method);
     $request->cgi_object($q);
-    return %args;
+    return (\%args, $r);
 }
 
 #
@@ -952,15 +950,13 @@ sub _cgi_args
 #
 sub _mod_perl_args
 {
-    my ($self, $rref, $request) = @_;
+    my ($self, $r, $request) = @_;
 
-    my $apr = $$rref;
-    unless (UNIVERSAL::isa($apr, 'Apache::Request')) {
-	$apr = Apache::Request->new($apr);
-	$$rref = $apr;
-    }
-    
-    return unless $apr->param;
+    my $apr = ( UNIVERSAL::isa($r, 'Apache::Request') ?
+                $r :
+                Apache::Request->new($r) );
+
+    return ({}, $apr) unless $apr->param;
 
     my %args;
     foreach my $key ( $apr->param ) {
@@ -977,7 +973,7 @@ sub _mod_perl_args
 	}
     }
 
-    return %args;
+    return (\%args, $apr);
 }
 
 sub simulate_debug_request
