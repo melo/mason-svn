@@ -29,7 +29,7 @@ kill_httpd(1);
 test_load_apache();
 
 my $tests = 19; # multi conf & taint tests
-$tests += 58 if my $have_libapreq = have_module('Apache::Request');
+$tests += 59 if my $have_libapreq = have_module('Apache::Request');
 $tests += 40 if my $have_cgi      = have_module('CGI');
 $tests += 15 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
 $tests++ if $have_cgi && $mod_perl::VERSION >= 1.24;
@@ -41,12 +41,12 @@ print STDERR "\n";
 
 write_test_comps();
 
-if ($have_libapreq) {        # 57 tests
+if ($have_libapreq) {        # 59 tests
     cleanup_data_dir();
     apache_request_tests(1); # 22 tests
 
     cleanup_data_dir();
-    apache_request_tests(0); # 21 tests
+    apache_request_tests(0); # 22 tests
 
     cleanup_data_dir();
     no_config_tests();       # 15 tests
@@ -431,6 +431,17 @@ Status code: 0
 EOF
 						   );
 	ok($success);
+
+        $response = Apache::test->fetch('/comps/test_code_param');
+        $actual = filter_response($response, $with_handler);
+        $success = HTML::Mason::Tests->tests_class->check_output( actual => $actual,
+                                                                  expect => <<"EOF",
+X-Mason-Test: Initial value
+preprocess changes lc FOOQUUX to FOOQUUX
+Status code: 0
+EOF
+                                                                );
+        ok($success);
     }
 
     kill_httpd(1);
@@ -785,20 +796,6 @@ Status code: 0
 EOF
                                                );
     ok($success);
-
-    unless ($with_handler)
-    {
-        $response = Apache::test->fetch('/comps/test_code_param');
-        $actual = filter_response($response, $with_handler);
-        $success = HTML::Mason::Tests->tests_class->check_output( actual => $actual,
-                                                                  expect => <<"EOF",
-X-Mason-Test: Initial value
-preprocess changes lc FOOQUUX to FOOQUUX
-Status code: 0
-EOF
-                                                                );
-        ok($success);
-    }
 }
 
 sub multi_conf_tests
