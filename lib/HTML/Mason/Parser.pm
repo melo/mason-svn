@@ -1258,7 +1258,7 @@ sub make_dirs
 	if ($makeflag) {
 	    my ($errmsg,$objText);
 	    print "compiling $srcfile\n" if $verbose;
-	    if ($self->make_component(script_file=>$srcfile, object_text=>\$objText, error=>\$errmsg)) {
+	    if ($self->make_component(script_file=>$srcfile, comp_class=>'HTML::Mason::Component::FileBased', object_text=>\$objText, error=>\$errmsg)) {
 		$self->write_object_file(object_file=>$objfile, object_text=>$objText);
 		print $relfh $compPath, "\n" if defined $reload_file;
 	    } else {
