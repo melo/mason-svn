@@ -1144,10 +1144,18 @@ sub notes {
 sub clear_buffer
 {
     my $self = shift;
+
     for ($self->buffer_stack) {
 	last if $_->ignore_clear;
 	$_->clear;
     }
+}
+
+sub _clear_all_buffers
+{
+    my $self = shift;
+
+    $_->clear for $self->buffer_stack;
 }
 
 sub flush_buffer
