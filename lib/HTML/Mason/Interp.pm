@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -9,13 +9,12 @@ use strict;
 use Carp;
 use File::Path;
 use File::Basename;
-use IO::File;
-use IO::Seekable;
 use HTML::Mason::Parser;
-use HTML::Mason::Tools qw(is_absolute_path);
+use HTML::Mason::Tools qw(is_absolute_path make_fh read_file);
 use HTML::Mason::Commands qw();
 use HTML::Mason::Config;
 use HTML::Mason::Resolver::File;
+use Params::Validate qw(:all);
 
 require Time::HiRes if $HTML::Mason::Config{use_time_hires};
 
@@ -23,6 +22,8 @@ use HTML::Mason::MethodMaker
     ( read_only => [ qw( code_cache
 			 comp_root
 			 data_dir
+			 die_handler
+			 die_handler_overridden
 			 hooks
 			 system_log_file
 			 system_log_separator
@@ -40,8 +41,7 @@ use HTML::Mason::MethodMaker
 			  static_file_root
 			  use_data_cache
 			  use_object_files
-			  use_reload_file
-			  verbose_compile_error ) ],
+			  use_reload_file ) ],
       );
 
 # Fields that can be set in new method, with defaults
@@ -55,18 +55,21 @@ my %fields =
      data_cache_dir => '',
      data_dir => undef,
      dhandler_name => 'dhandler',
+     die_handler => sub { Carp::confess($_[0]) },
+     die_handler_overridden => 0,
      system_log_file => undef,
      system_log_separator => "\cA",
      max_recurse => 32,
      out_mode => 'batch',
      parser => undef,
      preloads => [],
-     resolver => undef,     
+     resolver => undef,
      static_file_root => undef,
+     use_autohandlers => 1,
      use_data_cache => 1,
+     use_dhandlers => 1,
      use_object_files => 1,
-     use_reload_file => 0,
-     verbose_compile_error => 0
+     use_reload_file => 0
      );
 
 sub new
@@ -85,17 +88,48 @@ sub new
 	system_log_fh => undef,
 	system_log_events_hash => undef
     };
+
+    validate( @_,
+	      { allow_recursive_autohandlers => { type => SCALAR | UNDEF, optional => 1 },
+		autohandler_name => { type => SCALAR | UNDEF, optional => 1 },
+		code_cache_max_size => { type => SCALAR, optional => 1 },
+		current_time => { type => SCALAR, optional => 1 },
+		data_cache_dir => { type => SCALAR, optional => 1 },
+		dhandler_name => { type => SCALAR | UNDEF, optional => 1 },
+		die_handler => { type => CODEREF | SCALAR | UNDEF, optional => 1 },
+		out_method => { type => CODEREF | SCALARREF, optional => 1 },
+		out_mode => { type => SCALAR, optional => 1 },
+		max_recurse => { type => SCALAR, optional => 1 },
+		parser => { isa => 'HTML::Mason::Parser', optional => 1 },
+		preloads => { type => ARRAYREF, optional => 1 },
+		static_file_root => { type => SCALAR, optional => 1 },
+		system_log_events => { type => SCALAR | UNDEF, optional => 1 },
+		system_log_file => { type => SCALAR, optional => 1 },
+		system_log_separator => { type => SCALAR, optional => 1 },
+		use_autohandlers => { type => SCALAR | UNDEF, optional => 1 },
+		use_data_cache => { type => SCALAR | UNDEF, optional => 1 },
+		use_dhandlers => { type => SCALAR | UNDEF, optional => 1 },
+		use_object_files => { type => SCALAR | UNDEF, optional => 1 },
+		use_reload_file => { type => SCALAR | UNDEF, optional => 1 },
+
+		comp_root => { type => SCALAR | ARRAYREF },
+		data_dir => { type => SCALAR },
+	      }
+	    );
+
     my (%options) = @_;
-    my ($rootDir,$outMethod,$systemLogEvents);
+
+    die "out_mode parameter must be either 'batch' or 'stream'\n"
+	if defined $options{out_mode} && $options{out_mode} ne 'batch' && $options{out_mode} ne 'stream';
+
     while (my ($key,$value) = each(%options)) {
 	next if $key =~ /out_method|system_log_events/;
-	if (exists($fields{$key})) {
-	    $self->{$key} = $value;
-	} else {
-	    die "HTML::Mason::Interp::new: invalid option '$key'\n";
-	}
+	$self->{$key} = $value;
     }
-    die "HTML::Mason::Interp::new: must specify value for data_dir\n" if !$self->{data_dir};
+    $self->{autohandler_name} = undef unless $self->{use_autohandlers};
+    $self->{dhandler_name} = undef unless $self->{use_dhandlers};
+    $self->{die_handler_overridden} = 1 if exists $options{die_handler};
+
     $self->{data_cache_dir} ||= ($self->{data_dir} . "/cache");
     bless $self, $class;
     $self->out_method($options{out_method}) if (exists($options{out_method}));
@@ -162,9 +196,12 @@ sub _initialize
     #
     if ($self->{system_log_events_hash}) {
 	$self->{system_log_file} = $self->data_dir . "/etc/system.log" if !$self->system_log_file;
-	my $fh = new IO::File ">>".$self->system_log_file
+	my $fh = make_fh();
+	open $fh, ">>".$self->system_log_file
 	    or die "Couldn't open system log file ".$self->{system_log_file}." for append";
-	$fh->autoflush(1);
+	my $oldfh = select $fh;
+	$| = 1;
+	select $oldfh;
 	$self->{system_log_fh} = $fh;
     }
     
@@ -172,7 +209,9 @@ sub _initialize
     # Preloads
     #
     if ($self->preloads) {
+	die "list reference expected for preloads parameter" unless ref($self->preloads) eq 'ARRAY';
 	foreach my $pattern (@{$self->preloads}) {
+	    die "preloads pattern must be an absolute path" unless substr($pattern,0,1) eq '/';
 	    my @paths = $self->resolver->glob_path($pattern,$self);
 	    foreach (@paths) { $self->load($_) }
 	}
@@ -209,27 +248,29 @@ sub exec {
 #
 sub check_reload_file {
     my ($self) = @_;
-    my $reloadFile = $self->reload_file;
-    return if (!-f $reloadFile);
+    my $reload_file = $self->reload_file;
+    return if (!-f $reload_file);
     my $lastmod = (stat(_))[9];
     if ($lastmod > $self->{last_reload_time}) {
-	my ($block);
 	my $length = (stat(_))[7];
 	$self->{last_reload_file_pos} = 0 if ($length < $self->{last_reload_file_pos});
-	my $fh = new IO::File $reloadFile;
-	return if !$fh;
+	my $fh = make_fh();
+	open $fh, $reload_file or return;
+
+	my $block;
 	my $pos = $self->{last_reload_file_pos};
-	$fh->seek($pos,&SEEK_SET);
+	seek ($fh,$pos,0);
 	read($fh,$block,$length-$pos);
 	$self->{last_reload_time} = $lastmod;
-	$self->{last_reload_file_pos} = $fh->tell;
+	$self->{last_reload_file_pos} = tell $fh;
 	my @lines = split("\n",$block);
-	foreach my $compPath (@lines) {
-	    if (exists($self->{code_cache}->{$compPath})) {
-		$self->{code_cache_current_size} -= $self->{code_cache}->{$compPath}->{size};
-		delete($self->{code_cache}->{$compPath});
+	foreach my $comp_path (@lines) {
+	    if (exists($self->{code_cache}->{$comp_path})) {
+		$self->{code_cache_current_size} -= $self->{code_cache}->{$comp_path}->{comp}->object_size;
+		delete($self->{code_cache}->{$comp_path});
 	    }
 	}
+	close $fh;
     }
 }
 
@@ -241,13 +282,8 @@ sub process_comp_path
 {
     my ($self,$comp_path,$dir_path) = @_;
 
-    if ($comp_path !~ m@^/@) {
-	$comp_path = $dir_path . ($dir_path eq "/" ? "" : "/") . $comp_path;
-    }
-
-    $comp_path =~ s@/[^/]+/\.\.@@;
-    $comp_path =~ s@/\./@/@;
-    return $comp_path;
+    $comp_path = "$dir_path/$comp_path" if $comp_path !~ m@^/@;
+    return 'HTML::Mason::Tools'->mason_canonpath($comp_path);
 }
 
 #
@@ -273,17 +309,11 @@ sub load {
     my $resolver = $self->{resolver};
 
     #
-    # Use resolver to look up component and get fully-qualified path.
-    # Return undef if component not found.
-    #
-    my (@lookup_info) = $resolver->lookup_path($path,$self);
-    my $fq_path = $lookup_info[0] or return undef;
-
-    #
     # If using reload file, assume that we are using object files and
     # have a cached subroutine or object file.
     #
     if ($self->{use_reload_file}) {
+	my $fq_path = $path;   # note - this will foil multiple component roots
 	return $code_cache->{$fq_path}->{comp} if exists($code_cache->{$fq_path});
 
 	$objfile = $self->object_dir . $fq_path;
@@ -291,12 +321,19 @@ sub load {
 	
 	$self->write_system_log('COMP_LOAD', $fq_path);	# log the load event
 	my $comp = $self->{parser}->eval_object_text(object_file=>$objfile, error=>\$err)
-	    or die "Error while loading '$objfile' at runtime:\n$err\n";
+	    or $self->_compilation_error($objfile, $err);
 	$comp->assign_runtime_properties($self,$fq_path);
 	
 	$code_cache->{$fq_path}->{comp} = $comp;
 	return $comp;
     }
+
+    #
+    # Use resolver to look up component and get fully-qualified path.
+    # Return undef if component not found.
+    #
+    my (@lookup_info) = $resolver->lookup_path($path,$self);
+    my $fq_path = $lookup_info[0] or return undef;
 
     #
     # Get last modified time of source.
@@ -317,7 +354,6 @@ sub load {
 	return $code_cache->{$fq_path}->{comp};
     } else {
 	$objfilemod = (defined($objfile) and $objisfile) ? $objstat[9] : 0;
-	
 	#
 	# Load the component from source or object file.
 	#
@@ -335,7 +371,7 @@ sub load {
 		my @newfiles;
 		my @params = $resolver->get_source_params(@lookup_info);
 		my $objText = $parser->parse_component(@params,error=>\$err)
-		    or die sprintf("Error during compilation of %s:\n%s\n",$resolver->get_source_description(@lookup_info),$err);
+		    or $self->_compilation_error( $resolver->get_source_description(@lookup_info),$err );
 		$parser->write_object_file(object_text=>$objText, object_file=>$objfile);
 	    }
 	    $comp = $parser->eval_object_text(object_file=>$objfile, error=>\$err);
@@ -346,7 +382,7 @@ sub load {
 		    $objfilemod = 0;
 		    goto update_object;
 		} else {
-		    die "Error while loading '$objfile' at runtime:\n$err\n";
+		    $self->_compilation_error( $resolver->get_source_description(@lookup_info),$err );
 		}
 	    }
 	} else {
@@ -355,7 +391,7 @@ sub load {
 	    #
 	    my @params = $resolver->get_source_params(@lookup_info);
 	    $comp = $self->parser->make_component(@params,error=>\$err)
-		or die sprintf("Error during compilation of %s:\n%s\n",$resolver->get_source_description(@lookup_info),$err);
+		or $self->_compilation_error( $resolver->get_source_description(@lookup_info),$err );
 	}
 	$comp->assign_runtime_properties($self,$fq_path);
 
@@ -372,6 +408,13 @@ sub load {
 	}
 	return $comp;
     }
+}
+
+sub _compilation_error {
+    my ($self, $filename, $err) = @_;
+
+    my $msg = sprintf("Error during compilation of %s:\n%s\n",$filename, $err);
+    die $msg;
 }
 
 #
@@ -400,11 +443,11 @@ sub purge_code_cache {
 	$self->{code_cache_current_size} = $cur_size;
 
 	#
-	# Multiple each remaining cache item's count by a decay factor,
+	# Multiply each remaining cache item's count by a decay factor,
 	# to gradually reduce impact of old information.
 	#
 	foreach my $elem (@elems) {
-	    $elem->[2]->{mfu_count} *= $decay_factor;
+	    $elem->[2]->mfu_count( $elem->[2]->mfu_count * $decay_factor );
 	}
     }
 }
@@ -439,7 +482,7 @@ sub set_global
     die "Interp::set_global: expects a variable name and one or more values" if !@values;
     my ($prefix, $name) = ($decl =~ /^[\$@%]/) ? (substr($decl,0,1),substr($decl,1)) : ("\$",$decl);
 
-    my $varname = sprintf("%s::%s",$self->{parser}->{in_package},$name);
+    my $varname = sprintf("%s::%s",$self->{parser}->in_package,$name);
     if ($prefix eq "\$") {
 	no strict 'refs'; $$varname = $values[0];
     } elsif ($prefix eq "\@") {
@@ -570,12 +613,13 @@ sub write_system_log {
 
     if ($self->{system_log_fh} && $self->{system_log_events_hash}->{$_[0]}) {
 	my $time = ($HTML::Mason::Config{use_time_hires} ? scalar(Time::HiRes::gettimeofday()) : time);
-	$self->{system_log_fh}->print(join ($self->system_log_separator,
-					    $time,                  # current time
-					    $_[0],                  # event name
-					    $$,                     # pid
-					    @_[1..$#_]              # event-specific fields
-					    ),"\n");
+	my $fh = $self->{system_log_fh};
+	print $fh (join ($self->system_log_separator,
+			 $time,                  # current time
+			 $_[0],                  # event name
+			 $$,                     # pid
+			 @_[1..$#_]              # event-specific fields
+			),"\n");
     }
 }
 

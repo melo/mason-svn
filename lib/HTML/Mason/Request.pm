@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -11,15 +11,14 @@ use Carp;
 use HTML::Mason::Tools qw(is_absolute_path read_file);
 use HTML::Mason::Utils;
 
-use vars qw($REQ $REQ_DEPTH %REQ_DEPTHS);
-
 use HTML::Mason::MethodMaker
     ( read_only => [ qw( aborted
 			 aborted_value
 			 count
 			 declined
 			 error_code
-			 interp ) ],
+			 interp
+			 top_comp ) ],
 
       read_write => [ qw( out_method
 			  out_mode ) ],
@@ -44,8 +43,9 @@ sub new
 	dhandler_arg => undef,
 	error_flag => undef,
 	out_buffer => '',
-	stack_array => undef,
-	wrapper_chain => undef
+	stack => undef,
+	wrapper_chain => undef,
+	wrapper_index => undef
     };
     my (%options) = @_;
     while (my ($key,$value) = each(%options)) {
@@ -81,7 +81,7 @@ sub _initialize {
     }
 
     # Initialize other properties
-    $self->{stack_array} = [];
+    $self->{stack} = [];
 }
 
 sub _reinitialize {
@@ -95,6 +95,9 @@ sub _reinitialize {
 sub exec {
     my ($self, $comp, @args) = @_;
     my $interp = $self->interp;
+
+    # Error may occur in several places in function.
+    my $err;
     
     # Check if reload file has changed.
     $interp->check_reload_file if ($interp->use_reload_file);
@@ -108,7 +111,13 @@ sub exec {
     my ($path, $orig_path);
     if (!ref($comp) && substr($comp,0,1) eq '/') {
 	$orig_path = $path = $comp;
-	if (!($comp = $interp->load($path))) {
+	{
+	    local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
+	    eval { $comp = $interp->load($path) };
+	    $err = $@;
+	    goto error if ($err);
+	}
+	unless ($comp) {
 	    if (defined($interp->dhandler_name) and $comp = $interp->find_comp_upwards($path,$interp->dhandler_name)) {
 		my $parent_path = $comp->dir_path;
 		($self->{dhandler_arg} = $path) =~ s{^$parent_path/?}{};
@@ -125,25 +134,31 @@ sub exec {
     # This label is for declined requests.
     retry:
     
-    # Build wrapper chain.
-    my @wrapper_chain = ($comp);
-    for (my $parent = $comp->parent; $parent; $parent = $parent->parent) {
-	unshift(@wrapper_chain,$parent);
-	die "inheritance chain length > 32 (infinite inheritance loop?)" if (@wrapper_chain > 32);
-    }
-    my $first_comp = shift(@wrapper_chain);
-    $self->{wrapper_chain} = [@wrapper_chain];
+    # Build wrapper chain and index.
+    my $first_comp;
+    {my @wrapper_chain = ($comp);
+     for (my $parent = $comp->parent; $parent; $parent = $parent->parent) {
+	 unshift(@wrapper_chain,$parent);
+	 die "inheritance chain length > 32 (infinite inheritance loop?)" if (@wrapper_chain > 32);
+     }
+     $first_comp = $wrapper_chain[0];
+     $self->{wrapper_chain} = [@wrapper_chain];
+     $self->{wrapper_index} = {map(($wrapper_chain[$_]->path => $_),(0..$#wrapper_chain))}; }
+
+    # Fill top_level slots for introspection.
+    $self->{top_comp} = $comp;
+    $self->{top_args} = \@args;
 
     # Call the first component.
     my ($result, @result);
     if (wantarray) {
-	local $SIG{'__DIE__'} = sub { confess($_[0]) };
+	local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
 	@result = eval {$self->comp({base_comp=>$comp}, $first_comp, @args)};
     } else {
-	local $SIG{'__DIE__'} = sub { confess($_[0]) };
+	local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
 	$result = eval {$self->comp({base_comp=>$comp}, $first_comp, @args)};
     }
-    my $err = $@;
+    $err = $@;
 
     # If declined, try to find the next dhandler.
     if ($self->declined and $path) {
@@ -159,19 +174,7 @@ sub exec {
 
     # If an error occurred...
     if ($err and !$self->aborted) {
-	my $i = index($err,'HTML::Mason::Interp::exec');
-	$err = substr($err,0,$i) if $i!=-1;
-	$err =~ s/^\s*(HTML::Mason::Commands::__ANON__|HTML::Mason::Request::call).*\n//gm;
-	# Salvage what was left in the request stack for backtrace information
-	if (@{$self->{stack_array}}) {
-	    my @titles = map($_->{comp}->title,@{$self->{stack_array}});
-	    my $errmsg = "error while executing $titles[-1]:\n";
-	    $errmsg .= $err."\n";
-	    $errmsg .= "backtrace: " . join(" <= ",reverse(@titles)) . "\n" if @titles > 1;
-	    die ($errmsg);
-	} else {
-	    die ($err);
-	}
+	goto error;
     }
 
     # Flush output buffer for batch mode.
@@ -185,6 +188,17 @@ sub exec {
     return $self->{aborted_value} if ($self->{aborted});
 
     return wantarray ? @result : $result;
+
+    error:
+    # don't mess with error message if default $SIG{__DIE__} was overridden
+    unless ($interp->die_handler_overridden) {
+	$err = $self->{error_clean} if $self->{error_clean};
+	if ($self->{error_backtrace}) {
+	    my $title = $self->{error_backtrace}->[0]->title;
+	    $err = "error while executing $title:\n$err";
+	}
+    }
+    die $err;
 }
 
 #
@@ -235,14 +249,14 @@ sub cache_self
     my $interp = $self->interp;
     return undef unless $interp->use_data_cache;
     return undef if $self->top_stack->{in_cache_self_flag};
-    my (%retrieveOptions,%storeOptions);
+    my (%retrieve_options,%store_options);
     foreach (qw(key expire_if keep_in_memory busy_lock)) {
-	$retrieveOptions{$_} = $options{$_} if (exists($options{$_}));
+	$retrieve_options{$_} = $options{$_} if (exists($options{$_}));
     }
     foreach (qw(key expire_at expire_next expire_in)) {
-	$storeOptions{$_} = $options{$_} if (exists($options{$_}));
+	$store_options{$_} = $options{$_} if (exists($options{$_}));
     }
-    my $result = $self->cache(action=>'retrieve',%retrieveOptions);
+    my $result = $self->cache(action=>'retrieve',%retrieve_options);
     my ($output,$retval);
     
     #
@@ -256,18 +270,17 @@ sub cache_self
 	# value ($retval).
 	#
 	my $lref = $self->top_stack;
-	my %saveLocals = %$lref;
-	$lref->{sink} = sub { $output .= $_[0] };
+	my %save_locals = %$lref;
+	$lref->{sink} = $self->_new_sink(\$output);
 	$lref->{in_cache_self_flag} = 1;
-	my $sub = $lref->{comp}->{code};
-	my @args = @{$lref->{args}};
-	$retval = &$sub(@args);
-	$self->top_stack({%saveLocals});
+
+	$retval = $lref->{comp}->run( @{ $lref->{args} } );
+	$self->top_stack({%save_locals});
 
 	#
 	# Store output and return value as a two-item listref.
 	#
-	$self->cache(action=>'store',value=>[$output,$retval],%storeOptions);
+	$self->cache(action=>'store',value=>[$output,$retval],%store_options);
     } else {
 	($output,$retval) = @$result;
     }
@@ -298,7 +311,7 @@ sub call_dynamic {
 
 sub call_next {
     my ($self,@extra_args) = @_;
-    my $comp = shift(@{$self->{wrapper_chain}}) or die "call_next: no next component to invoke";
+    my $comp = $self->fetch_next or die "call_next: no next component to invoke";
     my @args = (@{$self->current_args},@extra_args);
     return $self->comp($comp, @args);
 }
@@ -331,7 +344,12 @@ sub caller_args
     my ($self,$index) = @_;
     my @caller_stack = reverse(@{$self->stack});
     if (defined($index)) {
-	return $caller_stack[$index]->{args};
+	if (wantarray) {
+	    return @{$caller_stack[$index]->{args}};
+	} else {
+	    my %h = @{$caller_stack[$index]->{args}};
+	    return \%h;
+	}
     } else {
 	die "caller_args expects stack level as argument";
     }
@@ -348,20 +366,21 @@ sub call_self
     #
     my $content;
     my $lref = $self->top_stack;
-    my %saveLocals = %$lref;
-    $lref->{sink} = sub { $content .= $_[0] };
+    my %save_locals = %$lref;
+    $lref->{sink} = $self->_new_sink(\$content);
     $lref->{in_call_self_flag} = 1;
-    my $sub = $lref->{comp}->{code};
-    my @args = @{$lref->{args}};
+
+
     if (ref($rref) eq 'SCALAR') {
-	$$rref = &$sub(@args);
+	$$rref = $lref->{comp}->run( @{ $lref->{args} } );
     } elsif (ref($rref) eq 'ARRAY') {
-	@$rref = &$sub(@args);
+	@$rref = $lref->{comp}->run( @{ $lref->{args} } );
     } else {
-	&$sub(@args);
+	$lref->{comp}->run( @{ $lref->{args} } );
     }
-    $self->top_stack({%saveLocals});
+    $self->top_stack({%save_locals});
     $$cref = $content if ref($cref) eq 'SCALAR';
+    undef $content;
 
     return 1;
 }
@@ -386,7 +405,7 @@ sub decline
 sub depth
 {
     my ($self) = @_;
-    return ($REQ eq $self) ? $REQ_DEPTH : ($REQ_DEPTHS{$self} || 0);
+    return scalar(@{$self->{stack}});
 }
 
 sub dhandler_arg { shift->{dhandler_arg} }
@@ -448,7 +467,44 @@ sub fetch_comp
     return $self->interp->load($path);
 }
 
-sub fetch_next { return shift->{wrapper_chain}->[0] }
+#
+# Fetch the index of the next component in wrapper chain. If current
+# component is not in chain, search the component stack for the most
+# recent one that was.
+#
+sub _fetch_next_helper {
+    my ($self) = @_;
+    my $index = $self->{wrapper_index}->{$self->current_comp->path};
+    unless (defined($index)) {
+	my @callers = $self->callers;
+	shift(@callers);
+	while (my $comp = shift(@callers) and !defined($index)) {
+	    $index = $self->{wrapper_index}->{$comp->path};
+	}
+    }
+    return $index;
+}
+
+#
+# Fetch next component in wrapper chain.
+#
+sub fetch_next {
+    my ($self) = @_;
+    my $index = $self->_fetch_next_helper;
+    die "fetch_next: cannot find next component in chain" unless defined($index);
+    return $self->{wrapper_chain}->[$index+1];
+}
+
+#
+# Fetch remaining components in wrapper chain.
+#
+sub fetch_next_all {
+    my ($self) = @_;
+    my $index = $self->_fetch_next_helper;
+    die "fetch_next_all: cannot find next component in chain" unless defined($index);
+    my @wc = @{$self->{wrapper_chain}};
+    return @wc[($index+1)..$#wc];
+}
 
 sub file
 {
@@ -477,8 +533,8 @@ sub file_root
 
 sub out
 {
-    my ($self,$text) = @_;
-    $self->current_sink->($text) if defined($text);
+    my $self = shift;
+    $self->current_sink->(@_);
 }
 
 sub time
@@ -493,17 +549,15 @@ sub time
 sub stack
 {
     my ($self) = @_;
-    my $stack = $self->{stack_array};
-    my $depth = $self->depth;
-    splice(@$stack,$depth) unless (@$stack == $depth);
-    return $stack;
+    return $self->{stack};
 }
 
 # Set or retrieve the hashref at the top of the stack.
 sub top_stack {
     my ($self,$href) = @_;
-    $self->{stack_array}->[$self->depth-1] = $href if defined($href);
-    return $self->{stack_array}->[$self->depth-1];
+    die "top_stack: nothing on component stack" unless $self->depth > 0;
+    $self->{stack}->[-1] = $href if defined($href);
+    return $self->{stack}->[-1];
 }
 
 #
@@ -515,33 +569,22 @@ sub parser
 }
 
 #
-# Execute the next component in this request. comp() sets up proper
-# dynamically scoped variables and invokes comp1() to do the work.
+# Execute the next component in this request.
 #
 sub comp {
-    my $self = shift(@_);
-
-    if (defined($REQ) and $REQ eq $self) {
-	local $REQ_DEPTH = $REQ_DEPTH;
-	$self->comp1(@_);
-    } else {
-	local %REQ_DEPTHS = %REQ_DEPTHS;
-	$REQ_DEPTHS{$REQ} = $REQ_DEPTH if defined($REQ);
-	local $REQ = $self;
-	local $REQ_DEPTH = $REQ_DEPTHS{$self} || 0;
-	$self->comp1(@_);
-    }
-}
-sub comp1 {
     my $self = shift;
 
+    # Clear error backtrace and message, in case we had an error which
+    # was caught by an eval.
+    undef $self->{error_backtrace};
+    undef $self->{error_clean};
+    
     # Get modifiers: optional hash reference passed in as first argument.
-    my %mods;
-    %mods = %{shift()} if (ref($_[0]) eq 'HASH');
+    my %mods = (ref($_[0]) eq 'HASH') ? %{shift()} : ();
 
     my ($comp,@args) = @_;
-    my $interp = $self->{interp};
-    my $depth = $REQ_DEPTH;
+    my $interp = $self->interp;
+    my $depth = $self->depth;
     die "comp: requires path or component as first argument" unless defined($comp);
 
     #
@@ -552,7 +595,7 @@ sub comp1 {
 	my $path = $comp;
 	$comp = $self->fetch_comp($path) or die "could not find component for path '$path'\n";
     }
-
+    
     #
     # $m is a dynamically scoped global containing this
     # request. This needs to be defined in the HTML::Mason::Commands
@@ -563,6 +606,7 @@ sub comp1 {
 
     #
     # Determine sink (where output is going).
+    #
     # Look for STORE and scalar reference passed as last two arguments. This is deprecated
     # and will go away eventually.
     #
@@ -570,12 +614,12 @@ sub comp1 {
     if (@args >= 2 and $args[-2] eq 'STORE' and ref($args[-1]) eq 'SCALAR' and @args % 2 == 0) {
 	my $store = $args[-1];
 	$$store = '';
-	$sink = sub { $$store .= $_[0] if defined ($_[0]) };
+	$sink = $self->_new_sink($store);
 	splice(@args,-2);
-    } elsif ($depth>0) {
+    } elsif ($depth > 0) {
 	$sink = $self->top_stack->{sink};
     } elsif ($self->out_mode eq 'batch') {
-	$sink = sub { $self->{out_buffer} .= $_[0] if defined ($_[0]) };
+	$sink = $self->_new_sink(\$self->{out_buffer});
     } else {
 	$sink = $self->out_method;
     }
@@ -591,11 +635,10 @@ sub comp1 {
     #
     die "$depth levels deep in component stack (infinite recursive call?)\n" if ($depth >= $interp->max_recurse);
 
-    # Push new frame onto stack and increment (localized) depth.
+    # Push new frame onto stack.
     my $stack = $self->stack;
     my $frame = {'comp'=>$comp,args=>[@args],sink=>$sink,base_comp=>$base_comp};
     push(@$stack,$frame);
-    $REQ_DEPTH++;
 
     # Call start_comp hooks.
     $self->call_hooks('start_comp');
@@ -605,9 +648,24 @@ sub comp1 {
     #
     my ($result, @result);
     if (wantarray) {
-	@result = $comp->run(@args);
+	@result = eval { $comp->run(@args) };
     } else {
-	$result = $comp->run(@args);
+	$result = eval { $comp->run(@args) };
+    }
+
+    #
+    # If an error occurred, pop stack and pass error down to next level.
+    # Put current component stack in error backtrace unless this has already
+    # been done higher up.
+    #
+    if (my $err = $@) {
+	$self->{error_backtrace} ||= [reverse(map($_->{'comp'},@$stack))];
+	$self->{error_clean}     ||= $err;
+	pop(@$stack);
+	unless ($self->interp->die_handler_overridden) {
+	    $err .= "\n" if $err !~ /\n$/;
+	}
+	die $err;
     }
 
     #
@@ -627,18 +685,11 @@ sub comp1 {
 #
 sub scomp {
     my $self = shift;
-    my $store = '';
 
     # Set a new top-level sink.
-    my $save_sink = $self->current_sink;
-    $self->top_stack->{sink} = sub { $store .= $_[0] if defined($_[0]) };
-
-    # Call comp wrapped in an eval so we can pop off sink no matter what happens
-    my $retval = eval { $self->comp(@_) };
-    my $err = $@;
-    $self->top_stack->{sink} = $save_sink;
-    die $err if $err;
-
+    my $store = '';
+    local $self->top_stack->{sink} = $self->_new_sink(\$store);
+    $self->comp(@_);
     return $store;
 }
 
@@ -685,6 +736,15 @@ sub unsuppress_hook {
     push(@{$self->{"hooks_$args{type}"}},$code);
 }
 
+#
+# Returns a new closure that will write its arguments to the given scalar ref.
+#
+sub _new_sink {
+    shift;  # Don't need $self
+    my $out_ref = shift;
+    return sub { for (@_) { $$out_ref .= $_ if defined } };
+}
+
 sub clear_buffer
 {
     my ($self) = @_;
@@ -696,6 +756,17 @@ sub flush_buffer
     my ($self, $content) = @_;
     $self->out_method->($self->{out_buffer});
     $self->{out_buffer} = '';    
+}
+
+sub top_args
+{
+    my ($self) = @_;
+    if (wantarray) {
+	return @{$self->{top_args}};
+    } else {
+	my %h = @{$self->{top_args}};
+	return \%h;
+    }
 }
 
 #
