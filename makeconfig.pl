@@ -272,6 +272,27 @@ sub write_apache_conf
   PerlHandler HTML::Mason::ApacheHandler
 </IfDefine>
 
+<IfDefine multi_config>
+  PerlSetVar MasonArgsMethod CGI
+  PerlSetVar MasonMultipleConfig 1
+
+  <Location /comps/multiconf1>
+    PerlSetVar  MasonCompRoot "$APACHE{comp_root}/multiconf1"
+    PerlSetVar  MasonDataDir  "$APACHE{data_dir}/multiconf1"
+    SetHandler  perl-script
+    PerlModule  HTML::Mason::ApacheHandler
+    PerlHandler HTML::Mason::ApacheHandler
+  </Location>
+
+  <Location /comps/multiconf2>
+    PerlSetVar  MasonCompRoot "$APACHE{comp_root}/multiconf2"
+    PerlSetVar  MasonDataDir  "$APACHE{data_dir}/multiconf2"
+    SetHandler  perl-script
+    PerlModule  HTML::Mason::ApacheHandler
+    PerlHandler HTML::Mason::ApacheHandler
+  </Location>
+</IfDefine>
+
 EOF
 
     local $^W;
