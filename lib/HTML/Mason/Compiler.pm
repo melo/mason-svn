@@ -360,11 +360,11 @@ sub variable_declaration
         if grep { "$_->{type}$_->{name}" eq $arg } @{ $self->{current_compile}{args} };
 
     push @{ $self->{current_compile}{args} }, { type => $p{type},
-					     name => $p{name},
-					     default => $p{default},
-					     line => $self->lexer->line_number,
-					     file => $self->lexer->name,
-					   };
+                                                name => $p{name},
+                                                default => $p{default},
+                                                line => $self->lexer->line_number,
+                                                file => $self->lexer->name,
+                                              };
 }
 
 sub key_value_pair
@@ -485,7 +485,7 @@ sub component_call
     my %p = @_;
 
     my $call = $p{call};
-    for ($call) { s/^\s+//; s/\s+$//; }
+    for ($call) { s/^ +//; s/ +$//; }
     if ( $call =~ m,^[\w/.],)
     {
 	my $comma = index($call, ',');
@@ -541,7 +541,7 @@ sub component_content_call_end
 	$call = "'$comp'" . substr($call, $comma);
     }
 
-    my $code = "} }, $call );\n";
+    my $code = "} }, $call\n );\n";
 
     eval { $self->postprocess_perl->(\$code) } if $self->postprocess_perl;
     compiler_error $@ if $@;

@@ -964,6 +964,12 @@ subroutine block, and since Perl is so darned good at cleaning up
 stuff at the end of blocks, C<< <%cleanup> >> sections are rarely
 needed.
 
+The C<< <%cleanup> >> block is not executed if the component returns
+(via an explicit C<return> statement) or if an error or abort occurs
+in this component or one of its children. This makes C<< <%cleanup> >> 
+useless for real cleanup code that needs a guarantee of execution.
+We hope to remedy this in the next major release.
+
 =head2 <%once>
 
 This code executes once when the component is loaded. Variables
@@ -1274,9 +1280,10 @@ The current valid flags are:
 =item * h
 
 Escape HTML ('<' => '&lt;', etc.) using C<HTML::Entities::encode()>.
-The C<HTML::Entities> module assumes that text is in the ISO-8859-1
-character set with all version of Perl before 5.8.0, and Unicode for
-version 5.8.0 and greater.
+Before Perl 5.8.0 this module assumes that text is in the ISO-8859-1
+character set; see L<the next section|HTML::Mason::Devel/"User-defined
+Escapes"> for how to override this escaping. After 5.8.0, the encoding
+assumes that text is in Unicode.
 
 =item * u
 
@@ -1318,10 +1325,11 @@ Besides the default escapes mentioned above, it is possible for the
 user to define their own escapes or to override the built-in 'h' and
 'u' escapes.
 
-This is done via the L<Interp object's C<set_escape()>
-method|HTML::Mason::Interp/item_set_escape>.  Escape names may be any
-number of characters as long as it matches the regex C</^[\w-]+$/>.
-The one exception is that you cannot override the 'n' flag.
+This is done via the Interp object's P<escape_flags> parameter or
+L<set_escape()|HTML::Mason::Interp/item_set_escape> method.  Escape
+names may be any number of characters as long as it matches the regex
+C</^[\w-]+$/>.  The one exception is that you cannot override the 'n'
+flag.
 
 Each escape flag is associated with a subroutine reference.  The
 subroutine should expect to receive a scalar reference, which should
@@ -1331,24 +1339,26 @@ ignored.
 Escapes can be defined at any time but using an escape that is not
 defined will cause an error when executing that component.
 
-One possible use for this feature is to override the built-in HTML
-escaping's assumption of the ISO-8859-1 character set.  You could
-override the 'h' flag in a top-level autohandler or L<custom wrapper
-code|HTML::Mason::Admin/"ADVANCED CONFIGURATION"> like this:
+A common use for this feature is to override the built-in HTML
+escaping, which will not work with non-ISO-8559-1 encodings.  If
+you are using such an encoding and want to switch the 'h' flag to do
+escape just the minimal set of characters (C<E<lt>>, C<E<gt>>, C<&>,
+C<">), put this in your Apache configuration:
 
-  $ah->interp->set_escape( h => \&escape_ISO_8859_2 );
+   PerlSetVar  MasonEscapeFlags  "h => \&HTML::Mason::Escapes::basic_html_escape"
 
-where C<$ah> is an ApacheHandler object.
+Or, in a top-level autohandler:
 
-Inside components, the Interpreter object is available via C<<
-$m->interp() >> so you would do this instead:
+    $m->interp->set_escape( h => \&HTML::Mason::Escapes::basic_html_escape );
 
-  $m->interp->set_escape( h => \&escape_ISO_8859_2 );
+Or you could write your own escape function for a particular encoding:
+
+    $ah->interp->set_escape( h => \&my_html_escape );
 
 And of course this can be used for all sorts of other things, like a
 naughty words filter for the easily offended:
 
-  $interp->set_escape( 'no-naughty' => \&remove_naughty_words );
+    $interp->set_escape( 'no-naughty' => \&remove_naughty_words );
 
 =head3 Manually applying escapes
 
@@ -1356,7 +1366,7 @@ You can manually apply one or more escapes to text using the L<Interp
 object's C<apply_escapes()>
 method|HTML::Mason::Interp/item_apply_escapes>. e.g.
 
-  $m->interp->apply_escapes( 'some html content', 'h' );
+    $m->interp->apply_escapes( 'some html content', 'h' );
 
 =head2 Backslash at end of line
 
@@ -1436,7 +1446,7 @@ arbitrary complex list or hash reference:
 
     $m->cache->set(name => $string);
     $m->cache->set(friends => \@list);
-    $m->cache->set(map => %hash);
+    $m->cache->set(map => \%hash);
 
 You can fetch all the keys in a cache with
 
@@ -1500,9 +1510,11 @@ In this case, when the value cannot be retrieved, C<get()> sets
 the expiration time of the value 30 seconds in the future before
 returning C<undef>.  This tells the first process to compute the new
 value while causing subsequent processes to use the old value for 30
-seconds.  In general, the duration passed to I<busy_lock> indicates
-how long you're willing to allow this component to use an expired
-cache value.
+seconds. 
+
+Should the 30 seconds expire before the first process is done, a second
+process will start computing the new value while setting the expiration
+time yet another 30 seconds in the future, and so on.
 
 =head2 Caching All Output
 
@@ -1593,7 +1605,11 @@ and the cache subclass is C<FileCache>:
         ( { namespace => data_cache_namespace("/foo/bar"),
 	    cache_root => "/usr/local/www/mason/cache" } );
 
+    # Remove one key
     $cache->remove('key1');
+
+    # Remove all keys
+    $cache->clear;
 
 =head2 Mason 1.0x Cache API
 
@@ -1613,8 +1629,10 @@ Externally>.
 
 =head2 Sending HTTP Headers
 
-Mason automatically sends HTTP headers via C<< $r->send_http_header >>
-but it will not send headers if they've already been sent manually.
+Under ApacheHandler and CGIHandler, Mason automatically sends HTTP
+headers, via C<< $r->send_http_header() >> with ApacheHandler, and via
+C<< CGI->header() >> with CGIHandler, but it will not send headers if
+they've already been sent manually.
 
 To determine the exact header behavior on your system, you need to
 know whether your server's default is to have P<autoflush> on or off.
@@ -1653,9 +1671,9 @@ P<auto_send_headers> parameter.
 
 =head2 Returning HTTP Status
 
-The value returned from the top-most component becomes the status code
-of the request. If no value is explicitly returned, it defaults to OK
-(0).
+When running under ApacheHandler, the value returned from the top-most
+component becomes the status code of the request. If no value is
+explicitly returned, it defaults to OK (0).
 
 Simply returning an error status (such as 404) from the top-most
 component has two problems in practice. First, the decision to return
@@ -1676,13 +1694,17 @@ indirectly) in an eval, you must take care to rethrow the exception,
 or the status will not make it out:
 
    eval { $m->comp('...') };
-   if ($@) {
+   if (my $err = $@) {
       if ($m->aborted) {
-          die $@;
+          die $err;
       } else {
           # deal with non-abort exceptions
       }
    }
+
+Note that when running under CGIHandler, the value you return from
+your components, or via C<< $m->abort() >>, is not able to affect the
+status code of the request.
 
 =head3 Filters and $m->abort
 
@@ -1698,8 +1720,8 @@ C<< <%filter> >> block if you don't want to run the filter after an abort.
 
 =head2 External Redirects
 
-Because it is so commonly needed, Mason provides an external redirect
-method:
+Because it is so commonly needed, Mason 1.1x and on provides an
+external redirect method:
 
     $m->redirect($url);    # Redirects with 302 status
 
@@ -1726,8 +1748,9 @@ client.
 First, you can use a Mason subrequest (see L</Subrequests>). This only
 works if you are redirecting to another Mason page.
 
-Second, you can use Apache's internal_redirect method, which works
-whether or not the new URL will be handled by Mason.  Use it this way:
+Second, if you're running under mod_perl with ApacheHandler, you can
+use Apache's internal_redirect method, which works whether or not the
+new URL will be handled by Mason.  Use it this way:
 
     $r->internal_redirect($url);
     $m->auto_send_headers(0);
