@@ -63,7 +63,7 @@ A simple configuration looks like:
     PerlSetVar MasonDataDir /usr/local/www/mason
     PerlModule HTML::Mason::ApacheHandler
 
-    <FilesMatch "*.html">
+    <FilesMatch "\.html$">
         SetHandler perl-script
         PerlHandler HTML::Mason::ApacheHandler
     </FilesMatch>
@@ -395,7 +395,7 @@ HTML::Mason::ApacheHandler.
 
     PerlRequire /path/to/handler.pl
 
-    <FilesMatch "*.html">
+    <FilesMatch "\.html$">
         SetHandler perl-script
         PerlHandler HTML::Mason   # notice - no ::ApacheHandler!
     </FilesMatch>
