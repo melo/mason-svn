@@ -5,7 +5,14 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
-0.88
+0.89  Thu Sep 14 08:44:58 PDT 2000
+
+- Fixed broken CGI args implementation from 0.88 (old arguments
+appearing in new requests)
+- Fixed system log bug from 0.88
+
+
+0.88  Wed Aug 30 14:49:07 PDT 2000
 
 - Fixed broken Parser postprocessor code (broken since 0.85).  Added
 tests for this code path as well as the preprocessor feature.
