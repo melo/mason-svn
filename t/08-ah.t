@@ -21,6 +21,7 @@ unshift(@INC,"$root/lib");
 require "$root/t/test-common.pl";
 
 require HTML::Mason::ApacheHandler;
+HTML::Mason::ApacheHandler->import;
 
 init();
 
