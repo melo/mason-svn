@@ -122,7 +122,7 @@ sub _initialize
 	$self->{$field} =~ s/\/$//g;
  	die "$field ('".$self->{$field}."') must be an absolute directory" if !is_absolute_path($self->{$field});
     }
-    
+
     #
     # Create data subdirectories if necessary. mkpath will die on error.
     #

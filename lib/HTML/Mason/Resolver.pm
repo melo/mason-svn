@@ -41,7 +41,7 @@ sub get_source_description {
 }
 
 sub get_source_params {
-    return (script_file=>($_[0]->get_source_text(@_)));
+    return (script=>($_[0]->get_source_text(@_)));
 }
 
 1;

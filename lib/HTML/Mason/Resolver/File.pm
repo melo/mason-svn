@@ -16,15 +16,33 @@ use strict;
 # Public API
 
 #
-# Given a component path, return the fully-qualified path (which in
-# our case is the same) plus auxiliary information that will be passed
-# to the get_* methods below.
+# Given a component path, return the fully-qualified path, plus plus
+# auxiliary information that will be passed to the get_* methods
+# below.
+#
+# With a single component root, the fully-qualified path is just
+# the component path. With multiple component roots, we search
+# through each root in turn, and the fully-qualified path is
+# root key + component path.
 #
 sub lookup_path {
     my ($self,$path,$interp) = @_;
-    my $srcfile = $interp->comp_root . $path;
-    my @srcstat = stat $srcfile;
-    return (-f _) ? ($path, $srcfile, $srcstat[9]) : undef;
+    my $comp_root = $interp->comp_root;
+    if (!ref($comp_root)) {
+	my $srcfile = $comp_root . $path;
+	my @srcstat = stat $srcfile;
+	return (-f _) ? ($path, $srcfile, $srcstat[9]) : undef;
+    } elsif (ref($comp_root) eq 'ARRAY') {
+	foreach my $lref (@$comp_root) {
+	    my ($key,$root) = @$lref;
+	    my $srcfile = $root . $path;
+	    my @srcstat = stat $srcfile;
+	    return ("$key/$path", $srcfile, $srcstat[9]) if (-f _);
+	}
+	return undef;
+    } else {
+	die "comp_root must be a scalar or listref";
+    }
 }
 
 #
@@ -34,10 +52,21 @@ sub lookup_path {
 #
 sub file_to_path {
     my ($self,$file,$interp) = @_;
-    my $compRoot = $interp->comp_root;
-    return undef unless ((my $compPath = $file) =~ s/^$compRoot//);
-    $compPath =~ s/\/$// unless $compPath eq '/';
-    return $compPath;
+    my @roots;
+    if (!ref($interp->comp_root)) {
+	@roots = ($interp->comp_root);
+    } elsif (ref($comp_root) eq 'ARRAY') {
+	@roots = map($_->[1],@{$interp->comp_root});
+    } else {
+	die "comp_root must be a scalar or listref";
+    }
+    foreach my $root (@roots) {
+	if ((my $path = $file) =~ s/^$root//) {
+	    $path =~ s/\/$// unless $path eq '/';
+	    return $path;
+	}
+	return undef;
+    }
 }
 
 #
