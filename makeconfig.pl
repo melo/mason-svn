@@ -281,9 +281,10 @@ EOF
 
 <IfDefine mod_perl_no_handler>
   PerlSetVar  MasonArgsMethod mod_perl
-  PerlSetVar  MasonCompRoot "$APACHE{comp_root}"
+  PerlSetVar  MasonCompRoot "root => $APACHE{comp_root}"
   PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
   PerlSetVar  MasonTopLevelPredicate "sub { \$_[0] !~ m(/__[^/]+\$) }"
+  PerlSetVar  MasonDeclineDirs 0
   SetHandler  perl-script
   PerlModule  HTML::Mason::ApacheHandler
   PerlHandler HTML::Mason::ApacheHandler
