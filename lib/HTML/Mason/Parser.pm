@@ -51,7 +51,7 @@ my %valid_escape_flags = map(($_,1),qw(h n u));
 #
 sub version
 {
-    return "0.8";
+    return "8";
 }
 
 sub new
@@ -1195,7 +1195,6 @@ sub eval_object_text
     # Detect various forms of older, incompatible object files:
     #  -- zero-sized files (previously signifying pure text components)
     #  -- pre-0.7 files that return code refs
-    #  -- valid components but with an earlier parser_version
     #
     if ($object_file) {
 	my $parser_version = version();
@@ -1205,8 +1204,6 @@ sub eval_object_text
 	} elsif ($comp) {
 	    if (ref($comp) eq 'CODE') {
 		$err = sprintf($incompat,"a pre-0.7 parser");
-	    } elsif ($comp->parser_version != $parser_version) {
-		$err = sprintf($incompat,"parser version ".$comp->parser_version);
 	    }
 	}
     }
