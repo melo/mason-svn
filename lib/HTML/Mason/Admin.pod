@@ -7,43 +7,53 @@ HTML::Mason::Admin - Mason Administrator's Guide
 This guide is intended for the sys admin/web master in charge of
 installing, configuring, or tuning a Mason system.
 
-=head1 GLOBAL SETTINGS FILE
+=head1 GLOBAL SETTINGS
 
-Mason/Config.pm contains global settings for your system, such as the
-presence or absence of certain optional modules.
+The C<Config.pm> file contains global settings for your system, such
+as the presence or absence of certain optional modules.
 
-Makefile.PL initially creates Config.pm based on your environment,
+C<Makefile.PL> initially creates C<Config.pm> based on your environment,
 placing it in the C<lib/HTML/Mason> subdirectory of the distribution.
 After that, you can edit it by hand, following the comments inside.
+In most cases, you will not need to edit it.
 
-"make install" copies Config.pm to your Perl library directory
+"make install" copies C<Config.pm> to your Perl library directory
 (e.g. C</usr/lib/perl5/site_perl/HTML/Mason>) along with the other module
 files. This allows Mason internally to grab the configuration data
 with "C<use HTML::Mason::Config>".
 
 When upgrading from a previous version, "make install" will
-maintain the previous Config.pm values.
+maintain the previous C<Config.pm> values.
 
 =head1 SITE CONFIGURATION METHODS
 
-The next three sections discuss ways to configure a Mason site:
+There are three ways to configure a Mason site:
 
-* Minimal configuration, relying on default Mason behavior. Simplest and least flexible.
+=over
 
-* Configuration via httpd.conf directives. Medium complexity and flexibility.
+=item *
 
-* Configuration via handler.pl. Most complex but most flexible.
+Minimal configuration, relying on default Mason behavior. Simplest and least flexible.
 
-We recommend that you start with the simplest method and work your
-way forward as the need for flexibility arises.
+=item *
+
+Configuration via httpd.conf directives. Medium complexity and flexibility.
+
+=item *
+
+Configuration via a handler script (handler.pl). Most complex but most flexible.
+
+=back
+
+The next three sections discuss these methods in detail. We recommend
+that you start with the simplest method and work your way forward as
+the need for flexibility arises.
 
 =head1 MINIMAL CONFIGURATION
 
-Directives must be added to httpd.conf or srm.conf to specify which
-requests to handle through Mason. A simple configuration looks like:
+A simple configuration looks like:
 
     DocumentRoot /usr/local/www/htdocs
-    PerlRequire /usr/local/mason/handler.pl
     DefaultType text/html
     <Location />
         SetHandler perl-script
@@ -52,24 +62,22 @@ requests to handle through Mason. A simple configuration looks like:
         MasonDataDir "/usr/local/www/mason"
     </Location>
 
-The I<component root> (specified by MasonCompRoot) is the top of your
-tree of component source files. In simple configurations the component
-root is the same as the server's DocumentRoot.  More complex
-configurations may specify several different DocumentRoots under a
-single component root.
+C<MasonCompRoot> specifies the I<component root>, the top of your
+component source tree. In simple configurations the component root is
+the same as the server's C<DocumentRoot>.
 
-When Mason handles a request, the request filename
-(C<$r-E<gt>filename>) must be underneath your component root -- that
-way Mason has a legitimate component to start with.  If the filename
-is not underneath the component root, Mason will place a warning in
-the error logs and return 404.
+When Mason handles a request, the requested filename must be
+underneath your component root -- that gives Mason a legitimate
+component to start with.  If the filename is not underneath the
+component root, Mason will place a warning in the error logs and
+return 404.
 
-The I<data directory> (specified by MasonDataDir) is a writable
-directory that Mason uses to implement various features and
-optimizations. Mason will create the directory on startup, if necessary,
-and set its permissions according to the web server User/Group.
+C<MasonDataDir> specifies the I<data directory>, a writable directory
+that Mason uses for various features and optimizations. Mason will
+create the directory on startup, if necessary, and set its permissions
+according to the web server User/Group.
 
-=head2 CONFIGURATION VIA httpd.conf DIRECTIVES
+=head1 CONFIGURATION VIA httpd.conf DIRECTIVES
 
 Mason's configuration parameters are set via mod_perl's C<PerlSetVar>
 and C<PerlAddVar> directives.  Though these parameters are all strings,
@@ -329,7 +337,7 @@ the proper permissions to create the data directories.
 
 =back
 
-=head1 CONFIGURING MASON VIA A HANDLER SCRIPT
+=head1 CONFIGURING VIA A HANDLER SCRIPT
 
 For maximum flexibility, you may choose to write a custom script to
 create your Mason objects and handle requests. In our documentation
@@ -650,7 +658,7 @@ Cache files are implemented using B<MLDBM>, an interface for storing
 persistent multi-level data structures. B<MLDBM>, in turn, uses one of
 several DBM packages (B<DB_File>, B<GDBM>) and one of several
 serialization mechanisms (B<Data::Dumper>, B<FreezeThaw> or
-B<Storable>). Mason's Config.pm controls which packages are used.
+B<Storable>). Mason's C<Config.pm> controls which packages are used.
 
 The most important task is selecting a good DBM package.  Most
 standard DBM packages (B<SDBM>, B<ODBM>, B<NDBM>) are unsuitable for
@@ -712,9 +720,13 @@ calls to return undef without doing anything.
 A debug file is a Perl script that creates a fake Apache request
 object (C<$r>) and calls the same PerlHandler that Apache called.
 Debug files are created under C<data_dir/debug/E<lt>usernameE<gt>> for
-authenticated users, otherwise they are placed in
-C<data_dir/debug/anon>.  Several ApacheHandler parameters are required
-to activate and configure debug files:
+authenticated users, and in C<data_dir/debug/anon> for anonymous
+users.
+
+Debug files can only be used with the handler.pl configuration method. 
+
+Several ApacheHandler parameters are required to activate and
+configure debug files:
 
 =over
 
@@ -1187,9 +1199,6 @@ example in B<HTML::Mason>.
 If you want to share some components between your sites, arrange your
 httpd.conf so that all DocumentRoots live under a single component space:
 
-    # httpd.conf
-    PerlRequire /usr/local/mason/handler.pl
-
     # Web site #1
     <VirtualHost www.site1.com>
         DocumentRoot /usr/local/www/htdocs/site1
@@ -1208,11 +1217,9 @@ httpd.conf so that all DocumentRoots live under a single component space:
         </Location>
     </VirtualHost>
 
-In handler.pl:
-
-    my $interp = new HTML::Mason::Interp (parser=>$parser,
-                    comp_root=>'/usr/local/www/htdocs'
-                    data_dir=>'/usr/local/mason');
+    # Mason configuration
+    MasonCompRoot "/usr/local/www/htdocs"
+    MasonDataDir "/usr/local/mason"
 
 The directory structure for this scenario might look like:
 
@@ -1234,7 +1241,7 @@ hierarchies, e.g. if you are providing Mason ISP services for multiple
 users. In this case the component root must change depending on the
 site requested. Since you can't change an interpreter's component root
 dynamically, you need to maintain separate Mason objects for each
-site in the handler.pl:
+site in your handler.pl:
 
     my (%interp,%ah);
     foreach my $site qw(site1 site2 site3) {
