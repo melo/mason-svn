@@ -115,7 +115,7 @@ EOF
 EOF
 	      );
 
-    write_comp( 'dhandler/_underscore', <<'EOF',
+    write_comp( '_underscore', <<'EOF',
 I am underscore.
 EOF
 	      );
@@ -131,7 +131,7 @@ EOF
 	      );
 
     if ($has_apache_request)
-     {
+    {
 	write_comp( 'apache_request', <<'EOF',
 <% ref $r %>
 EOF
@@ -263,7 +263,7 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/ah=0/comps/dhandler/_underscore" );
+    $response = Apache::test->fetch( "/ah=0/comps/_underscore" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -275,7 +275,7 @@ EOF
     ok($success);
 
     # top_level_predicate should reject this request.
-    $response = Apache::test->fetch( "/ah=2/comps/dhandler/_underscore" );
+    $response = Apache::test->fetch( "/ah=2/comps/_underscore" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
