@@ -5,6 +5,25 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.25  December 12, 2003
+
+[ BUG FIXES ]
+
+- CGIHandler did not support $m->flush_buffer or autoflush.  Reported
+by Shane McCarron.
+- Every line in the error stacktrace had a 'g' appended to it in HTML
+error mode.
+- The HTML error display of the stacktrace was not filtering out some
+packages that it should have, so there were extra lines that made it
+harder to find the real error.
+- Several FakeApache methods were broken: path_info, uri, and
+the_request.  Reported by Matthias F. Brandstetter.
+
+[ ENHANCEMENTS ]
+
+- The CGIHandler request object now supports the autoflush parameter.
+
+
 1.24  November 12, 2003
 
 [ BUG FIXES ]
