@@ -5,6 +5,34 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+1.01
+
+- Added a new parameter to the Interp object, 'die_handler'.  This
+allows you to install your own subroutine as $SIG{__DIE__} to catch
+errors during components execution.  Alternately, you can simply turn
+the special error handling off.  L{Interp/die_handler}
+- Tests of the ApacheHandler.pm code are now done using a real Apache
+web server and mod_perl (assuming this is installed).  This allows for
+much better testing of Mason.  However, the test suite takes a bit
+longer to run as starting and stopping the server can take a second or
+two each time.
+- Allow configuration of Mason from httpd.conf via PerlSetVar
+directives.  This removes the need for a handler.pl file in many
+cases.  L{Admin/CONFIGURING MASON VIA httpd.conf}.
+- Document that you cannot call return() from a <%shared> or <%once>
+section.  (reported by Paolo Campanella [paolo@mighty.co.za])
+** Fixed the discrepancy in handling mixed GET/POST requests via
+CGI.pm vs. mod_perl.  Previously, when handling arguments via CGI.pm
+the query string portion of a mixed request was ignored, while it was
+included when using mod_perl.  As of this version all arguments are
+always available via %ARGS, no matter how argument processing is being
+done.
+- Fixed incorrect code for using mod_perl args method in
+eg/session_handler.pl.
+- Fixed broken call_method link in Component.pod.
+- Fixed documentation of escaped newline behavior.
+
+
 1.0  Wed Jan 31 08:56:31 PST 2001
 
 - Identical to 0.896 except for version.
