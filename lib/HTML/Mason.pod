@@ -34,6 +34,8 @@ Mason - High-performance, dynamic web site authoring system
         $ah->handle_request($r);
     }
 
+    1;
+
 =head1 DESCRIPTION 
 
 Mason is a tool for building, serving and managing large web
