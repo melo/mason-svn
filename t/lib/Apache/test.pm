@@ -104,11 +104,12 @@ sub get_test_params {
     my $pkg = shift;
 
     print("\nFor testing purposes, please give the full path to an httpd\n",
-	  "with mod_perl enabled.  The path defaults to \$ENV{APACHE}, if present.");
+	  "with mod_perl enabled.  The path defaults to \$ENV{APACHE},\n",
+	  "if present (and that binary has mod_perl).");
     
     my %conf;
     
-    my $httpd = $ENV{'APACHE'} || which('apache') || which('httpd') || '/usr/lib/httpd/httpd';
+    my $httpd = $pkg->_find_mod_perl_httpd();
 
     $httpd = _ask("\n", $httpd, 1, '!');
     if ($httpd eq '!') {
@@ -120,15 +121,8 @@ sub get_test_params {
     # Default: search for dynamic dependencies if mod_so is present, don't bother otherwise.
     my $default = (`t/httpd -l` =~ /mod_so\.c/ ? 'y' : 'n');
     if (lc _ask("Search existing config file for dynamic module dependencies?", $default) eq 'y') {
-	my %compiled;
-	for (`t/httpd -V`) {
-	    if (/([\w]+)="(.*)"/) {
-		$compiled{$1} = $2;
-	    }
-	}
-	$compiled{SERVER_CONFIG_FILE} =~ s,^,$compiled{HTTPD_ROOT}/,
-	    unless $compiled{SERVER_CONFIG_FILE} =~ m,^/,;
-	
+	my %compiled = $pkg->_get_compilation_params('t/httpd');
+
 	my $file = _ask("  Config file", $compiled{SERVER_CONFIG_FILE}, 1);
 	$conf{modules} = $pkg->_read_existing_conf($file);
     }
@@ -143,6 +137,21 @@ sub get_test_params {
     $conf{port} = _ask("Port to run tests under", 8228);
 
     return %conf;
+}
+
+sub _get_compilation_params {
+    my ($self, $httpd) = @_;
+
+    my %compiled;
+    for (`$httpd -V`) {
+	if (/([\w]+)="(.*)"/) {
+	    $compiled{$1} = $2;
+	}
+    }
+    $compiled{SERVER_CONFIG_FILE} =~ s,^,$compiled{HTTPD_ROOT}/,
+	unless $compiled{SERVER_CONFIG_FILE} =~ m,^/,;
+
+    return %compiled;
 }
 
 sub _read_existing_conf {
@@ -176,13 +185,12 @@ sub _read_existing_conf {
     }
     
     # Directories where apache DSOs live.
-    my @module_dirs = map {m,(/\S*/),} @modules;
+    my @module_dirs = map {m,(/\S*)/,} @modules;
     
     # Finally compute the directives to load modules that need to be loaded.
  MODULE:
     foreach my $module (@load) {
 	foreach my $module_dir (@module_dirs) {
-	   $module_dir =~ s,/$,,;
            foreach my $filename ("mod_$module.so", "lib$module.so", "ApacheModule\u$module.dll") {
                if (-e "$module_dir/$filename") {
                    push @modules, "LoadModule ${module}_module $module_dir/$filename\n"; next MODULE;
@@ -205,12 +213,43 @@ sub static_modules {
     return {map {lc($_) => 1} map /(\S+)\.c/, @l};
 }
 
-# Find an executable in the PATH.
-sub which {
-    foreach (map { "$_/$_[0]" } split /:/, $ENV{PATH}) {
-	next unless m,^/,;
-	return $_ if -x;
+sub _find_mod_perl_httpd {
+    my ($self) = @_;
+
+    foreach ( $ENV{'APACHE'},
+	      '/usr/local/apache/bin/httpd',
+	      '/usr/local/apache_mp/bin/httpd',
+	      '/opt/apache/bin/httpd',
+	      $self->_which('httpd'),
+	      $self->_which('apache'),
+	    ) {
+	return $_ if -x $_ && $self->_has_mod_perl($_);
     }
+}
+
+sub _has_mod_perl {
+    my ($self, $httpd) = @_;
+
+    foreach ( `$httpd -l` )  {
+	return 1 if /mod_perl\.c/;
+    }
+
+    my %compiled = $self->_get_compilation_params($httpd);
+
+    if ($compiled{SERVER_CONFIG_FILE}) {
+	local *SERVER_CONF;
+	open SERVER_CONF, $compiled{SERVER_CONFIG_FILE} or die "Couldn't open $compiled{SERVER_CONFIG_FILE}: $!";
+	my @lines = grep {!m/^\s*\#/} <SERVER_CONF>;
+	close SERVER_CONF;
+
+	return 1 if grep { /mod_perl/ } grep /^\s*(Add|Load)Module/, @lines;
+    }
+
+    return 0;
+}
+
+sub _which {
+    return grep {-x $_} map { "$_/$_[1]" } split /:/, $ENV{PATH};
 }
 
 sub test { 
@@ -529,7 +568,9 @@ Apache::Test - Facilitates testing of Apache::* modules
  *MY::test = sub { Apache::test->MM_test(%params) };
 
  # In t/*.t script (or test.pl)
- (Some methods of Doug's that I haven't reviewed or documented yet)
+ use Apache::test qw(skip_test have_httpd);
+ skip_test unless have_httpd;
+ (Some more methods of Doug's that I haven't reviewed or documented yet)
 
 =head1 DESCRIPTION
 
