@@ -8,7 +8,6 @@ use strict;
 
 use Carp;
 
-use HTML::Mason::Error qw(error_process);
 use HTML::Mason::Tools qw(is_absolute_path read_file);
 use HTML::Mason::Utils;
 
