@@ -265,9 +265,13 @@ sub _make_interp
 	delete $p{$_} unless defined $p{$_};
     }
 
-    return HTML::Mason::Interp->new( parser => _make_parser(),
-				     %p,
-				   );
+    my $interp = HTML::Mason::Interp->new( parser => _make_parser(),
+					   %p,
+					 );
+    chown Apache->server->uid, Apache->server->gid, $interp->files_written
+	or die "Can't change ownership of files written by interp object\n";
+
+    return $interp;
 }
 
 sub _make_parser
