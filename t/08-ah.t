@@ -28,12 +28,15 @@ local $| = 1;
 kill_httpd(1);
 test_load_apache();
 
-my $tests = 21; # multi conf & taint tests
-$tests += 63 if my $have_libapreq = have_module('Apache::Request');
-$tests += 41 if my $have_cgi      = have_module('CGI');
-$tests += 16 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
-$tests++ if $have_cgi && $mod_perl::VERSION >= 1.24;
-$tests++ if my $have_filter = have_module('Apache::Filter');
+my $have_filter = (have_module('Apache::Filter') && Apache::Filter->VERSION >= 1.021 && $mod_perl::VERSION < 1.99);
+
+my $tests = 0;
+$tests += 67 if my $have_libapreq = have_module('Apache::Request');
+$tests++ if $have_libapreq &&     $have_filter;
+$tests += 18 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
+$tests += 18;                     # taint tests
+$tests += 45 if my $have_cgi      = have_module('CGI');
+$tests += 4 ;                     # multi-conf tests
 
 plan( tests => $tests);
 
@@ -41,15 +44,15 @@ print STDERR "\n";
 
 write_test_comps();
 
-if ($have_libapreq) {        # 63 tests
+if ($have_libapreq) {    # 67 (+1?) tests
     cleanup_data_dir();
     apache_request_tests(1); # 24 tests
 
     cleanup_data_dir();
-    apache_request_tests(0); # 23 tests
+    apache_request_tests(0); # 25 tests
 
     cleanup_data_dir();
-    no_config_tests();       # 16 tests
+    no_config_tests();       # 18 tests
 
     if ($have_filter) {
         cleanup_data_dir();
@@ -59,18 +62,18 @@ if ($have_libapreq) {        # 63 tests
 
 if ($have_tmp) {
     cleanup_data_dir();
-    single_level_serverroot_tests();  # 16 tests
+    single_level_serverroot_tests();  # 18 tests
 }
 
 cleanup_data_dir();
-taint_tests();           # 16 tests
+taint_tests();           # 18 tests
 
-if ($have_cgi) {             # 41 tests (+ 1?)
+if ($have_cgi) {             # 45 tests
     cleanup_data_dir();
-    cgi_tests(1);            # 22 tests + 1 if mod_perl version > 1.24
+    cgi_tests(1);            # 24 tests
 
     cleanup_data_dir();
-    cgi_tests(0);            # 19 tests
+    cgi_tests(0);            # 21 tests
 }
 
 cleanup_data_dir();
@@ -84,7 +87,7 @@ if ( $> == 0 || $< == 0 )
     chmod 0777, File::Spec->catdir( $ENV{APACHE_DIR}, 'data' );
 }
 
-multi_conf_tests();     # 4 tests
+multi_conf_tests();          # 4 tests
 
 sub write_test_comps
 {
@@ -134,8 +137,18 @@ EOF
 
     write_comp( 'dhandler/dhandler', <<'EOF',
 I am the dhandler.
+dhandler_arg = <% $m->dhandler_arg %>
 EOF
 	      );
+
+    write_comp( 'dhandler/file', <<'EOF'
+File.
+dhandler_arg = <% $m->dhandler_arg %>
+path_info = <% $r->path_info %>
+EOF
+	      );
+
+    write_comp( 'dhandler/dir/file', '' );
 
     write_comp( 'die', <<'EOF',
 % die 'Mine heart is pierced';
@@ -625,6 +638,25 @@ method = GET.
 
 Status code: 0
 EOF
+
+    unless ($with_handler) {
+	# the /ah=0/ stuff plays havoc with dhandlers
+	one_test( $with_handler, '/comps/dhandler/file/extra/stuff', 0, <<"EOF" );
+X-Mason-Test: Initial value
+File.
+dhandler_arg = 
+path_info = /extra/stuff
+Status code: 0
+EOF
+
+	one_test( $with_handler, '/comps/dhandler/dir/extra/stuff', 0, <<"EOF" );
+X-Mason-Test: Initial value
+I am the dhandler.
+dhandler_arg = dir/extra/stuff
+Status code: 0
+EOF
+    }
+
 }
 
 sub multi_conf_tests

@@ -30,7 +30,7 @@ skip_test unless have_httpd;
 kill_httpd(1);
 test_load_apache();
 
-plan(tests => 12);
+plan(tests => 13);
 
 write_test_comps();
 run_tests();
@@ -93,6 +93,19 @@ dhandler
 % $m->decline;
 EOF
 	      );
+
+    write_comp( 'cgi_dh/dhandler', <<'EOF' );
+dhandler
+dhandler_arg = <% $m->dhandler_arg %>
+EOF
+
+    write_comp( 'cgi_dh/file', <<'EOF' );
+file
+dhandler_arg = <% $m->dhandler_arg %>
+path_info = <% $ENV{PATH_INFO} %>
+EOF
+
+    write_comp( 'cgi_dh/dir/file', '' );
 
 }
 
@@ -212,6 +225,27 @@ EOF
         my $path = '/comps/foo/will_decline';
         my $response = Apache::test->fetch($path);
         ok $response->content, qr{could not find component for initial path}is;
+    }
+
+## CGIHandler.pm does not do this the same as ApacheHandler.pm
+## but we do not want to rewrite CGIHandler in stable
+#    {
+#	my $path = '/comps/cgi_dh/file/extra/stuff';
+#        my $response = Apache::test->fetch($path);
+#        ok $response->content, <<'EOF';
+#file
+#dhandler_arg = 
+#path_info = /extra/stuff
+#EOF
+#    }
+
+    {
+	my $path = '/comps/cgi_dh/dir/extra/stuff';
+        my $response = Apache::test->fetch($path);
+        ok $response->content, <<'EOF';
+dhandler
+dhandler_arg = dir/extra/stuff
+EOF
     }
 
     kill_httpd();
