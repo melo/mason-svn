@@ -7,6 +7,8 @@ use HTML::Mason::Utils;
 use CGI;
 use File::Spec;
 use Params::Validate qw(:all);
+use HTML::Mason::Exceptions;
+use HTML::Mason::FakeApache;
 
 use Class::Container;
 use base qw(Class::Container);
@@ -84,13 +86,18 @@ sub _handler {
 
     my %args = $self->request_args($r);
 
-    $self->interp->exec($p->{comp}, %args);
+    eval { $self->interp->exec($p->{comp}, %args) };
+    if (my $err = $@) {
+        rethrow_exception($err)
+          unless isa_mason_exception($err, 'Abort')
+          or isa_mason_exception($err, 'Decline');
+    }
 
     if (@_) {
 	# This is a secret feature, and should stay secret (or go away) because it's just a hack for the test suite.
 	$_[0] .= $r->http_header . $self->{output};
     } else {
-	print $r->http_header;
+        $r->send_http_header;
 	print $self->{output};
     }
 }
@@ -127,80 +134,12 @@ sub redirect {
     $self->clear_buffer;
 
     $self->{cgi_request}->header_out( Location => $url );
-    $self->{cgi_request}->http_header( Status => $status );
+    $self->{cgi_request}->header_out( Status => $status );
 
     $self->abort;
 }
 
-###########################################################
-package HTML::Mason::FakeApache;
-# Analogous to Apache request object $r (but not an actual Apache subclass)
-# In the future we'll probably want to switch this to Apache::Fake or similar
-
-use HTML::Mason::MethodMaker(read_write => [qw(query headers)]);
-
-sub new {
-    my $class = shift;
-    my %p = @_;
-
-    return bless {
-		  query   => $p{cgi} || new CGI(),
-		  headers => {},
-		 }, $class;
-}
-
-sub header_out {
-    my ($self, $header) = (shift, shift);
-
-    $header = $self->_canonical_header($header);
-
-    return $self->_set_header($header, shift) if @_;
-    return $self->headers->{$header};
-}
-
-sub content_type {
-    my $self = shift;
-
-    my $header = $self->_canonical_header('Content-type');
-
-    return $self->_set_header($header, shift) if @_;
-    return $self->headers->{$header};
-}
-
-sub _set_header {
-    my ($self, $header, $value) = @_;
-
-    delete $self->headers->{$header}, return unless defined $value;
-
-    return $self->headers->{$header} = $value;
-}
-
-sub _canonical_header {
-    my ($self, $header) = @_;
-
-    # CGI really wants a - before each header
-    $header = "-$header"  unless substr( $header, 0, 1 ) eq '-';
-
-    return lc $header;
-}
-
-sub http_header {
-    my $self = shift;
-
-    my $location = $self->_canonical_header('Location');
-
-    my $method = exists $self->headers->{$location} ? 'redirect' : 'header';
-    return $self->query->$method(%{$self->headers});
-}
-
-sub params {
-    my $self = shift;
-
-    return HTML::Mason::Utils::cgi_request_args($self->query, $self->query->request_method);
-}
-
 1;
-
 __END__
 
 =head1 NAME
@@ -220,13 +159,13 @@ A script at /cgi-bin/mason_handler.pl :
 
    #!/usr/bin/perl
    use HTML::Mason::CGIHandler;
-   
+
    my $h = HTML::Mason::CGIHandler->new
     (
      data_dir  => '/home/jethro/code/mason_data',
      allow_globals => [qw(%session $u)],
     );
-   
+
    $h->handle_request;
 
 A .html component somewhere in the web server's document root:
@@ -234,7 +173,7 @@ A .html component somewhere in the web server's document root:
    <%args>
     $mood => 'satisfied'
    </%args>
-   % $r->header_out(Location => "http://blahblahblah.com/moodring/$mood.html");
+   % $r->err_header_out(Location => "http://blahblahblah.com/moodring/$mood.html");
    ...
 
 =head1 DESCRIPTION
@@ -319,6 +258,34 @@ Interpreter lasts for the entire lifetime of the handler.
 
 =over 4
 
+=item * headers_in()
+
+This works much like the C<Apache> method of the same name. In an array
+context, it will return a C<%hash> of response headers. In a scalar context,
+it will return a reference to the case-insensitive hash blessed into the
+C<HTML::Mason::FakeTable> class. The values initially populated in this hash are
+extracted from the CGI environment variables as best as possible. The pattern
+is to merely reverse the conversion from HTTP headers to CGI variables as
+documented here: L<http://cgi-spec.golux.com/draft-coar-cgi-v11-03-clean.html#6.1>.
+
+=item * header_in()
+
+This works much like the C<Apache> method of the same name. When passed the
+name of a header, returns the value of the given incoming header. When passed
+a name and a value, sets the value of the header. Setting the header to
+C<undef> will actually I<unset> the header (instead of setting its value to
+C<undef>), removing it from the table of headers returned from future calls to
+C<headers_in()> or C<header_in()>.
+
+=item * headers_out()
+
+This works much like the C<Apache> method of the same name. In an array
+context, it will return a C<%hash> of response headers. In a scalar context,
+it will return a reference to the case-insensitive hash blessed into the
+C<HTML::Mason::FakeTable> class. Changes made to this hash will be made to the
+headers that will eventually be passed to the C<CGI> module's C<header()>
+method.
+
 =item * header_out()
 
 This works much like the C<Apache> method of the same name.  When
@@ -331,17 +298,36 @@ of headers that will be sent to the client.
 The headers are eventually passed to the C<CGI> module's C<header()>
 method.
 
+=item * err_headers_out()
+
+This works much like the C<Apache> method of the same name. In an array
+context, it will return a C<%hash> of error response headers. In a scalar
+context, it will return a reference to the case-insensitive hash blessed into
+the C<HTML::Mason::FakeTable> class. Changes made to this hash will be made to
+the error headers that will eventually be passed to the C<CGI> module's
+C<header()> method.
+
+=item * err_header_out()
+
+This works much like the C<Apache> method of the same name. When passed the
+name of a header, returns the value of the given outgoing error header. When
+passed a name and a value, sets the value of the error header. Setting the
+header to C<undef> will actually I<unset> the header (instead of setting its
+value to C<undef>), removing it from the table of headers that will be sent to
+the client.
+
+The headers are eventually passed to the C<CGI> module's C<header()> method.
+
 One header currently gets special treatment - if you set a C<Location>
 header, you'll cause the C<CGI> module's C<redirect()> method to be
 used instead of the C<header()> method.  This means that in order to
 do a redirect, all you need to do is:
 
- $r->header_out(Location => 'http://redirect.to/here');
+ $r->err_header_out(Location => 'http://redirect.to/here');
 
 You may be happier using the C<< $m->redirect >> method, though,
 because it hides most of the complexities of sending headers and
 getting the status code right.
-
 
 =item * content_type()
 
@@ -358,10 +344,41 @@ already been set is undefined - currently it returns C<undef>.
 If no content type is set during the request, the default MIME type
 C<text/html> will be used.
 
+=item * method()
+
+Returns the request method used for the current request, e.g., "GET", "POST",
+etc.
+
 =item * http_header()
 
 This method returns the outgoing headers as a string, suitable for
 sending to the client.
+
+=item * send_http_header()
+
+Sends the outgoing headers to the client.
+
+=item * notes()
+
+This works much like the C<Apache> method of the same name. When passed
+a C<$key> argument, it returns the value of the note for that key. When
+passed a C<$value> argument, it stores that value under the key. Keys are
+case-insensitive, and both the key and the value must be strings. When
+called in a scalar context with no C<$key> argument, it returns a hash
+reference blessed into the C<HTML::Mason::FakeTable> class.
+
+=item * pnotes()
+
+Like C<notes()>, but takes any scalar as an value, and stores the
+values in a case-sensitive hash.
+
+=item * subprocess_env()
+
+Works like the C<Apache> method of the same name, but is simply populated with
+the current values of the environment. Still, it's useful, because values can
+be changed and then seen by later components, but the environment itself
+remains unchanged. Like the C<Apache> method, it will reset all of its values
+to the current environment again if it's called without a C<$key> argument.
 
 =item * params()
 
@@ -393,11 +410,100 @@ also provides a C<cgi_object()> method that does the same thing as
 this one.  This makes it easier to write components that function
 equally well under CGIHandler and ApacheHandler.
 
-=item * cgi_request
+=item * cgi_request()
 
 Returns the object that is used to emulate Apache's request object.
 In other words, this is the object that C<$r> is set to when you use
 this class.
+
+=back
+
+=head2 C<HTML::Mason::FakeTable> Methods
+
+This class emulates the behavior of the C<Apache::Table> class, and is
+used to store manage the tables of values for the following attributes
+of <$r>:
+
+=over 4
+
+=item headers_in
+
+=item headers_out
+
+=item err_headers_out
+
+=item notes
+
+=item subprocess_env
+
+=back
+
+C<HTML::Mason::FakeTable> is designed to behave exactly like C<Apache::Table>,
+and differs in only one respect. When a given key has multiple values in an
+C<Apache::Table> object, one can fetch each of the values for that key using
+Perl's C<each> operator:
+
+  while (my ($k, $v) = each %{$r->headers_out}) {
+      push @cookies, $v if lc $k eq 'set-cookie';
+  }
+
+If anyone knows how Apache::Table does this, let us know! In the meantime, use
+C<get()> or C<do()> to get at all of the values for a given key (C<get()> is
+much more efficient, anyway).
+
+Since the methods named for these attributes return an
+C<HTML::Mason::FakeTable> object hash in a scalar reference, it seemed only
+fair to document its interface.
+
+=over 4
+
+=item * new()
+
+Returns a new C<HTML::Mason::FakeTable> object. Any parameters passed
+to C<new()> will be added to the table as initial values.
+
+=item * add()
+
+Adds a new value to the table. If the value did not previously exist under the
+given key, it will be created. Otherwise, it will be added as a new value to
+the key.
+
+=item * clear()
+
+Clears the table of all values.
+
+=item * do()
+
+Pass a code reference to this method to have it iterate over all of the
+key/value pairs in the table. Keys will multiple values will trigger the
+execution of the code reference multiple times for each value. The code
+reference should expect two arguments: a key and a value. Iteration terminates
+when the code reference returns false, to be sure to have it return a true
+value if you wan it to iterate over every value in the table.
+
+=item * get()
+
+Gets the value stored for a given key in the table. If a key has multiple
+values, all will be returned when C<get()> is called in an array context, and
+only the first value when it is called in a scalar context.
+
+=item * merge()
+
+Merges a new value with an existing value by concatenating the new value onto
+the existing. The result is a comma-separated list of all of the values merged
+for a given key.
+
+=item * set()
+
+Takes key and value arguments and sets the value for that key. Previous values
+for that key will be discarded. The value must be a string, or C<set()> will
+turn it into one. A value of C<undef> will have the same behavior as
+C<unset()>.
+
+=item * unset()
+
+Takes a single key argument and deletes that key from the table, so that none
+of its values will be in the table any longer.
 
 =back
 

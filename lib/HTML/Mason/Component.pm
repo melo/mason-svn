@@ -115,7 +115,7 @@ sub _determine_inheritance {
 	if (defined($self->{flags}->{inherit})) {
 	    $self->{inherit_path} = absolute_comp_path($self->{flags}->{inherit}, $self->dir_path);
 	}
-    } else {
+    } elsif ( $interp->use_autohandlers ) {
 	if ($self->name eq $interp->autohandler_name) {
 	    unless ($self->dir_path eq '/') {
 		($self->{inherit_start_path}) = $self->dir_path =~ m,^(.*/)?.*,s
@@ -231,6 +231,8 @@ sub attr_if_exists {
     my $value;
     if ($self->_locate_inherited('attr',$name,\$value)) {
 	return $value;
+    } else {
+	return undef;
     }
 }
 

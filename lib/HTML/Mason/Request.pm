@@ -184,7 +184,6 @@ sub _initialize {
     local $SIG{'__DIE__'} = \&rethrow_exception;
     
     eval {
-	# create base buffer
 	$self->{buffer_stack} = [];
 	$self->{stack} = [];
 
@@ -198,6 +197,8 @@ sub _initialize {
 
 	    search: {
 		$request_comp = $self->interp->load($path);
+
+		last search unless $self->use_dhandlers;
 
 		# If path was not found, check for dhandler.
 		unless ($request_comp) {
@@ -230,6 +231,12 @@ sub _initialize {
 	}
     };
     $self->{prepare_error} = $@ if $@;
+}
+
+sub use_dhandlers
+{
+    my $self = shift;
+    return defined $self->{dhandler_name} and length $self->{dhandler_name};
 }
 
 sub alter_superclass
@@ -288,7 +295,7 @@ sub exec {
     my $wantarray = wantarray;
     my @result;
     eval {
-	# Create initial buffer.
+	# Create base buffer.
 	my $buffer = $self->create_delayed_object( 'buffer', sink => $self->out_method );
 	push @{ $self->{buffer_stack} }, $buffer;
         push @{ $self->{buffer_stack} }, $buffer->new_child;
@@ -670,8 +677,9 @@ sub call_self
     return if $self->top_stack->{in_call_self};
 
     # If the top buffer has a filter we need to remove it because
-    # we'll be adding the filter buffer again in a moment in order to
-    # capture the _filtered_ component output for caching.
+    # we'll be adding the filter buffer again in a moment.  This is
+    # done because we might have been called via cache_self, and we
+    # want to capture the _filtered_ component ou caching.
     $self->top_buffer->remove_filter
         if $self->top_stack->{comp}->has_filter;
 
@@ -763,9 +771,11 @@ sub caller
 #
 sub callers
 {
-    my $self = shift;
-    if (defined $_[0]) {
-	return $self->stack_entry($_[0])->{comp};
+    my ($self, $levels_back) = @_;
+    if (defined($levels_back)) {
+	my $entry = $self->stack_entry($levels_back);
+	return unless defined $entry;
+	return $entry->{comp};
     } else {
 	return map($_->{comp}, reverse $self->stack);
     }
@@ -776,10 +786,12 @@ sub callers
 #
 sub caller_args
 {
-    my ($self,$index) = @_;
-    param_error "caller_args expects stack level as argument" unless defined $index;
+    my ($self, $levels_back) = @_;
+    param_error "caller_args expects stack level as argument" unless defined $levels_back;
 
-    my $args = $self->stack_entry($index)->{args};
+    my $entry = $self->stack_entry($levels_back);
+    return unless $entry;
+    my $args = $entry->{args};
     return wantarray ? @$args : { @$args };
 }
 
@@ -1141,10 +1153,8 @@ sub notes {
 sub clear_buffer
 {
     my $self = shift;
-    for ($self->buffer_stack) {
-	last if $_->ignore_clear;
-	$_->clear;
-    }
+
+    $_->clear for $self->buffer_stack;
 }
 
 sub flush_buffer
@@ -1368,7 +1378,9 @@ C<$m-E<gt>cache> calls.
 
 =item dhandler_name
 
-File name used for L<dhandlers|HTML::Mason::Devel/dhandlers>. Default is "dhandler".
+File name used for L<dhandlers|HTML::Mason::Devel/dhandlers>. Default
+is "dhandler".  If this is set to an empty string ("") then dhandlers
+are turned off entirely.
 
 =item error_format
 
@@ -1601,7 +1613,8 @@ stack. e.g.
 
 When called in scalar context, a hash reference is returned.  When
 called in list context, a list of arguments (which may be assigned to
-a hash) is returned.
+a hash) is returned.  Returns undef or an empty list, depending on
+context, if the specified stack level does not exist.
 
 =for html <a name="item_callers"></a>
 
@@ -1618,6 +1631,9 @@ the component at the bottom of the stack. e.g.
     $m->callers(0)            # current component
     $m->callers(1)            # component that called us
     $m->callers(-1)           # first component executed
+
+Returns undef or an empty list, depending on context, if the specified
+stack level does not exist.
 
 =for html <a name="item_caller"></a>
 
@@ -1874,7 +1890,7 @@ the buffer cannot be flushed.
 
 =item instance
 
-This class method returns the C<HTML::Mason:::Request> currently in
+This class method returns the C<HTML::Mason::Request> currently in
 use.  If called when no Mason request is active it will return
 C<undef>.
 
