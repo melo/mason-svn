@@ -117,9 +117,9 @@ for all subsequent values, like this:
 =back
 
 The parameters that can be set are all the initialization parameters
-for the B<L<HTML::Mason::Parser|HTML::Mason::Parser>>,
-B<L<HTML::Mason::Interp|HTML::Mason::Interp>>, and
-B<L<HTML::Mason::ApacheHandler|HTML::Mason::ApacheHandler>> objects.
+for the B<L<HTML::Mason::Parser>>,
+B<L<HTML::Mason::Interp>>, and
+B<L<HTML::Mason::ApacheHandler>> objects.
 These parameters are simply passed to the constructors for each of
 these objects.  In addition, there are two more parameters that can be
 set that affect Mason's behavior.  All parameters start with a
@@ -141,8 +141,7 @@ specified here.
 
 Valid values for this parameter are C<CGI> or C<mod_perl>.  This
 determines whether to use the C<CGI> or C<Apache::Request> module for
-argument handling.  Please see L<the HTML::Mason::ApacheHandler
-docs|HTML::Mason::ApacheHandler/PARAMETERS TO THE use() DECLARATION>
+argument handling.  Please see L<HTML::Mason::ApacheHandler/PARAMETERS TO THE use() DECLARATION>
 for more details.
 
 This can only be set once, regardless of how you set
@@ -222,8 +221,7 @@ parameter.  This parameter can either be a single value, such as
  PerlSetVar  MasonCompRoot  "root1 => /foo/comp/root1"
  PerlAddVar  MasonCompRoot  "shared => /my/shared/comps"
 
-See the L<HTML::Mason::Interp
-documentation|HTML::Mason::Interp/comp_root> for more details on
+See the L<HTML::Mason::Interp/comp_root> for more details on
 multiple component roots.
 
 =item * MasonDataDir - string (required)
@@ -253,8 +251,7 @@ Corresponds to the C<data_cache_dir> parameter.
 =item * MasonDieHandler - code (special)
 
 Corresponds to the C<die_handler> parameter.  B<NOTE>: This parameter
-can also be set as C<0>.  See the L<HTML::Mason::Interp
-documentation|HTML::Mason::Interp/die_handler> for more details.
+can also be set as C<0>.  See the L<HTML::Mason::Interp/die_handler> for more details.
 
 =item * MasonMaxRecurse - string
 
