@@ -13,7 +13,7 @@ use File::Find;
 use HTML::Mason::Component::FileBased;
 use HTML::Mason::Component::Subcomponent;
 use HTML::Mason::Request;
-use HTML::Mason::Tools qw(dumper_method read_file);
+use HTML::Mason::Tools qw(dumper_method make_fh read_file);
 use Params::Validate qw(:all);
 
 use HTML::Mason::MethodMaker
@@ -1143,7 +1143,7 @@ sub write_object_file
 	rmtree($object_file) if (-d $object_file);
     }
     
-    my $fh = do { local *FH; *FH; };
+    my $fh = make_fh();
     open $fh, ">$object_file" or die "Couldn't write object file $object_file: $!";
     print $fh $object_text;
     close $fh or die "Couldn't close object file $object_file: $!";
@@ -1242,7 +1242,7 @@ sub make_dirs
     my $reload_file = $options{update_reload_file} ? "$data_dir/etc/reload.lst" : undef;
     my ($relfh);
     if (defined($reload_file)) {
-	$relfh = do { local *FH; *FH; };
+	$relfh = make_fh();
 	open $relfh, ">>$reload_file" or die "make_dirs: cannot open '$reload_file' for writing: $!";
 	my $oldfh = select $relfh;
 	$|++;
@@ -1293,18 +1293,22 @@ sub make_dirs
 	}
     };
 
-    foreach my $path (@paths) {
-	my $fullpath = $source_dir . $path;
-	$fullpath =~ s@/$@@g;
-	if (-f $fullpath) {
-	    $compilesub->($fullpath);
-	} elsif (-d $fullpath) {
-	    my $sub = sub {$compilesub->($_) if -f};
-	    find($sub,$fullpath);
-	} else {
-	    die "make_dirs: no such file or directory '$fullpath'";
+    eval {
+	foreach my $path (@paths) {
+	    my $fullpath = $source_dir . $path;
+	    $fullpath =~ s@/$@@g;
+	    if (-f $fullpath) {
+		$compilesub->($fullpath);
+	    } elsif (-d $fullpath) {
+		my $sub = sub {$compilesub->($_) if -f};
+		find($sub,$fullpath);
+	    } else {
+		die "make_dirs: no such file or directory '$fullpath'";
+	    }
 	}
-    }
+    };
+    close $relfh;
+    die $@ if $@;
 }
 
 1;

@@ -10,7 +10,7 @@ use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use File::Path;
 use HTML::Mason::Config;
-use HTML::Mason::Tools qw(date_delta_to_secs);
+use HTML::Mason::Tools qw(date_delta_to_secs make_fh);
 use MLDBM ($HTML::Mason::Config{mldbm_use_db}, $HTML::Mason::Config{mldbm_serializer});
 
 require Exporter;
@@ -44,7 +44,7 @@ sub access_data_cache
 	my $lockfile = "$lockdir/$base.lock";
 
 	# Open file in correct mode for lock type (Tom Hughes)
-	my $lockfh = do { local *FH; *FH; };
+	my $lockfh = make_fh();
 	if ($lockargs & LOCK_EX) {
 	    open $lockfh, ">>$lockfile"
 		or die "cache: cannot open lockfile '$lockfile' for exclusive lock: $!";

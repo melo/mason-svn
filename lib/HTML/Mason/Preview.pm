@@ -356,7 +356,7 @@ sub handle_preview_request_1
 		    if (substr($content,$start,length($nextEventStr)) eq $nextEventStr) {
 			$start += length($nextEventStr);
 			my $length = [stat($path)]->[7];
-			my $fh = do { local *FH; *FH; };
+			my $fh = make_fh();
 			open($fh,$path) or die "Can't open $path: $!";
 			if ($length < 1024) {
 			    local $/ = undef;

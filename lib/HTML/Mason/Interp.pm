@@ -10,7 +10,7 @@ use Carp;
 use File::Path;
 use File::Basename;
 use HTML::Mason::Parser;
-use HTML::Mason::Tools qw(is_absolute_path read_file);
+use HTML::Mason::Tools qw(is_absolute_path make_fh read_file);
 use HTML::Mason::Commands qw();
 use HTML::Mason::Config;
 use HTML::Mason::Resolver::File;
@@ -196,7 +196,7 @@ sub _initialize
     #
     if ($self->{system_log_events_hash}) {
 	$self->{system_log_file} = $self->data_dir . "/etc/system.log" if !$self->system_log_file;
-	my $fh = do { local *FH; *FH; };  # double *FH avoids warning
+	my $fh = make_fh();
 	open $fh, ">>".$self->system_log_file
 	    or die "Couldn't open system log file ".$self->{system_log_file}." for append";
 	my $oldfh = select $fh;
@@ -254,7 +254,7 @@ sub check_reload_file {
     if ($lastmod > $self->{last_reload_time}) {
 	my $length = (stat(_))[7];
 	$self->{last_reload_file_pos} = 0 if ($length < $self->{last_reload_file_pos});
-	my $fh = do { local *FH; *FH; };  # double *FH avoids warning
+	my $fh = make_fh();
 	open $fh, $reload_file or return;
 
 	my $block;
@@ -270,6 +270,7 @@ sub check_reload_file {
 		delete($self->{code_cache}->{$comp_path});
 	    }
 	}
+	close $fh;
     }
 }
 

@@ -7,6 +7,7 @@ use Cwd;
 use File::Path;
 
 use HTML::Mason;
+use HTML::Mason::Tools qw(make_fh);
 
 use Getopt::Long;
 
@@ -334,7 +335,7 @@ sub write_comp
     print "Making component $path at $real_file\n"
 	if $DEBUG;
 
-    my $fh = do { local *FH; *FH; };
+    my $fh = make_fh();
     open $fh, ">$real_file"
 	or die "Unable to write to '$real_file': $!";
     print $fh $component

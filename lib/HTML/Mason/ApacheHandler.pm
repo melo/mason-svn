@@ -82,7 +82,7 @@ use HTML::Mason::Error qw(error_display_html);
 use HTML::Mason;
 use HTML::Mason::Commands;
 use HTML::Mason::FakeApache;
-use HTML::Mason::Tools qw(dumper_method html_escape pkg_installed);
+use HTML::Mason::Tools qw(dumper_method html_escape make_fh pkg_installed);
 use HTML::Mason::Utils;
 use Params::Validate qw(:all);
 use Apache;
@@ -636,7 +636,7 @@ sub write_debug_file
 	mkpath($outDir,0,0755) or die "cannot create debug directory '$outDir'";
     }
     my $out_path = "$outDir/$outFile";
-    my $outfh = do { local *FH; *FH; };  # double *FH avoids warning
+    my $outfh = make_fh();
     unless ( open $outfh, ">$out_path" ) {
 	$r->warn("cannot open debug file '$out_path' for writing");
 	return;

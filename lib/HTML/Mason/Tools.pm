@@ -19,7 +19,7 @@ require Exporter;
 use vars qw(@ISA @EXPORT_OK);
 
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_file chop_slash html_escape url_escape url_unescape date_delta_to_secs dumper_method paths_eq is_absolute_path make_absolute_path compress_path mason_canonpath pkg_loaded pkg_installed);
+@EXPORT_OK = qw(read_file chop_slash html_escape url_escape url_unescape date_delta_to_secs dumper_method paths_eq is_absolute_path make_absolute_path compress_path mason_canonpath pkg_loaded pkg_installed make_fh);
 
 #
 # Return contents of file. If $binmode is 1, read in binary mode.
@@ -29,12 +29,13 @@ sub read_file
     my ($file,$binmode) = @_;
     die "read_file: '$file' does not exist" if (!-e $file);
     die "read_file: '$file' is a directory" if (-d _);
-    my $fh = do { local *FH; *FH; };
+    my $fh = make_fh();
     open $fh, $file
 	or die "read_file: could not open file '$file' for reading: $!";
     binmode $fh if $binmode;
     local $/ = undef;
     my $text = <$fh>;
+    close $fh;
     return $text;
 }
 
@@ -197,3 +198,7 @@ sub pkg_loaded
     return $$varname ? 1 : 0;
 }
 
+sub make_fh
+{
+    return do { local *FH; *FH; };  # double *FH avoids a warning
+}

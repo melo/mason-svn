@@ -9,7 +9,6 @@
 
 package HTML::Mason::Error;
 
-use HTML::Mason::Tools qw(html_escape);
 use strict;
 
 require Exporter;
@@ -19,8 +18,7 @@ use vars qw(@ISA @EXPORT_OK);
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(error_process error_display_html);
 
-use HTML::Mason::Tools;
-use strict;
+use HTML::Mason::Tools qw(html_escape make_fh);
 
 sub error_process {
     my ($error, $req) = @_;
@@ -349,7 +347,7 @@ sub create_context_html {
 
     my $context .= qq(<table border="0" cellpadding="0" cellspacing="0">);
     
-    my $fh = do { local *FH; *FH; };
+    my $fh = make_fh();
     open $fh, $file;
     unless($fh) {
 	$context = "unable to open file";
@@ -390,6 +388,7 @@ sub create_context_html {
 	$context .= $conf->{table_entry}->("...", "");
 	$context .= qq(</table>);
     }
+    close $fh or die "can't close file: $file: $!";
 
     return $context;
 }
