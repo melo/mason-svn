@@ -262,7 +262,7 @@ sub access_data_cache
 	$expired = 1 if ($mem->{expires} && $time >= $mem->{expires});
 	if (exists($options{expire_if})) {
 	    my $sub = $options{expire_if};
-	    $expired = 1 if (&$sub($mem->{lastModified}));
+	    $expired = 1 if (&$sub($mem->{lastModified} || 0));
 	}
 	return $mem->{contents} if !$expired;
 	return undef if !$options{busy_lock};
