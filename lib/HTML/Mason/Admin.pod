@@ -58,8 +58,8 @@ A simple configuration looks like:
     <Location />
         SetHandler perl-script
         PerlHandler HTML::Mason
-        MasonCompRoot "/usr/local/www/htdocs"
-        MasonDataDir "/usr/local/www/mason"
+        PerlSetVar MasonCompRoot "/usr/local/www/htdocs"
+        PerlSetVar MasonDataDir "/usr/local/www/mason"
     </Location>
 
 C<MasonCompRoot> specifies the I<component root>, the top of your
@@ -89,7 +89,7 @@ are:
 =item * string
 
 The variable's value is simply taken literally and used.  Quotes are
-necessary if the string contains spaces.
+necessary if the string contains whitespace.
 
 =item * boolean
 
@@ -111,10 +111,9 @@ A named subroutine call must be wrapped in an anonymous subroutine:
 
 =item * list
 
-To set a list parameter, use C<PerlSetVar> for the first value and
-then C<PerlAddVar> for all subsequent values, like this:
+To set a list parameter, use C<PerlAddVar> for the values, like this:
 
- PerlSetVar  MasonPreloads  /foo/bar/baz.comp
+ PerlAddVar  MasonPreloads  /foo/bar/baz.comp
  PerlAddVar  MasonPreloads  /foo/bar/quux.comp
 
 =back
@@ -183,7 +182,7 @@ Correponds to the C<comp_root> parameter.  This parameter can either
 be a single value, such as '/foo/comp/root', or a list of keys and
 values such as:
 
- PerlSetVar  MasonCompRoot  "root1 => /foo/comp/root1"
+ PerlAddVar  MasonCompRoot  "root1 => /foo/comp/root1"
  PerlAddVar  MasonCompRoot  "shared => /my/shared/comps"
 
 See the L<Multiple component roots> section for more details on
