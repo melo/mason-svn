@@ -172,10 +172,7 @@ sub cgi_object {
 }
 
 #
-# Override this method to return NOT_FOUND when we get a
-# TopLevelNotFound exception. In case of POST we must trick
-# Apache into not reading POST content again. Wish there were
-# a more standardized way to do this...
+# Override this method to send HTTP headers if necessary.
 #
 sub exec
 {
