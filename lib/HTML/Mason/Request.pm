@@ -1468,9 +1468,9 @@ sets and returns the value.  For example:
 
 =over
 
-=item abort ([return value])
-
 =for html <a name="item_abort"></a>
+
+=item abort ([return value])
 
 Ends the current request, finishing the page without returning
 through components. The optional argument specifies the return
