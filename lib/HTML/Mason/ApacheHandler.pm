@@ -103,7 +103,7 @@ use HTML::Mason::MethodMaker
       );
 
 # use() params. Assign defaults, in case ApacheHandler is only require'd.
-use vars qw($LOADED $ARGS_METHOD);
+use vars qw($ARGS_METHOD $AH);
 
 my @used = ($HTML::Mason::IN_DEBUG_FILE);
 
@@ -124,13 +124,29 @@ my %fields =
      debug_dir_config_keys => [],
      );
 
+# If loaded via a PerlModule directive in a conf file we are being
+# loaded via 'require', not 'use'.  However, the import routine _must_
+# be called at some point during startup or things go boom.
+__PACKAGE__->import;
+
 sub import
 {
     shift; # class not needed
 
-    return if $LOADED;
+    return if defined $ARGS_METHOD;
+
+    # We were called by the internal call a few lines back and it
+    # seems that we're not being loaded in a conf file.  We will
+    # expect to be called again via a 'use' line in the handler.pl
+    # file.  This is a bit of a hack, I must say.
+    return if caller eq __PACKAGE__ && ! _in_apache_conf_file();
 
     my %params = @_;
+
+    if (_in_apache_conf_file())
+    {
+	$params{args_method} ||= Apache->server->dir_config('MasonArgsMethod');
+    }
 
     # safe default.
     $params{args_method} ||= 'CGI';
@@ -151,7 +167,195 @@ sub import
 	die "Invalid args_method parameter ('$params{args_method}') given to HTML::Mason::ApacheHandler in 'use'\n";
     }
 
-    $LOADED = 1;
+    _make_ah() if _in_apache_conf_file();
+}
+
+# This is my best guess as to whether we are being configured via the
+# conf file or not.  Without a comp root it will blow up sooner or
+# later anyway.  This may not be the case in the future though.
+sub _in_apache_conf_file
+{
+    return $ENV{MOD_PERL} && Apache->server->dir_config('MasonCompRoot');
+}
+
+sub _make_ah
+{
+    return if $AH;
+
+    my %p;
+
+    $p{apache_status_title} = _get_string_param('ApacheStatusTitle');
+    $p{auto_send_headers} = _get_boolean_param('AutoSendHeaders');
+    $p{debug_handler_proc} = _get_string_param('DebugHandlerProc');
+    $p{debug_handler_script} = _get_string_param('DebugHandlerScript');
+    $p{debug_mode} = _get_string_param('DebugMode');
+    $p{debug_perl_binary} = _get_string_param('DebugPerlBinary');
+
+    $p{error_mode} = _get_string_param('ErrorMode');
+    die "Configuration parameter MasonErrorMode must be either 'batch' or 'stream'\n"
+	if defined $p{out_mode} && $p{out_mode} ne 'html' && $p{out_mode} ne 'fatal';
+
+    $p{top_level_predicate} = _get_code_param('TopLevelPredicate');
+
+    foreach ( qw( apache_status_title auto_send_headers decline_dirs
+		  error_mode debug_mode debug_perl_binary top_level_predicate
+		) )
+    {
+	delete $p{$_} unless defined $p{$_};
+    }
+
+
+    $AH = HTML::Mason::ApacheHandler->new( interp => _make_interp(),
+					   %p,
+					 );
+}
+
+sub _make_interp
+{
+    my %p;
+
+    $p{allow_recursive_autohandlers} = _get_boolean_param('AllowRecursiveAutohandlers');
+    $p{autohandler_name}    = _get_string_param('AutohandlerName');
+    $p{code_cache_max_size} = _get_string_param('CodeCacheMaxSize');
+    $p{current_time}        = _get_string_param('CurrentTime');
+    $p{data_cache_dir}      = _get_string_param('DataCacheDir');
+    $p{dhandler_name}       = _get_string_param('DhandlerName');
+    $p{die_handler}         = _get_code_param('DieHandler');
+    $p{max_recurse}         = _get_string_param('MaxRecurse');
+    $p{out_method}          = _get_code_param('OutMethod');
+
+    $p{out_mode}            = _get_string_param('OutMode');
+    die "Configuration parameter MasonOutMode must be either 'batch' or 'stream'\n"
+	if defined $p{out_mode} && $p{out_mode} ne 'batch' && $p{out_mode} ne 'stream';
+
+    $p{preloads}              = [ _get_list_param('Preloads') ];
+    $p{static_file_root}      = _get_string_param('StaticFileRoot');
+    $p{system_log_events}     = _get_string_param('SystemLogEvents');
+    $p{system_log_file}       = _get_string_param('SystemLogFile');
+    $p{system_log_separator}  = _get_string_param('SystemLogSepartor');
+    $p{use_data_cache}        = _get_boolean_param('UseDataCache');
+    $p{use_object_files}      = _get_boolean_param('UseObjectFiles');
+    $p{use_reload_file}       = _get_boolean_param('UseReloadFile');
+    $p{verbose_compile_error} = _get_boolean_param('VerboseCompileError');
+
+    my @comp_root = _get_list_param('CompRoot', 1);
+    if (@comp_root == 1)
+    {
+	$p{comp_root} = $comp_root[0];
+    }
+    else
+    {
+	my @root;
+	foreach my $root (@comp_root)
+	{
+	    my ($k, $v) = split /\s*=>\s*/, $root;
+	    die "Configuration parameter MasonCompRoot must be either a singular value or a multiple 'hash' values like 'foo => /home/mason/foo'"
+		unless defined $k && defined $v;
+	    push @{ $p{comp_root} }, [ $k => $v ];
+	}
+    }
+    $p{data_dir} = _get_string_param('DataDir', 1);
+
+    # If not defined we'll use the defaults
+    foreach ( qw( allow_recursive_autohandlers autohandler_name
+		  code_cache_max_size current_time dhandler_name
+		  system_log_separator out_mode max_recurse use_data_cache
+		  use_object_files use_reload_file verbose_compile_error
+		  out_method
+		) )
+    {
+	delete $p{$_} unless defined $p{$_};
+    }
+
+    return HTML::Mason::Interp->new( parser => _make_parser(),
+				     %p,
+				   );
+}
+
+sub _make_parser
+{
+    my %p;
+    $p{allow_globals} = _get_string_param('AllowGlobals');
+
+    $p{default_escape_flags} = _get_string_param('DefaultEscapeFlags');
+    $p{ignore_warnings_expr} = _get_string_param('IgnoreWarningsExpr');
+    $p{in_package} = _get_string_param('InPackage');
+    $p{postamble} = _get_string_param('Postamble');
+    $p{preamble} = _get_string_param('Preamble');
+    $p{taint_check} = _get_boolean_param('TaintCheck') || 0;
+    $p{use_strict} = _get_boolean_param('UseStrict');
+
+    $p{preprocess} = _get_code_param('Preprocess');
+    $p{postprocess} = _get_code_param('Postprocess');
+
+    # If not defined we'll use the defaults
+    foreach ( qw( ignore_warnings_expr in_package use_strict preprocess postprocess ) )
+    {
+	delete $p{$_} unless defined $p{$_};
+    }
+
+    return HTML::Mason::Parser->new(%p);
+}
+
+sub _get_string_param
+{
+    my ($p, $val) = _get_val(@_[0, 1]);
+
+    return $val;
+}
+
+sub _get_boolean_param
+{
+    my ($p, $val) = _get_val(@_[0, 1]);
+
+    return undef unless defined $val;
+
+    $val = lc $val;
+
+    if ($val)
+    {
+	die "Configuration parameter '$p' must be either 'On' or 'Off'\n"
+	    unless $val eq 'on' || $val eq 'off';
+    }
+
+    return $val eq 'on' ? 1 : 0;
+}
+
+sub _get_code_param
+{
+    my ($p, $val) = _get_val(@_[0, 1]);
+
+    return unless $val;
+
+    my $sub_ref = eval $val;
+
+    die "Configuration parameter '$p' is not valid perl:\n$@\n"
+	if $@;
+
+    return $sub_ref;
+}
+
+sub _get_list_param
+{
+    my ($p, @val) = _get_val(@_[0,1], 1);
+
+    return @val;
+}
+
+sub _get_val
+{
+    my ($p, $required, $wantarray) = @_;
+    $p = "Mason$p";
+
+    my @val = Apache->server->dir_config($p);
+
+    die "Only a single value is allowed for configuration parameter '$p'\n"
+	if @val > 1 && ! $wantarray;
+
+    die "Configuration parameter '$p' is required\n"
+	if $required && ! defined $val[0];
+
+    return ($p, $wantarray ? @val : $val[0]);
 }
 
 sub new
@@ -760,6 +964,19 @@ sub simulate_debug_request
 # Determines whether the http header has been sent.
 #
 sub http_header_sent { shift->header_out("Content-type") }
+
+#
+# PerlHandler HTML::Mason::ApacheHandler
+#
+sub handler
+{
+    my $r = shift;
+
+    die "This function cannot be called except by defining HTML::Mason::ApacheHandler as a content handler in you Apache configuration file\n"
+	unless $AH;
+
+    return $AH->handle_request($r);
+}
 
 
 #----------------------------------------------------------------------
