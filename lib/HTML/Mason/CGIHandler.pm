@@ -338,8 +338,12 @@ stops, just as when running ApacheHandler.  For compatibility with
 ApacheHandler, if you call C<< $m->abort() >> with no argument, or
 with an argument of 0 or 200 (OK statuses), then headers will be sent.
 Otherwise, they are not.  However, unlike with ApacheHandler, calling
-C<< $m->abort() >> with an HTTP status code does not cause Apache to
-return that status code to the browser.
+C<< $m->abort() >> with an HTTP status code does not cause the web
+server to return that status code to the browser.
+
+It would be theoretically possible to use CGI's "Status:" header to
+set the status in response to the top-level component's return value
+or the aborted value. We will try this in a later version.
 
 =head2 $r Methods
 
