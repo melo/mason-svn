@@ -84,7 +84,6 @@ sub new
 	system_log_events_hash => undef
     };
     my (%options) = @_;
-    my ($rootDir,$outMethod,$systemLogEvents);
     while (my ($key,$value) = each(%options)) {
 	next if $key =~ /out_method|system_log_events/;
 	if (exists($fields{$key})) {
