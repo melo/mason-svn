@@ -168,24 +168,39 @@ sub _get_compilation_params {
 sub _read_existing_conf {
     # Returns some "(Add|Load)Module" config lines, generated from the
     # existing config file and a few must-have modules.
-    my ($self, $server_conf) = @_;
-    
+    my ($self, $server_conf, $default_root, $is_include) = @_;
+
     open SERVER_CONF, $server_conf or die "Couldn't open $server_conf: $!";
     my @lines = grep {!m/^\s*\#/} <SERVER_CONF>;
     close SERVER_CONF;
 
-    my @includes = grep /^\s*Include\s+\S+/, @lines;
+    my @includes;
+    foreach my $include (grep /^\s*Include\s+\S+/, @lines) {
+	my ($file) = $include =~ /^\s*Include\s+(\S+)/;
+	$file =~ s/^"//;
+	$file =~ s/"//;
+	push @includes, $file;
+	warn "ADDED INC $file\n";
+    }
 
     my @modules       =   grep /^\s*(Add|Load)Module/, @lines;
+
     my ($server_root) = (map /^\s*ServerRoot\s*(\S+)/, @lines);
     $server_root =~ s/^"//;
     $server_root =~ s/"$//;
 
+    $server_root ||= $default_root;
+
     # Rewrite all modules to load from an absolute path.
-    foreach (@modules, @includes) {
+    foreach (@modules) {
 	s!(\s)([^/\s]\S+/)!$1$server_root/$2!;
     }
-    
+    # And do the same for includes.
+    foreach (@includes) {
+	s!^([^/])!$server_root/$1!;
+	warn "$_\n";
+    }
+
     my $static_mods = $self->static_modules('t/httpd');
     
     my @load;
@@ -196,7 +211,14 @@ sub _read_existing_conf {
 	    push @load, $module;
 	}
     }
-    
+
+    # Follow each include recursively to find needed modules
+    foreach my $include (@includes) {
+	push @modules, $self->_read_existing_conf($include, $server_root, 1);
+    }
+    # The last bits only need to be done once.
+    return @modules if $is_include;
+
     # Directories where apache DSOs live.
     my @module_dirs = map {m,(/\S*)/,} @modules;
     
@@ -212,12 +234,11 @@ sub _read_existing_conf {
 	}
        warn "Warning: couldn't find anything to load for 'mod_$module'.\n";
     }
-    
+
     print "Adding the following dynamic config lines: \n";
     print join '', @modules;
-    print join '', @includes;
     print "\n\n";
-    return join '', @modules, @includes;
+    return join '', @modules;
 }
 
 sub static_modules {
