@@ -96,7 +96,7 @@ sub new
 		current_time => { type => SCALAR, optional => 1 },
 		data_cache_dir => { type => SCALAR, optional => 1 },
 		dhandler_name => { type => SCALAR, optional => 1 },
-		die_handler => { type => CODEREF, optional => 1 },
+		die_handler => { type => CODEREF | SCALAR | UNDEF, optional => 1 },
 		out_method => { type => CODEREF | SCALARREF, optional => 1 },
 		out_mode => { type => SCALAR, optional => 1 },
 		max_recurse => { type => SCALAR, optional => 1 },
