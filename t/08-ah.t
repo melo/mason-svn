@@ -30,7 +30,7 @@ test_load_apache();
 
 my $tests = 20; # multi conf & taint tests
 $tests += 63 if my $have_libapreq = have_module('Apache::Request');
-$tests += 42 if my $have_cgi      = have_module('CGI');
+$tests += 41 if my $have_cgi      = have_module('CGI');
 $tests += 16 if my $have_tmp      = (-d '/tmp' and -w '/tmp');
 $tests++ if $have_cgi && $mod_perl::VERSION >= 1.24;
 $tests++ if my $have_filter = have_module('Apache::Filter');
@@ -65,9 +65,9 @@ if ($have_tmp) {
 cleanup_data_dir();
 taint_tests();           # 16 tests
 
-if ($have_cgi) {             # 42 tests (+ 1?)
+if ($have_cgi) {             # 41 tests (+ 1?)
     cleanup_data_dir();
-    cgi_tests(1);            # 23 tests + 1 if mod_perl version > 1.24
+    cgi_tests(1);            # 22 tests + 1 if mod_perl version > 1.24
 
     cleanup_data_dir();
     cgi_tests(0);            # 19 tests
