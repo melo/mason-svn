@@ -5,15 +5,28 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+1.05  April 30, 2001
+
+- Fixed improper handling of parameters for non-GET/POST
+request. (submitted by Radu Greab)
+- Fixed Interp to accept a resolver object param. (reported by Bojan
+Jovanovic)
+- Fixed infinite loop when calling $m->decline with // in dhandler
+arg. (reported by Baldur Kristinsson)
+
 1.04  October 30, 2001
 
-- Fixed locale parser_version 0,8 problem. (submitted by Louis-David Mitterrand) 
-- Fixed inability to use '/' for comp_root. (reported by Doug Hunt) 
-- Fixed HTML::Mason::Parser::make_dirs dying when reload_file not defined. (reported by Ivan E. Panchenko) 
-- Made error_process regexps more specific. (suggested by Vadim Belman) 
-- Fixed $m->count. (reported by David Wheeler) 
-- Fixed writing of object files in taint mode. (submitted by Barrie Slaymaker) 
-- Made it possible to run Makefile.PL without prompts. 
+- Fixed locale parser_version 0,8 problem. (submitted by Louis-David
+Mitterrand)
+- Fixed inability to use '/' for comp_root. (reported by Doug Hunt)
+- Fixed HTML::Mason::Parser::make_dirs dying when reload_file not
+defined. (reported by Ivan E. Panchenko)
+- Made error_process regexps more specific. (suggested by Vadim
+Belman)
+- Fixed $m->count. (reported by David Wheeler)
+- Fixed writing of object files in taint mode. (submitted by Barrie
+Slaymaker)
+- Made it possible to run Makefile.PL without prompts.
 
 1.03  May 17, 2001
 
