@@ -1417,10 +1417,6 @@ appropriately named method; for example, to define an "xml" format,
 create a method C<HTML::Mason::Exception::as_xml> patterned after one of
 the built-in methods.
 
-=back
-
-=over
-
 =item error_mode
 
 Indicates how errors are returned to the caller.  The choices are
