@@ -70,7 +70,7 @@ sub request_time { time }
 sub uri {
     my $self = shift;
 
-    $self->{uri} ||= $self->script_name . $self->path_info || '';
+    $self->{uri} ||= $self->{query}->script_name . $self->path_info || '';
 }
 
 # Is this available in CGI?
@@ -81,7 +81,7 @@ sub uri {
 # is being called." This is irrelevant, I think.
 # sub location {}
 
-sub path_info { $_[0]->path_info }
+sub path_info { $_[0]->{query}->path_info }
 
 sub args {
     my $self = shift;
