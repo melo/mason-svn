@@ -903,5 +903,15 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_test( name => 'normal_die_handler',
+		      description => 'Test normal $SIG{__DIE__} handler',
+		      component => <<'EOF',
+<% die 'foo' %>
+EOF
+		      expect_error => '^error while executing /interp/normal_die_handler:',
+		    );
+
+#------------------------------------------------------------
+
     return $group;
 }
