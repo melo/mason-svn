@@ -260,7 +260,7 @@ sub cache_self
 	$lref->{sink} = sub { $output .= $_[0] };
 	$lref->{in_cache_self_flag} = 1;
 
-	my $retval = $lref->{comp}->run( @{ $lref->{args} } );
+	$retval = $lref->{comp}->run( @{ $lref->{args} } );
 	$self->top_stack({%save_locals});
 
 	#
