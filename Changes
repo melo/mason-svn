@@ -12,10 +12,11 @@ available at http://www.masonhq.com/code/history.html.
 - The fix to make CGIHandler support flush_buffer and autoflush caused
 it to not rethrow any exceptions created during request execution.  So
 if error_mode was set to 'fatal', then an error would simply cause no
-output to be generated.
+output to be generated.  Task id #531.
 
 - A comment in the last line of a component call with content caused a
 syntax error in the compiled component.  Reported by Todd Goldenbaum.
+Task id #530.
 
 - The various request handling methods in CGIHandler once again return
 the value of calling the Interp object's exec() method.
@@ -24,6 +25,11 @@ the value of calling the Interp object's exec() method.
 thrown from the Interp object's exec() method.  This fixes some
 problems when this module was used with David Wheeler's
 MasonX::Interp::WithCallbacks module.
+
+- Using a <%shared> block when in_package was set to something other
+than HTML::Mason::Commands led to an error like "Can't call method
+"call_dynamic" on an undefined value".  Reported by David Wheeler.
+Task id #535.
 
 
 1.25  December 12, 2003
