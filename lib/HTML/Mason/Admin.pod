@@ -349,17 +349,17 @@ module via a C<PerlModule> directive.
 
 For maximum flexibility, you may choose to write a custom script to
 create your Mason objects and handle requests. In our documentation
-and examples we call this script handler.pl, though you may name it
+and examples we call this script C<handler.pl>, though you may name it
 whatever you like.
 
-The handler.pl file is responsible for creating the three Mason
+The C<handler.pl> file is responsible for creating the three Mason
 objects and supplying the many parameters that control how your
 components are parsed and executed. It also provides the opportunity
 to execute arbitrary code at three important junctures: the server
 initialization, the beginning of a request, and the end of a request.
 A wide set of behaviors can be implemented with a mere few lines of
-well-placed Perl in your handler.pl.  In this section we present the
-basics of setting up handler.pl as well as some ideas for more
+well-placed Perl in your C<handler.pl>.  In this section we present the
+basics of setting up C<handler.pl> as well as some ideas for more
 advanced applications.
 
 =head2 Creating the Mason objects
@@ -449,7 +449,7 @@ This lets you know which version of the component was running.
 =head2 External modules
 
 Components will often need access to external Perl modules. Any such
-modules that export symbols should be listed in handler.pl, rather
+modules that export symbols should be listed in C<handler.pl>, rather
 than the standard practice of using a PerlModule configuration
 directive. This is because components are executed inside the
 B<HTML::Mason::Commands> package, and can only access symbols exported
@@ -484,16 +484,16 @@ end of the startup code in C<handler.pl>:
 
 =head2 Persistent user sessions
 
-With just a few lines in handler.pl you can make a global hash
+With just a few lines in C<handler.pl> you can make a global hash
 (e.g. I<%session>) available to all components containing persistent user
 session data.  If you set a value in the hash, you will see the change
 in future visits by the same user.  The key piece is Jeffrey Baker's
 B<Apache::Session> module, available from CPAN.
 
-The file F<eg/session_handler.pl> in the distribution contains the
+The file C<eg/session_handler.pl> in the distribution contains the
 lines to activate cookie-based sessions using Apache::Session and
-CGI::Cookie. You can use F<eg/session_handler.pl> as your new handler.pl
-base, or just copy out the appropriate pieces to your existing handler.pl.
+CGI::Cookie. You can use C<eg/session_handler.pl> as your new C<handler.pl>
+base, or just copy out the appropriate pieces to your existing C<handler.pl>.
 
 The session code is customizable; you can change the user ID location
 (e.g. URL instead of cookie), the user data storage mechanism
@@ -513,7 +513,7 @@ is very little need for globals at all.
 That said, there are times when it is very useful to make a value
 available to all Mason components: a DBI database handler, a hash of
 user session information, the server root for forming absolute URLs.
-Usually you initialize the global in your handler.pl, either outside
+Usually you initialize the global in your C<handler.pl>, either outside
 the handler() subroutine (if you only need to set it once) or inside
 (if you need to set it every request).
 
@@ -535,7 +535,7 @@ The only advantage to C<allow_globals> is that it will do
 the right thing if you've chosen a different package for components
 to run in (via the L<Parser/in_package> Parser parameter.)
 
-Similarly, to initialize the variable in handler.pl, you need to
+Similarly, to initialize the variable in C<handler.pl>, you need to
 set it in the component package:
 
    $HTML::Mason::Commands::dbh = DBI->connect(...);
@@ -564,7 +564,7 @@ One way is with a line at the top of handler(), e.g.:
     return -1 if $r->content_type && $r->content_type !~ m|^text/|i;
 
 This line allows text/html and text/plain to pass through but not much
-else.  It is included (commented out) in the default handler.pl.
+else.  It is included (commented out) in the default C<handler.pl>.
 
 Another way is specifying a filename pattern in the Apache
 configuration, e.g.:
@@ -616,7 +616,7 @@ provide more information than necessary). Use either an Apache directive
     PerlInitHandler Apache::Constants::NOT_FOUND
     </FilesMatch>
 
-or a handler.pl directive:
+or a C<handler.pl> directive:
 
     return 404 if $r->filename =~ m{^_[^/]+$};
 
@@ -641,7 +641,7 @@ following:
 
 1. Set the L<ApacheHandler/decline_dirs> ApacheHandler parameter to 0.
 
-2. If your handler.pl contains the standard "return -1" line to
+2. If your C<handler.pl> contains the standard "return -1" line to
 decline non-text requests (as given in the previous section), add a
 clause allowing directory types:
 
@@ -731,7 +731,7 @@ Debug files are created under C<data_dir/debug/E<lt>usernameE<gt>> for
 authenticated users, and in C<data_dir/debug/anon> for anonymous
 users.
 
-Debug files can only be used with the handler.pl configuration method. 
+Debug files can only be used with the C<handler.pl> configuration method. 
 
 Several ApacheHandler parameters are required to activate and
 configure debug files:
@@ -771,7 +771,7 @@ Here's a sample C<ApacheHandler> constructor with all debug options:
 
 When replaying a request through a debug file, the global variable
 C<$HTML::Mason::IN_DEBUG_FILE> will be set to 1.  This is useful if you
-want to omit certain flags (like preloading) in handler.pl when
+want to omit certain flags (like preloading) in C<handler.pl> when
 running under debug.  For example:
 
     my %extra_flags = ($HTML::Mason::IN_DEBUG_FILE) ? () : (preloads=>[...]);
@@ -933,7 +933,7 @@ C<Config.pm> section.
 B<Sample Log Parser>
 
 Here is a code skeleton for parsing the various events in a log.  You
-can also find this in F<eg/parselog.pl> in the Mason distribution.
+can also find this in C<eg/parselog.pl> in the Mason distribution.
 
    open(LOG,"mason.log");
    while (<LOG>) {
@@ -965,7 +965,7 @@ B<Suggested Uses>
 
 Performance: REQUEST events are useful for analyzing the performance
 of all Mason requests occurring on your site, and identifying the
-slowest requests. F<eg/perflog.pl> in the Mason distribution is a log
+slowest requests. C<eg/perflog.pl> in the Mason distribution is a log
 parser that outputs the average compute time of each unique URL, in
 order from slowest to quickest.
 
@@ -1249,7 +1249,7 @@ hierarchies, e.g. if you are providing Mason ISP services for multiple
 users. In this case the component root must change depending on the
 site requested. Since you can't change an interpreter's component root
 dynamically, you need to maintain separate Mason objects for each
-site in your handler.pl:
+site in your C<handler.pl>:
 
     my (%interp,%ah);
     foreach my $site (qw(site1 site2 site3)) {
@@ -1291,7 +1291,7 @@ create objects on demand in the child:
     }
 
 The advantage of the second scheme is that you don't have to hardcode
-as much information in the handler.pl. The disadvantage is a slight
+as much information in the C<handler.pl>. The disadvantage is a slight
 memory and performance impact. On development servers this shouldn't
 matter; on production servers you may wish to profile the two schemes.
 
