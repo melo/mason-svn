@@ -1406,6 +1406,8 @@ I<html> - a fancy html format
 
 =back
 
+=back
+
 The default format under L<Apache|HTML::Mason::ApacheHandler> and
 L<CGI|HTML::Mason::CGIHandler> is either I<line> or I<html> depending
 on whether the error mode is I<fatal> or I<output>, respectively. The
@@ -1466,9 +1468,9 @@ sets and returns the value.  For example:
 
 =over
 
-=for html <a name="item_abort"></a>
-
 =item abort ([return value])
+
+=for html <a name="item_abort"></a>
 
 Ends the current request, finishing the page without returning
 through components. The optional argument specifies the return
