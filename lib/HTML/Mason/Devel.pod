@@ -964,9 +964,11 @@ subroutine block, and since Perl is so darned good at cleaning up
 stuff at the end of blocks, C<< <%cleanup> >> sections are rarely
 needed.
 
-Because of the way Mason compiles components, if your C<< <%init> >>
-section or component body contain a C<return> statement, then your C<<
-<%cleanup> >> block will not be executed.
+The C<< <%cleanup> >> block is not executed if the component returns
+(via an explicit C<return> statement) or if an error or abort occurs
+in this component or one of its children. This makes C<< <%cleanup> >> 
+useless for real cleanup code that needs a guarantee of execution.
+We hope to remedy this in the next major release.
 
 =head2 <%once>
 
