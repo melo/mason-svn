@@ -387,6 +387,7 @@ EOF
     $group->add_support( path => '/autohandler_test2/autohandler',
 			 component => <<'EOF',
 This is the first autohandler
+Remaining chain: <% join(',',map($_->title,$m->fetch_next_all)) %>
 <& $m->fetch_next, level => 1 &>\
 EOF
 		       );
@@ -396,6 +397,7 @@ EOF
     $group->add_support( path => '/autohandler_test2/dir1/autohandler',
 			 component => <<'EOF',
 This is the second autohandler
+Remaining chain: <% join(',',map($_->title,$m->fetch_next_all)) %>
 % foreach (@_) {
 <% $_ %>
 % }
@@ -411,16 +413,20 @@ EOF
 		      description => 'Test $m->fetch_next',
 		      component => <<'EOF',
 This is the main component (called by level <% $ARGS{level} %>)
+Remaining chain: <% join(',',map($_->title,$m->fetch_next_all)) %>
 % foreach (@_) {
 <% $_ %>
 % }
 EOF
 		      expect => <<'EOF',
 This is the first autohandler
+Remaining chain: /request/autohandler_test2/dir1/autohandler,/request/autohandler_test2/dir1/fetch_next
 This is the second autohandler
+Remaining chain: /request/autohandler_test2/dir1/fetch_next
 level
 1
 This is the main component (called by level 2)
+Remaining chain: 
 level
 2
 EOF
