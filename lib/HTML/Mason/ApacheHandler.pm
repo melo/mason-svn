@@ -7,7 +7,7 @@ require 5.004;
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(handler);
+@EXPORT_OK = qw();
 
 use strict;
 use vars qw($AUTOLOAD $INTERP);
@@ -27,8 +27,7 @@ use HTML::Mason::FakeApache;
 use HTML::Mason::Tools qw(html_escape url_unescape);
 use HTML::Mason::Utils;
 use Apache::Status;
-
-my @used = ($HTML::Mason::Commands::r);
+use CGI qw(-private_tempfiles);
 
 my %fields =
     (
@@ -42,6 +41,7 @@ my %fields =
      debug_handler_script => undef,
      debug_handler_proc => undef,
      debug_dir_config_keys => [],
+     apache_status_title => 'mason',
      );
 # Minor speedup: create anon. subs to reduce AUTOLOAD calls
 foreach my $f (keys %fields) {
@@ -77,27 +77,30 @@ sub _initialize {
     my $interp = $self->interp;
 
     # ----------------------------
-    # Add an HTML ::Mason menu item to the /perl-status page. Things we report:
+    # Add an HTML::Mason menu item to the /perl-status page. Things we report:
     # -- Interp properties
     # -- loaded (cached) components
+    my $name = $self->{apache_status_title};
+    my $title;
+    if ($name eq 'mason') {
+        $title='HTML::Mason status';    #item for HTML::Mason module
+    } 
+    else {
+        $title=$name;
+        $name=~s/\W/_/g;
+    }
     Apache::Status->menu_item(
-	'mason' => "HTML::Mason status", #item for HTML::Mason module
-	 sub {
-	     my($r,$q) = @_; #request and CGI objects
-	     my(@strings);
-	     
-	     push (@strings,
-		'<DL><DT><FONT SIZE="+1"><B>Interp object properties (startup options)</B></FONT><DD>',
-		map("$_ = ".$interp->{$_}."<BR>\n", grep (ref $interp->{$_} eq '', sort keys %{$interp->{_permitted}})),
-		'</DL>');
-	     
-	     push (@strings,
-		'<DL><DT><FONT SIZE="+1"><B>Cached components</B></FONT><DD>',
-		map("$_<BR>\n", sort keys %{$interp->{code_cache}}),
-		'</DL>');
-	     
-	     return \@strings;     #return an array ref
-	 }
+        $name=>$title,
+	    sub {
+            my($r,$q) = @_; #request and CGI objects
+            my(@strings);
+
+            push (@strings,
+                    qq(<FONT size="+2"><B>$self->{apache_status}</B></FONT><BR><BR>),
+                    $self->interp_status);
+
+            return \@strings;     #return an array ref
+        }
     ) if $Apache::Status::VERSION; #only if Apache::Status is loaded
 
     
@@ -118,11 +121,43 @@ sub _initialize {
     #
     # Allow global $r in components
     #
-    my $line = "use vars qw(\$r);\n";
-    my $pre = $interp->parser->preamble;
-    $pre =~ s/$line//g;
-    $interp->parser->preamble($pre."use vars qw(\$r);\n");
+    $interp->parser->allow_globals(qw($r));
 }
+
+#
+# Generate an array that describes Interp's current status
+#
+sub interp_status
+{
+    my ($interp) = $_[0]->interp;
+
+    my @strings;
+    push @strings,
+        qq(<DL><DT><FONT SIZE="+1"><B>Interp object properties</B></FONT>\n),
+        qq(<DT><B>Startup options</B>\n);
+
+
+    push @strings,
+        map {"<DD><TT>$_ = ".(defined($interp->{$_}) ? 
+                                $interp->{$_} : '<I>undef</I>'
+                             )."</TT>\n" 
+            } grep ref $interp->{$_} eq '', sort keys %{$interp->{_permitted}};
+
+    push @strings, '</DL>',
+            '<DL><DT><FONT SIZE="+1"><B>Cached components</B></FONT><DD>';
+
+    if(%{$interp->{code_cache}})
+    {     
+        push (@strings, map("<TT>$_</TT><BR>\n", 
+                            sort keys %{$interp->{code_cache}} 
+                           )
+             );
+    } else {
+        push @strings, '<I>None</I>';
+    }     
+    push @strings, '</DL>';
+    return @strings;
+}         
 
 sub send_http_header_hook
 {
@@ -136,19 +171,29 @@ sub send_http_header_hook
 # Standard entry point for handling request
 #
 sub handle_request {
-    my ($self,$r) = @_;
-    my ($outsub, $retval, $argString, $debugMsg);
+
+    #
+    # Why do we use $req instead of $r here? A scoping bug in certain
+    # versions of Perl 5.005 was getting confused about $r being used
+    # in components, and the easiest workaround was to rename "$r" to
+    # something else in this routine.  Go figure...
+    # -jswartz 5/23
+    #
+    my ($self,$req) = @_;
+    my ($outsub, $retval, $argString, $debugMsg, $q);
     my $outbuf = '';
     my $interp = $self->interp;
 
     #
     # construct (and truncate if necessary) the request to log at start
     #
-    my $rstring = $r->server->server_hostname . $r->uri;
-    $rstring .= "?".scalar($r->args) if defined(scalar($r->args));
-    $rstring = substr($rstring,0,150).'...' if length($rstring) > 150;
-    $interp->write_system_log('REQ_START', ++$self->{request_number},
-			      $rstring);
+    if ($interp->system_log_event_check('REQ_START')) {
+	my $rstring = $req->server->server_hostname . $req->uri;
+	$rstring .= "?".scalar($req->args) if defined(scalar($req->args));
+	$rstring = substr($rstring,0,150).'...' if length($rstring) > 150;
+	$interp->write_system_log('REQ_START', ++$self->{request_number},
+				  $rstring);
+    }
 
     #
     # If output mode is 'batch', collect output in a buffer and
@@ -159,26 +204,30 @@ sub handle_request {
         $outsub = sub { $outbuf .= $_[0] if defined($_[0]) };
 	$interp->out_method($outsub);
     } elsif ($self->output_mode eq 'stream') {
-	$outsub = sub { $r->print($_[0]) };
+	$outsub = sub { print($_[0]) };
 	$interp->out_method($outsub);
     }
 
     #
-    # Get argument string
+    # Create query object and get argument string.
+    # Special case for debug files w/POST -- standard input not available
+    # for CGI to read in this case.
     #
-    if ($r->method() eq 'GET') {
-	$argString = $r->args();
-    } elsif ($r->method() eq 'POST') {
-	$argString = $r->content();
+    if ($HTML::Mason::IN_DEBUG_FILE && $req->method eq 'POST') {
+	$q = new CGI ($req->content);
+    } else {
+	$q = new CGI;
     }
-    
+    $argString = $q->query_string;
+
     my $debugMode = $self->debug_mode;
-    $debugMode = 'none' if (ref($r) eq 'HTML::Mason::FakeApache');
-    my $debugState = $self->capture_debug_state($r,$argString)
+    $debugMode = 'none' if (ref($req) eq 'HTML::Mason::FakeApache');
+
+    my $debugState = $self->capture_debug_state($req,$argString)
 	if ($debugMode eq 'all' or $debugMode eq 'error');
-    $debugMsg = $self->write_debug_file($r,$debugState) if ($debugMode eq 'all');
-    
-    eval('$retval = handle_request_1($self, $r, $argString)');
+    $debugMsg = $self->write_debug_file($req,$debugState) if ($debugMode eq 'all');
+
+    eval('$retval = handle_request_1($self, $req, $argString, $q)');
     my $err = $@;
     my $err_status = $err ? 1 : 0;
 
@@ -189,28 +238,28 @@ sub handle_request {
 	#
 	$err =~ s@^\[[^\]]*\] \(eval [0-9]+\): @@mg;
 	$err = html_escape($err);
-	my $referer = $r->header_in('Referer') || '<none>';
-	my $agent = $r->header_in('User-Agent') || '';
-	$err = sprintf("while serving %s %s (referer=%s, agent=%s)\n%s",$r->server->server_hostname,$r->uri,$referer,$agent,$err);
+	my $referer = $req->header_in('Referer') || '<none>';
+	my $agent = $req->header_in('User-Agent') || '';
+	$err = sprintf("while serving %s %s (referer=%s, agent=%s)\n%s",$req->server->server_hostname,$req->uri,$referer,$agent,$err);
 
 	if ($self->error_mode eq 'fatal') {
 	    die ("System error:\n$err\n");
 	} elsif ($self->error_mode eq 'html') {
-	    if (!http_header_sent($r)) {
-		$r->content_type('text/html');
-		$r->send_http_header();
+	    if (!http_header_sent($req)) {
+		$req->content_type('text/html');
+		$req->send_http_header();
 	    }
-	    $r->print("<h3>System error</h3><p><pre><font size=-1>$err</font></pre>\n");
-	    $debugMsg = $self->write_debug_file($r,$debugState) if ($debugMode eq 'error');
-	    $r->print("<pre><font size=-1>\n$debugMsg\n</font></pre>\n") if defined($debugMsg);
+	    print("<h3>System error</h3><p><pre><font size=-1>$err</font></pre>\n");
+	    $debugMsg = $self->write_debug_file($req,$debugState) if ($debugMode eq 'error');
+	    print("<pre><font size=-1>\n$debugMsg\n</font></pre>\n") if defined($debugMsg);
 	}
     } else {
-	$r->print("\n<!--\n$debugMsg\n-->\n") if defined($debugMsg) && http_header_sent($r) && $r->header_out("Content-type") =~ /text\/html/;
-	$r->print($outbuf) if $self->output_mode eq 'batch';
+	print("\n<!--\n$debugMsg\n-->\n") if defined($debugMsg) && http_header_sent($req) && $req->header_out("Content-type") =~ /text\/html/;
+	print($outbuf) if $self->output_mode eq 'batch';
     }
 
     $interp->write_system_log('REQ_END', $self->{request_number}, $err_status);
-    return ($err) ? &OK : $retval;
+    return ($err) ? &OK : (defined($retval)) ? $retval : &OK;
 }
 
 #
@@ -293,6 +342,7 @@ PERL
     $o .= "my ";
     $o .= $d->Dumpxs;
     $o .= 'my $r = HTML::Mason::ApacheHandler::simulate_debug_request($dref);'."\n";
+    $o .= 'local %ENV = %{$dref->{ENV}};'."\n";
     $o .= 'my $status = '.$self->debug_handler_proc."(\$r);\n";
     $o .= 'print "return status: $status\n";'."\n}\n\n";
     $o .= <<'PERL';
@@ -316,18 +366,14 @@ sub capture_debug_state
     my (%d,$expr);
 
     $expr = '';
-    foreach my $field (qw(method method_number bytes_sent the_request proxyreq header_only protocol uri filename path_info requires auth_type auth_name document_root allow_options content_type content_encoding content_language status status_line args)) {
+    foreach my $field (qw(allow_options auth_name auth_type bytes_sent no_cache content_encoding content_languages content_type document_root filename header_only method method_number path_info protocol proxyreq requires status status_line the_request uri as_string get_remote_host get_remote_logname get_server_port is_initial_req is_main)) {
 	$expr .= "\$d{$field} = \$r->$field;\n";
     }
     eval($expr);
 
-    $d{headers_in} = {$r->headers_in};
-    $d{headers_out} = {$r->headers_out};
-    $d{cgi_env} = {$r->cgi_env};
-    $d{dir_config} = {};
-    foreach my $key (@{$self->debug_dir_config_keys}) {
-	$d{dir_config}->{$key} = $r->dir_config($key);
-    }
+    warn "error creating debug file: $@\n" if $@;
+    $d{'args@'} = [$r->args];
+    $d{'args$'} = scalar($r->args);
     
     if ($r->method eq 'POST') {
 	$d{content} = $argString;
@@ -347,12 +393,14 @@ sub capture_debug_state
     }
     eval($expr);
 
+    $d{ENV} = {%ENV};
+
     return {%d};
 }
 
 sub handle_request_1
 {
-    my ($self,$r,$argString) = @_;
+    my ($self,$r,$argString,$q) = @_;
     my $interp = $self->interp;
     my $compRoot = $interp->comp_root;
 
@@ -384,7 +432,7 @@ sub handle_request_1
 
     #
     # Try to load the component; if not found, try dhandlers
-    # ("default handlers"); otherwise returned not found.
+    # ("default handlers"); otherwise return not found.
     #
     my @info;
     if (!(@info = $interp->load($compPath))) {
@@ -392,6 +440,7 @@ sub handle_request_1
 	my $pathInfo = $r->path_info;
 	while (!(@info = $interp->load("$p/dhandler")) && $p) {
 	    my ($basename,$dirname) = fileparse($p);
+	    $dirname =~ s/^\.//;    # certain versions leave ./ in $dirname
 	    $pathInfo = "/$basename$pathInfo";
 	    $p = substr($dirname,0,-1);
 	}
@@ -418,23 +467,21 @@ sub handle_request_1
     # keys with array references.
     #
     my (%args);
-    if ($argString) {
-	my (@pairs) = split('&',$argString);
-	foreach my $pair (@pairs) {
-	    my ($key,$value) = split('=',$pair);
-	    $key = url_unescape($key);
-	    $value = url_unescape($value);
-	    if (exists($args{$key})) {
-		if (ref($args{$key})) {
-		    $args{$key} = [@{$args{$key}},$value];
-		} else {
-		    $args{$key} = [$args{$key},$value];
-		}
-	    } else {
-		$args{$key} = $value;
-	    }
-	}
+
+    foreach my $key ( $q->param ) {
+      foreach my $value ( $q->param($key) ) {
+        if (exists($args{$key})) {
+          if (ref($args{$key})) {
+            $args{$key} = [@{$args{$key}}, $value];
+          } else {
+            $args{$key} = [$args{$key}, $value];
+          }
+        } else {
+          $args{$key} = $value;
+        }
+      }
     }
+
     $argString = '' if !defined($argString);
 
     #
@@ -442,7 +489,7 @@ sub handle_request_1
     #
     $interp->vars(http_input=>$argString);
     $interp->vars(server=>$r);
-    local $HTML::Mason::Commands::r = $r;
+    $interp->set_global(r=>$r);
     
     return $interp->exec($compPath,%args);
 }

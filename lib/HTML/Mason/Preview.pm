@@ -114,7 +114,9 @@ sub send_http_header {
 
 package HTML::Mason::Preview;
 use HTML::Mason::ApacheHandler;
+use HTML::Mason::Config;
 use HTML::Mason::Tools qw(date_delta_to_secs html_escape);
+use MLDBM ($HTML::Mason::Config{mldbm_use_db}, $HTML::Mason::Config{mldbm_serializer});
 use IO::File qw(!/^SEEK/);
 use POSIX;
 
@@ -144,7 +146,7 @@ sub handle_preview_request
 	$r->content_type('text/html');
 	$r->header_out(Pragma=>'no-cache');
 	$r->send_http_header();
-	$r->print("<h2>Previewer Error</h2>\n<pre>\n$err\n</pre>\n");
+	print("<h2>Previewer Error</h2>\n<pre>\n$err\n</pre>\n");
 	return;
     }
     return $result;

@@ -12,7 +12,28 @@ use HTML::Mason::Config;
 use IO;
 use Time::Local;
 
-use vars qw($INTERP);
+use vars qw($INTERP @ISA @EXPORT_OK @EXPORT);
+ 
+require Exporter;
+@ISA=qw(Exporter);
+@EXPORT=qw(
+	mc_abort
+	mc_cache
+	mc_cache_self
+	mc_caller 
+	mc_comp
+	mc_comp_exists
+	mc_comp_source
+	mc_comp_stack
+	mc_date 
+	mc_file 
+	mc_file_root 
+	mc_out 
+	mc_suppress_hooks
+	mc_time
+);
+
+@EXPORT_OK=@EXPORT;
 
 #
 # Convert relative paths to absolute, handle . and ..
@@ -63,7 +84,7 @@ sub mc_cache_self
     return 0 if !$INTERP->use_data_cache;
     return 0 if $INTERP->locals->{inCacheSelfFlag};
     my (%retrieveOptions,%storeOptions);
-    foreach (qw(key expire_if keep_in_memory)) {
+    foreach (qw(key expire_if keep_in_memory busy_lock)) {
 	if (exists($options{$_})) {
 	    $retrieveOptions{$_} = $options{$_};
 	}
@@ -199,7 +220,8 @@ sub mc_date ($)
 sub mc_file ($)
 {
     my ($file) = @_;
-    if (substr($file,0,1) ne '/') {
+    # filenames beginning with / or a drive letter (e.g. C:/) are absolute
+    unless ($file =~ /^([A-Za-z]:)?\//) {
 	$file = $INTERP->static_file_root . "/" . $file;
     }
     $INTERP->call_hooks(type=>'start_file',params=>[$file]);

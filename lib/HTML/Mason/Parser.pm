@@ -12,7 +12,7 @@ require Exporter;
 use strict;
 use File::Path;
 use File::Basename;
-use File::Recurse;
+use File::Find;
 use Safe;
 use HTML::Mason::Tools qw(read_file);
 use vars qw($AUTOLOAD);
@@ -20,15 +20,19 @@ use vars qw($AUTOLOAD);
 my %fields =
     (preamble => '',
      postamble => '',
+     preprocess => undef,
+     postprocess => undef,
      use_strict => 1,
      source_refer_predicate => sub { return ($_[1] >= 5000) },
      ignore_warnings_expr => undef,
      taint_check => 0,
-     safe_compartment => undef
+     safe_compartment => undef,
+     in_package => 'HTML::Mason::Commands',
+     allow_globals => []
      );
 # Minor speedup: create anon. subs to reduce AUTOLOAD calls
 foreach my $f (keys %fields) {
-    next if $f eq 'safe_compartment';  # don't overwrite real sub.
+    next if $f =~ /^safe_compartment|allow_globals$/;  # don't overwrite real sub.
     no strict 'refs';
     *{$f} = sub {my $s=shift; return @_ ? ($s->{$f}=shift) : $s->{$f}};
 }
@@ -45,7 +49,7 @@ sub new
 	if (exists($fields{$key})) {
 	    $self->{$key} = $value;
 	} else {
-	    die "HTML::MasonParser::new: invalid option '$key'\n";
+	    die "HTML::Mason::Parser::new: invalid option '$key'\n";
 	}
     }
     bless $self, $class;
@@ -56,10 +60,21 @@ sub safe_compartment
 {
     my ($self, $cpt) = @_;
     if (defined($cpt)) {
-	$cpt->share_from('HTML::Mason::Commands',[qw($INTERP mc_comp mc_file)]);
+	$cpt->share_from($self->{in_package},[qw($INTERP mc_comp mc_file)]);
 	$self->{safe_compartment} = $cpt;
     }
     return $self->{safe_compartment};
+}
+
+sub allow_globals
+{
+    my ($self, @decls) = @_;
+    if (my @bad = grep(!/^[\$@%]/,@decls)) {
+	die "allow_globals: bad parameter '$bad[0]', must begin with one of $, @, %\n";
+    }
+    my %h = map {$_=>1} (@{$self->{'allow_globals'}},@decls);
+    $self->{'allow_globals'} = [keys(%h)];
+    return @{$self->{'allow_globals'}};
 }
 
 sub parse
@@ -72,8 +87,9 @@ sub parse
     my $pureTextFlagRef = $options{pure_text_flag};
     my $errorRef = $options{error};
     my $wrapErrors = $options{wrap_errors};
+    my $saveTo = $options{save_to};
     my ($sub, $err, $errpos);
-    my $pureTextFlag = 1;
+    my $pureTextFlag = ($self->{preprocess} || $self->{postprocess}) ? 0 : 1;
     my $parseError = 1;
 
     #
@@ -84,6 +100,20 @@ sub parse
 	$script = read_file($scriptFile);
     }
 
+    #
+    # Pre-process all the file
+    # this allows one to extend the syntax, and other possibilities
+    # The preprocessor routine is handed a reference to the entire
+    # file's contents.  This way we avoid copying it around too much
+    #
+    if ($self->{preprocess}) {
+        eval {$self->{preprocess}->(\$script)};
+        if ($@) {
+            $err = "error during custom preprocess step:\n$@";
+            goto parse_error;
+        }
+    }
+    
     #
     # From here on in we must make sure not to alter the number of
     # characters in the source, or else we will mess up source
@@ -327,14 +357,14 @@ sub parse
     #
     # Determine length of plain text.
     #
-    my $alphalength;
+    my $alphalength=0;
     foreach (@alphasecs) {$alphalength += $_->[1]}
 
     #
     # Use source_refer_predicate to determine whether to use source
     # references or directly embedded text.
     #
-    my $useSourceReference = $self->source_refer_predicate->($scriptlength,$alphalength);
+    my $useSourceReference = $self->source_refer_predicate->($scriptlength,$alphalength) && !$self->{preprocess} && !$self->{postprocess};
     my @alphatexts;
     if ($useSourceReference) {
 	$body .= 'my $_srctext = mc_file($INTERP->locals->{sourceFile});'."\n";
@@ -342,7 +372,7 @@ sub parse
     } else {
 	foreach (@alphasecs) {
 	    my $alpha = substr($script,$_->[0],$_->[1]);
-	    $alpha =~ s/\'/\\\'/g;
+	    $alpha =~ s{([\\\'])} {\\$1}g;        # escape backslashes and single quotes
 	    push(@alphatexts,sprintf('$_out->(\'%s\');',$alpha));
 	}
     }
@@ -362,6 +392,23 @@ sub parse
     #
     $body .= "\$INTERP->call_hooks(type=>'start_primary');\n";
     
+    #
+    # Postprocess the alphabetical and Perl stuff separately
+    #
+    if ($self->{postprocess})
+    {
+        foreach my $a (@alphatexts)
+        {
+            next unless $a;
+            $self->{postprocess}->(\$a, 'alpha');
+        }
+        foreach my $p (@perltexts)
+        {
+            next unless $p;
+            $self->{postprocess}->(\$p, 'perl');
+        }
+    }
+
     #
     # Append text and perl sections to body.
     #
@@ -393,11 +440,12 @@ sub parse
     #
     my $header = "";
     if (!$self->safe_compartment) {
-	$header .= "package HTML::Mason::Commands;\n";
+	my $pkg = $self->{in_package};
+	$header .= "package $pkg;\n";
 	$header .= "use strict;\n" if $self->use_strict;
-	$header .= "use vars qw(\$INTERP);\n";
+	$header .= sprintf("use vars qw(%s);\n",join(" ","\$INTERP",@{$self->{'allow_globals'}}));
     }
-    $body = "$header\nreturn sub {\n$body\n};\n";
+    $body = "$header\nsub {\n$body\n};\n";
 
     #
     # Eliminate DOS ctrl-M chars
@@ -421,7 +469,7 @@ sub parse
 	    $err =~ s/\'/\\\'/g;
 	    $err =~ s/\(eval [0-9]\) //g;
 	    my $msg = sprintf("Error during compilation%s:",$scriptFile ? " of '$scriptFile'" : "");
-	    my $errscript = "$header\nreturn sub {\ndie \"$msg\\n\".'$err'.\"\\n\"\n}\n";
+	    my $errscript = "$header\nsub {\ndie \"$msg\\n\".'$err'.\"\\n\"\n}\n";
 	    $sub = eval($errscript);
 	} else {
 	    $err .= "\n";
@@ -429,8 +477,15 @@ sub parse
 	    $$errorRef = $err if defined($errorRef);
 	}
     }
-    $$resultCodeRef = $sub if $success && defined($resultCodeRef);
+    
+    if (!$err && defined($saveTo)) {
+	File::Path::mkpath(File::Basename::dirname($saveTo));
+	my $fh = new IO::File ">$saveTo" or die "Couldn't write object file $saveTo";
+	print $fh $body if (!$pureTextFlag);
+	$fh->close;
+    }
     $$resultTextRef = $body if !$parseError && defined($resultTextRef);
+    $$resultCodeRef = $sub if $success && defined($resultCodeRef);
     $$pureTextFlagRef = $pureTextFlag if defined($pureTextFlagRef);
     return $success;
 }
@@ -456,7 +511,6 @@ sub evaluate
 	} elsif ($options{script_file}) {
 	    my $file = $options{script_file};
 	    ($file) = ($file =~ /^(.*)$/s) if $self->taint_check;
-	    die "evaluate: script_file '$file' not a regular file" if (!-f $file);
 	    if (!$cpt) {
 		$sub = do($file);
 	    } else {
@@ -556,7 +610,8 @@ sub make {
 	if (-f $fullpath) {
 	    $compilesub->($fullpath);
 	} elsif (-d $fullpath) {
-	    recurse {$compilesub->($_)} $fullpath;
+	    my $sub = sub {$compilesub->($_) if -f};
+	    find($sub,$fullpath);
 	} else {
 	    die "make: no such file or directory '$fullpath'\n";
 	}

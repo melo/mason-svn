@@ -139,14 +139,83 @@ for advanced users, but a few (like C<mc_comp()>, for calling other
 components) see widespread use. B<L<HTML::Mason::Commands>> is the
 reference for all Mason commands.
 
+=head2 Examples and Recommended Usage
+
+B<% lines>
+
+Most useful for conditional and loop structures - if, while, foreach,
+, etc. - as well as side-effect commands like assignments. Examples:
+
+o Conditional code
+
+    % my $ua = $r->header_in('User-Agent');
+    % if ($ua =~ /msie/i) {
+    Welcome, Internet Explorer users
+    ...
+    % } elsif ($ua =~ /mozilla/i) {
+    Welcome, Netscape users
+    ...
+    % }
+
+o HTML list formed from array
+
+    <ul>
+    % foreach $item (@list) {
+    <li><% $item %>
+    % }
+    </ul>
+
+o HTML list formed from hash
+
+    <ul>
+    % while (my ($key,$value) = each(%ENV)) {
+    <li>
+    <b><% $key %></b>: <% $value %>
+    % }
+    </ul>
+
+o HTML table formed from list of hashes
+
+    <table>
+    <tr>
+    % foreach my $h (@loh) {
+    <td><% $h->{foo} %></td>
+    <td bgcolor=#ee0000><% $h->{bar} %></td>
+    <td><% $h->{baz} %></td>
+    % }
+    </tr>
+    </table>
+
+For more than three lines of Perl, consider using a <%perl> block.
+
+B<&lt;% xxx %&gt;>
+
+Most useful for printing out variables, as well as more complex
+expressions. Examples:
+
+  Dear <% $name %>: We will come to your house at <% $address %> in the
+  fair city of <% $city %> to deliver your $<% $amount %> dollar prize!
+
+  The answer is <% ($y+8) % 2 %>.
+
+  You are <% $age<18 ? 'not' : '' %> permitted to enter this site.
+
+For side-effect commands like assignments, consider using a % line or
+<%perl> block instead.
+
+B<&lt;%perl&gt; xxx &lt;%/perl&gt;>
+
+Useful for Perl blocks of more than a few lines. For a very small
+block, consider using % lines.
+
 =head1 HOW COMPONENTS ARE INVOKED
 
 Components are invoked in two ways: top-level components respond
 directly to HTTP requests, while other, subordinate components are
 called more or less like subroutines, using Mason's B<mc_comp>
 command. Top-level components must reside within the server's
-DocumentRoot, while other components live within Mason's component
-root (webmasters sometimes equate the two).
+DocumentRoot, while other components can live anywhere within
+Mason's component root (these may or may not be the same).
 
 =head2 Top-level Components
 
@@ -155,28 +224,7 @@ as:
 
     http://www.foo.com/mktg/prods.html
 
-Here, C<prods.html> may be nothing more than a static HTML file, since
-components don't I<have> to contain any Mason stuff.
-
-Now consider a CGI-style URL with a few GET parameters attached:
-
-    http://www.foo.com/mktg/prods.html?str=dog&lst=2&lst=3&lst=4
-
-This component must now contain some Mason elements in order to read
-the query arguments and do something interesting with them.  To read
-the arguments, prods.html should contain a C<E<lt>%perl_args%E<gt>>
-section (see I<L<Parameter Passing>> below) describing the input
-variables and their data types, in this case a scalar (C<$str>) and a
-three-element list (C<@lst>). Thus components are relieved of the
-form-parsing chores common to CGI scripts.
-
-A catch-all %ARGS hash is also available for components that wish to
-deal with HTTP request arguments directly. %ARGS is defined
-automatically; components need not list it in a
-C<E<lt>%perl_args%E<gt>> section.
-
-These arguments are subsequently available to the component as
-regular Perl variables.
+Apache resolves this URL to a filename, e.g. /usr/local/www/htdocs/mktg/prods.html.  Mason loads and executes that file as a component.  It might in turn call other components and execute some Perl code, or it might be nothing more than static HTML.
 
 =head2 dhandlers
 
@@ -210,10 +258,7 @@ more useful that the absolute path returned by C<$r-E<gt>path_info>.
 
 =head2 Components as Subroutines
 
-Components typically build themselves up from other components--this
-is in fact the keystone of Mason's component-based approach. Good
-components therefore resemble good subroutines in that they're written
-for reuse.
+Mason pages often are built not from a single component, but from multiple components that call each other in a hierarchical fashion.
 
 To call one component from another, use Mason's B<mc_comp> command:
 
@@ -234,52 +279,18 @@ e.g. S<C<player=E<gt>'M. Jordan'>>.
 
 The optional I<STORE> parameter takes a scalar reference as an
 argument, and tells the component to direct its output into the named
-variable instead of standard output (programmers: think sprintf vs.
-printf). For example:
+variable instead of standard output. This is analogous to the difference between
+sprintf and printf. For example:
 
-    <% mc_comp('/shared/mastHead', color=>'salmon',
-                                   STORE=>\$mh_text) %>
+    <% mc_comp('/shared/mastHead', color=>'salmon', STORE=>\$mh_text) %>
 
 =back
-
-=head2 Parameter Passing
-
-Any Perl data type can be passed in an mc_comp() call:
-
-    mc_comp('/mktg/prods.html', s=>'dog', l=>[2,3,4], h=>{a=>7,b=>8});
-
-This command passes a scalar ($s), a list (@l), and a hash (%h). The
-list and hash must be passed as references, but in /mktg/prods.html
-they are automatically dereferenced into a local list and hash. While
-convenient, this means that @b and %c are copies--changing them does
-not modify the caller's version. To pass a reference, declare it as a
-scalar value.
-
-Unlike Perl subroutines, Mason components I<do not> read their
-parameters from Perl's @_ array. Rather, Mason imposes its own typed
-argument passing protocol in which components define a
-C<E<lt>%perl_args%E<gt>> section listing parameter names, types, and
-default values. For example:
-
-    <%perl_args>
-    $a
-    @b
-    %c
-    $d=>5
-    @e=>('foo','baz')
-    %f=>(joe=>1,bob=>2)
-    </%perl_args>
-
-Here, $a, @b, and %c are required arguments; the component generates
-an error if the caller leaves them unspecified. $d, @e, and %f are
-optional arguments; they are assigned the specified default values if
-unspecified.
 
 =head2 Return Values and Context
 
 Components generally fall into one of two categories: HTML
 generators, and functions that compute a value. The latter behave
-like normal Perl functions, while HTML generators (far more common),
+like normal Perl functions, while HTML generators (far more common)
 rarely return values--in the name of performance they stream their
 output immediately to the browser.
 
@@ -300,17 +311,112 @@ context:
 
     You are <% mc_comp('isNetscape') ? '' : 'NOT' %> using Netscape!
 
+=head1 PASSING PARAMETERS
+
+This section describes Mason's facilities for passing parameters to components (either from HTTP requests
+or mc_comp calls) and for accessing parameter values inside components.
+
+=head2 In Component Calls
+
+Any Perl data type can be passed in an mc_comp() call:
+
+    mc_comp('/sales/header', s=>'dog', l=>[2,3,4], h=>{a=>7,b=>8});
+
+This command passes a scalar ($s), a list (@l), and a hash (%h). The
+list and hash must be passed as references, but they will be automatically
+dereferenced in the called component.
+
+=head2 In HTTP requests
+
+Consider a CGI-style URL with a query string:
+
+    http://www.foo.com/mktg/prods.html?str=dog&lst=2&lst=3&lst=4
+
+or an HTTP request with some POST content. Mason automatically parses the GET/POST values and makes them available to the component as parameters.
+
+In fact, internally Mason just treats an HTTP request as a first mc_comp call! In this case:
+
+    mc_comp('/mktg/prods.html',str=>'dog',lst=>[2,3,4])
+
+assuming the component and document roots are the same.
+
+=head2 Accessing Parameters
+
+Component parameters, whether they come from GET/POST or an mc_comp call, can be accessed in two ways.
+
+1.  Declared named arguments: Components can define a C<E<lt>%perl_args%E<gt>> section listing argument names, types, and default values. For example:
+
+    <%perl_args>
+    $a
+    @b
+    %c
+    $d=>5
+    @e=>('foo','baz')
+    %f=>(joe=>1,bob=>2)
+    </%perl_args>
+
+Here, $a, @b, and %c are required arguments; the component generates
+an error if the caller leaves them unspecified. $d, @e, and %f are
+optional arguments; they are assigned the specified default values if
+unspecified.  All the arguments are available as lexically scoped ("my")
+variables in the rest of the component.
+
+2. %ARGS hash: This variable, always available, contains all of the
+parameters passed to the component.  It is especially handy when
+there are many parameters or when parameter names are determined at
+run-time. %ARGS can be used whether or not you have a <%perl_args>
+section.
+
+Here's how to pass all of a component's parameters to another component:
+
+    mc_comp ("template", %ARGS);
+
+=head2 Parameter Passing Examples
+
+The following examples illustrate the different ways to pass and receive parameters.
+
+1.  Passing a scalar I<id> with value 5.
+
+  In a URL: /my/URL?id=5
+  In an mc_comp call: mc_comp ('/my/comp', id => 5)
+  In the called component, if there is a declared argument named...
+    $id, then $id will equal 5
+    @id, then @id will equal (5)
+    %id, then an error occurs
+  In addition, $ARGS{id} will equal 5.
+
+2.  Passing a list I<colors> with values red, blue, and green.
+
+  In a URL: /my/URL?colors=red&colors=blue&colors=green
+  In an mc_comp call: mc_comp ('/my/comp', colors => ['red', 'blue', 'green'])
+  In the called component, if there is a declared argument named...
+    $colors, then $colors will equal ['red', 'blue', 'green']
+    @colors, then @colors will equal ('red', 'blue', 'green')
+    %colors, then an error occurs
+  In addition, $ARGS{colors} will equal ['red', 'blue', 'green'].
+
+3.  Passing a hash I<grades> with pairs Alice => 92 and Bob => 87.
+
+  In a URL: /my/URL?grades=Alice&grades=92&grades=Bob&grades=87
+  In an mc_comp call: mc_comp ('/my/comp', grades => {Alice => 92, Bob => 87})
+  In the called component, if there is a declared argument named...
+    $grades, then $grades will equal {Alice => 92, Bob => 87}
+    @grades, then @grades will equal ('Alice', 92, 'Bob', 87)
+    %grades, then %grades will equal (Alice => 92, Bob => 87)
+  In addition, $ARGS{grades} will equal {Alice => 92, Bob => 87}.
+
+
 =head1 OTHER PERL SECTIONS
 
-The Perl sections we're about to describe are more specialized than
-the in-line sections described above. Several are tied to phases of
-the component execution sequence, which goes something like this:
+In this section we describe other specialized sections you can place in your component.
+Several are tied to phases of the component execution sequence, which goes
+something like this:
 
-    1. Initialize arguments in HTML::Mason::Commands package
-    2. <%perl_init%> section
+    1. Initialize arguments
+    2. <%perl_init> section
     3. Output HTTP headers (if not output already)
     4. Primary section (HTML + embedded Perl sections)
-    5. <%perl_cleanup%> section
+    5. <%perl_cleanup> section
 
 =over
 
@@ -383,6 +489,7 @@ xxx contains a list of argument declarations, one per line. Each
 declaration contains a type character ($, @, or %), a name, and
 optionally '=>' followed by a default value. The default value must be
 a valid Perl expression of matching type (scalar, list, hash).
+See L<Accessing Parameters> above for usage and examples.
 
 =item \ at end of line
 
@@ -456,79 +563,6 @@ This works for almost everything, but doesn't let you output
 
 =back
 
-=head1 EXAMPLES AND RECOMMENDED USAGE
-
-=head2 % lines
-
-Most useful for conditional and loop structures - if, while, foreach,
-, etc. - as well as side-effect commands like assignments. Examples:
-
-=over
-
-=item Conditional code
-
-    % my $ua = $r->header_in('User-Agent');
-    % if ($ua =~ /msie/i) {
-    Welcome, Internet Explorer users
-    ...
-    % } elsif ($ua =~ /mozilla/i) {
-    Welcome, Netscape users
-    ...
-    % }
-
-=item HTML list formed from array
-
-    <ul>
-    % foreach $item (@list) {
-    <li><% $item %>
-    % }
-    </ul>
-
-=item HTML list formed from hash
-
-    <ul>
-    % while (my ($key,$value) = each(%ENV)) {
-    <li>
-    <b><% $key %></b>: <% $value %>
-    % }
-    </ul>
-
-=item HTML table formed from list of hashes
-
-    <table>
-    <tr>
-    % foreach my $h (@loh) {
-    <td><% $h->{foo} %></td>
-    <td bgcolor=#ee0000><% $h->{bar} %></td>
-    <td><% $h->{baz} %></td>
-    % }
-    </tr>
-    </table>
-
-For more than three lines of Perl, consider using a <%perl> block.
-
-=back
-
-=head2 <% xxx %>
-
-Most useful for printing out variables, as well as more complex
-expressions. Examples:
-
-  Dear <% $name %>: We will come to your house at <% $address %> in the
-  fair city of <% $city %> to deliver your $<% $amount %> dollar prize!
-
-  The answer is <% ($y+8) % 2 %>.
-
-  You are <% $age<18 ? 'not' : '' %> permitted to enter this site.
-
-For side-effect commands like assignments, consider using a % line or
-<%perl> block instead.
-
-=head2 <%perl> xxx <%/perl>
-
-Useful for Perl blocks of more than a few lines. For a very small
-block, consider using % lines.
-
 =head1 DATA CACHING
 
 Mason's C<mc_cache()> and C<mc_cache_self()> commands let components
@@ -539,6 +573,10 @@ Each component gets a private data cache. Except under special
 circumstances, one component does not access another component's
 cache. Each cached value may be set to expire under certain conditions
 or at a certain time.
+
+To use data caching, your Mason installation must be configured
+with a good DBM package like Berkeley DB (DB_File) or GDBM. See
+B<L<HTML::Mason::Admin>> for more information.
 
 =head2 Basic Usage
 
@@ -624,7 +662,7 @@ Example:
 
 (e.g. a shell command or web interface is responsible for explicitly
 expiring the item) To expire an item from a Perl script, for any
-component, use B<access_data_cache>.  It takes the same arguments as
+component, use B<access_data_cache>. It takes the same arguments as
 mc_cache plus one additional argument, cache_file.  See the
 administration manual for details on where cache files are stored and
 how they are named.
@@ -633,7 +671,59 @@ how they are named.
     access_data_cache (cache_file=>'/usr/local/mason/cache/foo::bar',
                        action=>'expire' [, key=>'fookey']);
 
+
+The 'expire' action can also take multiple keys (as a list reference);
+this can be used in conjunction with the 'keys' action to expire all
+keys matching a particular pattern.
+
+    use HTML::Mason::Utils 'access_data_cache';
+    my @keys = access_data_cache (cache_file=>'/usr/local/mason/cache/foo::bar',
+                                  action=>'keys');
+    access_data_cache (cache_file=>'/usr/local/mason/cache/foo::bar',
+                       action=>'expire', key=>[grep(/^sales/,@keys)]);
+
+
 =back
+
+=head2 Busy Locks
+
+The code shown in "Basic Usage" above,
+
+  my $result = mc_cache(action=>'retrieve');
+  if (!defined($result)) {
+      ... compute $result> ...
+      mc_cache(action=>'store', value=>$result);
+  }
+
+can suffer from a kind of race condition for caches that
+are accessed frequently and take a long time to recompute.
+
+Suppose that a particular cache value is accessed five times a
+second and takes three seconds to recompute.  When the cache expires,
+the first process comes in, sees that it is expired, and starts to
+recompute the value.  The second process comes in and does the same thing.
+This sequence continues until the first process finishes and stores
+the new value.  On average, the value will be recomputed and written
+to the cache 15 times!
+
+The solution here is to have the first process notify the others that
+it has started recomputing.  This can be accomplished with the
+busy_lock flag:
+
+        mc_cache(action=>'retrieve',busy_lock=>'10sec',...);
+
+With this flag, the first process sets a lock in the cache that
+effectively says "I'm busy recomputing his value, don't bother."
+Subsequent processes see the lock and return the old value.  The lock
+is good for 10 seconds (in this case) and is ignored after that.  Thus
+the time value you pass to busy_lock indicates how long you're willing
+to allow this component to use an expired cache value.
+
+Would some of your caches would benefit from busy locks?
+One way to find out is to turn on cache logging in the Mason system logs.  
+If you see large clusters of writes to the same cache
+in a short time span, then you might want to use busy locks when writing to 
+that cache.
 
 =head2 Keeping In Memory
 
@@ -666,7 +756,6 @@ B<mc_cache_self()> command that lets a component cache it's own
 output and eliminates the need for a dummy component. It is typically
 used right at the top of a C<E<lt>%perl_init%E<gt>> section:
 
-    ... <primary section, body of page> ...
     <%perl_init>
         return if mc_cache_self(expire_in=>'3 hours'[, key=>'fookey']);
         ... <rest of perl_init> ...
@@ -674,6 +763,27 @@ used right at the top of a C<E<lt>%perl_init%E<gt>> section:
 
 B<mc_cache_self> is built on top of B<mc_cache>, so it inherits all
 the expiration options described earlier.
+
+=head2 Guarantees (or lack thereof)
+
+Mason will make a best effort to cache data
+until it expires, but will not guarantee it.  The data cache is not a
+permanent reliable store in itself; you should not place in the cache
+critical data (e.g. user session information) that cannot be
+regenerated from another source such as a database.  You should write
+your code as if the cache might disappear at any time. In particular,
+
+o If the 'store' action cannot get a write lock on the cache, it simply
+fails quietly.
+o Your Mason administrator will be required to remove cache files
+periodically when they get too large; this can happen any time.
+
+On the other hand, expiration in its various forms is guaranteed,
+because Mason does not want you to rely on bad data to generate your
+content. If you use the 'expire' action and it cannot get a write
+lock, it will repeat the attempt several times and finally die with an
+error.
+
 
 =head1 ACCESSING SERVER INTERNALS
 
@@ -733,6 +843,17 @@ is normally unable to use the debugger since programs are run from a
 browser.  Mason removes this limitation by optionally creating a I<debug
 file> for each page request, allowing the request to be replayed from
 the command line or Perl debugger.
+
+Note: in early 1999 a new module, Apache::DB, was released that makes
+it substantially easier to use the Perl debugger directly in
+conjunction with a real Apache server.  Since this mechanism is still
+new, we continue to support Mason debug files, and there may be
+reasons to prefer Mason's method (e.g. no need to start another Apache
+server).  However we acknowledge that Apache::DB may eventually eliminate
+the need for debug files. For now we encourage you to try both methods and
+see which one works best.
+
+=head2 Using debug files
 
 Here is a typical sequence for debugging a Mason page:
 
@@ -801,6 +922,8 @@ nifty interface to Perl's debugger.  This allows you to set break
 points visually or (in trace mode) watch a cursor bounce through your
 code in single-step or continue mode.
 
+=head2 Specifying when to create debug files
+
 Details about configuring debug mode can be found in
 B<L<HTML::Mason::Admin>>. In particular, the administrator must decide
 which of three debugging modes to activate:
@@ -810,6 +933,47 @@ B<never> (no debug files)
 B<always> (create debug files for each request)
 
 B<error> (only generate a debug file when an error occurs)
+
+=head2 How debug files work
+
+At the beginning of a request, Mason calls almost every one of the
+mod_perl API methods (C<$r-E<gt>xxx>), trapping its result in a hash.  That
+hash is then serialized by Data::Dumper and output into a new debug
+file along with some surrounding code.
+
+When the debug file is executed, a new object is created of the class
+"HTML::Mason::FakeApache", passing the saved hash as
+initialization. The FakeApache object acts as a fake C<$r>, responding to
+each method by getting or setting data in its hash. For most purposes
+it is indistinguishable from the original C<$r> except that print methods
+go to standard output. The debug file then executes your C<handler()>
+function with the simulated C<$r>.
+
+=head2 When debug files don't work
+
+The vast majority of mod_perl API methods are simple get/set functions
+(e.g. C<$r-E<gt>uri>, C<$r-E<gt>content_type>) which are easy to simulate.  Many
+pages only make use of these methods and can be successfully simulated
+in debug mode.
+
+However, a few methods perform tasks requiring the presence of a true
+Apache server. These cannot be properly simulated.  Some, such as
+C<log_error> and C<send_cgi_header>, are generally tangential to the
+debugging effort; for these Mason simply returns without doing
+anything and hopes for the best.  Others, such as C<internal_redirect>
+and C<lookup_uri>, perform such integral functions that they cannot be
+ignored, and for these FakeApache aborts with an error. This category
+includes any method call expected to return an Apache::Table object.
+
+In addition, FakeApache is playing something of a catch-up game: every
+time a new mod_perl release comes out with new API methods, those
+methods will not be recognized by FakeApache until it is updated in
+the next Mason release.
+
+The combination of these problems and the existence of the new
+Apache::DB package may eventually lead us to stop further work on
+FakeApache/debug files.  For now, though, we'll continue to support
+them as best we can.
 
 =head1 USING THE PERL PROFILER (new in 0.4)
 
@@ -943,7 +1107,7 @@ such an object can still be used for all of CGI's useful HTML output
 functions. Or, if you really want to use CGI's input functions,
 initialize the object from %ARGS:
 
-  my $query = new CGI (%ARGS);
+  my $query = new CGI (\%ARGS);
 
 =item Separating Perl From HTML
 
@@ -970,41 +1134,3 @@ L<HTML::Mason>,
 L<HTML::Mason::Commands>
 
 =cut
-
-Components in samples/:
-    -- Chris: generic site kit
-    -- Chris: madlib
-    -- Chris: slide show maker (use to present descriptive slides other for
-            samples!)
-    -- bullet expander (convert to component first)
-
-
-COMPONENTS ARE SUBROUTINES
-
-The subroutine analogy mentioned above has a technical basis. Mason
-actually "compiles" components to Perl subroutines, basically by adding
-print statements to non-Perl text and wrapping a sub {} around the
-whole thing.  For example, the compiled form of the hello world
-example from above looks something like:
-
-    return sub {
-        my $noun = 'World';
-        print "Hello ";
-        print $noun;
-        print "!\nHow are ya";
-        return undef;
-    }
-
-This produces a reference to a subroutine that, when invoked, executes
-the component. The code shown here is greatly simplified; see [[Link to
-full compilation explanation and example.]]
-
-Probably the main reason I chose this representation is laziness - the
-parser is small and simple and takes optimal advantage of Perl's own
-parser. But components enjoy other advantages of their subroutine roots:
-
-Components can take arguments. For example, the left TOC component
-above might take as arguments a background color and a set of links to
-highlight, while establishing reasonable defaults for typical calls.
-Rather than depending on @_, Mason allows you to declare named arguments
-in a special args section. [[Link to section about arguments.]]

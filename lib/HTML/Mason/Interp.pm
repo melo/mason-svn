@@ -13,14 +13,16 @@ use strict;
 use Carp;
 use File::Path;
 use File::Basename;
-use File::Recurse;
+use File::Find;
 use IO::File;
 use IO::Seekable;
 use HTML::Mason::Parser;
 use HTML::Mason::Tools qw(read_file pkg_loaded);
+use HTML::Mason::Commands qw();
 use HTML::Mason::Config;
+require Time::HiRes if $HTML::Mason::Config{use_time_hires};
+
 use vars qw($AUTOLOAD $_SUB %_ARGS);
-my @used = ($HTML::Mason::Commands::INTERP);
 
 my %fields =
     (alternate_sources => undef,
@@ -29,7 +31,6 @@ my %fields =
      current_time => 'real',
      data_dir => undef,
      system_log_file => undef,
-     system_log_events => '',
      system_log_separator => "\cA",
      max_recurse => 16,
      parser => undef,
@@ -43,7 +44,7 @@ my %fields =
      );
 # Minor speedup: create anon. subs to reduce AUTOLOAD calls
 foreach my $f (keys %fields) {
-    next if $f eq 'current_time';  # don't overwrite real sub.
+    next if $f =~ /^current_time|system_log_events$/;  # don't overwrite real sub.
     no strict 'refs';
     *{$f} = sub {my $s=shift; return @_ ? ($s->{$f}=shift) : $s->{$f}};
 }
@@ -62,14 +63,18 @@ sub new
 	last_reload_time => 0,
 	last_reload_file_pos => 0,
 	out_method => sub { print $_[0] },
+	system_log_fh => undef,
+	system_log_events_hash => undef
     };
     my (%options) = @_;
-    my ($rootDir,$outMethod);
+    my ($rootDir,$outMethod,$systemLogEvents);
     while (my ($key,$value) = each(%options)) {
 	if (exists($fields{$key})) {
 	    $self->{$key} = $value;
 	} elsif ($key eq 'out_method') {
 	    $outMethod = $value;
+	} elsif ($key eq 'system_log_events') {
+	    $systemLogEvents = $value;
 	} else {
 	    die "HTML::Mason::Interp::new: invalid option '$key'\n";
 	}
@@ -79,6 +84,7 @@ sub new
     die "HTML::Mason::Interp::new: must specify value for data_dir\n" if !$self->{data_dir};
     bless $self, $class;
     $self->out_method($outMethod) if ($outMethod);
+    $self->system_log_events($systemLogEvents) if ($systemLogEvents);
     $self->_initialize;
     return $self;
 }
@@ -106,21 +112,14 @@ sub _initialize
     }
     
     #
-    # Open system log file, and convert events string to hash
+    # Open system log file
     #
-    if ($self->system_log_events) {
+    if ($self->{system_log_events_hash}) {
 	$self->system_log_file($self->data_dir . "/etc/system.log") if !$self->system_log_file;
 	my $fh = new IO::File ">>".$self->system_log_file
 	    or die "Couldn't open system log file ".$self->{system_log_file}." for append";
 	$fh->autoflush(1);
-	my $eventstr = $self->system_log_events;
-	$eventstr =~ s/\s//g;
-	my %opts = map( ($_, 1), split /\|/, $eventstr);
-	@opts{qw(REQUEST CACHE COMP_LOAD)} = (1,1,1) if $opts{ALL};
-	@opts{qw(CACHE_READ CACHE_WRITE)} = (1,1) if $opts{CACHE};
-	@opts{qw(REQ_START REQ_END)} = (1,1) if $opts{REQUEST};
-	$self->system_log_file($fh);
-	$self->system_log_events(\%opts);
+	$self->{system_log_fh} = $fh;
     }
     
     #
@@ -134,13 +133,15 @@ sub _initialize
 	    my $fullPath = $self->comp_root . $p;
 	    $fullPath =~ s@/$@@g;
 	    if (-d $fullPath) {
-		recurse {
-		    if (-f $_) {
-			my $compPath = substr($_,$slen);
+		my $sub = sub {
+		    if (-f) {
+			my $file = $_;
+			$file =~ s/^\./$fullPath/;
+			my $compPath = substr($file,$slen);
 			$self->load($compPath);
-			return 0;
 		    }
-		} $fullPath;
+		};
+		find($sub,$fullPath);
 	    } elsif (-f $fullPath) {
 		my $compPath = substr($fullPath,$slen);
 		$self->load($compPath);
@@ -288,10 +289,12 @@ sub exec_next {
     unshift(@{$self->{stack}},{});
     
     #
-    # $INTERP is a dynamically scoped global containing this
-    # interpreter.
+    # $INTERP is a global containing this interpreter. This needs to
+    # be defined in the HTML::Mason::Commands package, as well
+    # as the component package if that is different.
     #
     local $HTML::Mason::Commands::INTERP = $self;
+    $self->set_global(INTERP=>$self) if ($self->{parser}->{in_package} ne 'HTML::Mason::Commands');
 
     #
     # Check for maximum recursion.
@@ -431,55 +434,74 @@ sub pure_text_handler
 #
 sub load {
     my ($self,$path) = @_;
-    my ($sub,$err,$maxfilemod,$srcfile,$objfile,$objfilemod,$srcfilemod);
+    my ($sub,$err,$maxfilemod,$srcfile,$objfile,$objfilemod,$srcfilemod) =
+       (undef);  # kludge to load $sub, prevent "use of uninit .." error
+    my (@srcstat, $srcisfile, @objstat, $objisfile);
     my $codeCache = $self->{code_cache};
     my $compRoot = $self->comp_root;
+    $srcfile = $compRoot . $path;
 
     #
-    # If using reload file, check cache first.
+    # If using reload file, assume that we have a cached subroutine or
+    # object file (also assume we're using obj files). If no obj file
+    # exists, this is likely a dhandler request.
     #
-    if (exists($codeCache->{$path}) && $self->use_reload_file) {
-	return @{$codeCache->{$path}->{info}};
+    if ($self->use_reload_file) {
+	return @{$codeCache->{$path}->{info}} if exists($codeCache->{$path});
+
+	$objfile = $self->object_dir . substr($srcfile,length($compRoot));
+	return () unless (-f $objfile);   # component not found
+	
+	$self->write_system_log('COMP_LOAD', $path);	# log the load event
+	$self->parser->evaluate(script_file=>$objfile,code=>\$sub,error=>\$err);
+	if ($err) {
+	    $sub = sub { die "Error while loading '$objfile' at runtime:\n$err\n" };
+	} elsif (!$sub) {
+	    $sub = \&pure_text_handler;
+	}
+	
+	my @info = ($sub,$srcfile);
+	if ($self->{code_cache_mode} eq 'all') {
+	    $codeCache->{$path}->{info} = \@info;
+	}
+	return @info;
     }
     
     #
     # Determine source and (possibly) object filename.
     # If alternate sources are defined, check those first.
     #
-    $srcfile = $compRoot . $path;
     if (defined($self->alternate_sources)) {
 	my @alts = $self->alternate_sources->('comp',$path);
 	foreach my $alt (@alts) {
-	    if (-f $compRoot . $alt) {
+	    @srcstat = stat ($compRoot . $alt);
+	    if (-f _) {
 		$srcfile = $compRoot . $alt;
 		last;
 	    }
 	}
     }
-    return () if (!-f $srcfile);
+    @srcstat = stat $srcfile unless @srcstat;
+    $srcfilemod = $srcstat[9];
+    $srcisfile = -f _;
+    return () unless ($srcisfile);
+    
     if ($self->use_object_files) {
 	$objfile = $self->object_dir . substr($srcfile,length($compRoot));
+	@objstat = stat $objfile;
+	$objisfile = -f _;
     }
     
-    #
-    # If not using reload file, check the last modified times of
-    # source and object filename.
-    #
-    if (!$self->use_reload_file) {
-	$srcfilemod = [stat($srcfile)]->[9];
-    }
-
     #
     # If code cache contains an up to date entry for this path,
     # use the cached sub.
     #
-    if (exists($codeCache->{$path}) && ($self->use_reload_file || $codeCache->{$path}->{lastmod} >= $srcfilemod) && $codeCache->{$path}->{info}->[1] eq $srcfile) {
+    if (exists($codeCache->{$path})                    and
+	$codeCache->{$path}->{lastmod} >= $srcfilemod  and
+	$codeCache->{$path}->{info}->[1] eq $srcfile) {
 	return @{$codeCache->{$path}->{info}};
     } else {
-	if ($self->use_reload_file) {
-	    $srcfilemod = [stat($srcfile)]->[9];
-	}
-	$objfilemod = (defined($objfile) && (-f $objfile)) ? [stat($objfile)]->[9] : 0;
+	$objfilemod = (defined($objfile) and $objisfile) ? $objstat[9] : 0;
 	
 	#
 	# Determine a subroutine.
@@ -490,23 +512,23 @@ sub load {
 	#
 	$self->write_system_log('COMP_LOAD', $path);	# log the load event
 
-	if ($objfile && $objfilemod >= $srcfilemod) {
-	    if ([stat($objfile)]->[7]==0) {
+	if ($objfile and $objfilemod >= $srcfilemod) {
+	    $self->parser->evaluate(script_file=>$objfile,code=>\$sub,error=>\$err);
+	    if ($err) {
+		$sub = sub { die "Error while loading '$objfile' at runtime:\n$err\n" };
+	    } elsif (!$sub) {
 		$sub = \&pure_text_handler;
-	    } else {
-		$self->parser->evaluate(script_file=>$objfile,code=>\$sub,error=>\$err);
-		if ($err) {
-		    $sub = sub { die "Error while loading '$objfile' at runtime:\n$err\n" };
-		}
 	    }
-	}
-
 	#
 	# Parse the source file, and possibly save result in object file.
 	#
-	else {
+	} else {
 	    my ($script,$objtext,$errmsg,$pureTextFlag);
-	    my $success = $self->parser->parse(script_file=>$srcfile, result_text=>\$objtext, error=>\$errmsg, result_code=>\$sub, pure_text_flag=>\$pureTextFlag);
+	    my $success = $self->parser->parse(script_file=>$srcfile,
+					       result_text=>\$objtext,
+					       error=>\$errmsg,
+					       result_code=>\$sub,
+					       pure_text_flag=>\$pureTextFlag);
 	    $sub = \&pure_text_handler if ($pureTextFlag);
 	    if (!$success) {
 		$errmsg = "Error during compilation of $srcfile:\n$errmsg\n";
@@ -519,7 +541,7 @@ sub load {
 		$errmsg =~ s/\'/\\\'/g;
 		$errmsg =~ s/\(eval [0-9]\) //g;
 		($errmsg) = ($errmsg =~ /^(.*)$/s);
-		my $script = "return sub { die '$errmsg' };";
+		my $script = "sub { die '$errmsg' };";
 		$sub = eval($script);
 	    }
 	    if ($objfile) {
@@ -546,7 +568,7 @@ sub load {
 	#
 	my @info = ($sub,$srcfile);
 	if ($self->{code_cache_mode} eq 'all') {
-	    $codeCache->{$path}->{lastmod} = $srcfilemod if !$self->use_reload_file;
+	    $codeCache->{$path}->{lastmod} = $srcfilemod;
 	    $codeCache->{$path}->{info} = \@info;
 	}
 	return @info;
@@ -602,6 +624,53 @@ sub vars
     } else {
         return $self->{vars}->{$field};
     }
+}
+
+sub set_global
+{
+    my ($self, $decl, @values) = @_;
+    my ($prefix, $name) = ($decl =~ /^[\$@%]/) ? (substr($decl,0,1),substr($decl,1)) : ("\$",$decl);
+
+    my $varname = sprintf("%s::%s",$self->{parser}->{in_package},$name);
+    if ($prefix eq "\$") {
+	no strict 'refs'; $$varname = $values[0];
+    } elsif ($prefix eq "\@") {
+	no strict 'refs'; @$varname = @values;
+    } else {
+	no strict 'refs'; %$varname = @values;
+    }
+}
+
+#
+# Allow scalar or hash reference as argument to system_log_events.
+#
+sub system_log_events
+{
+    my ($self, $value) = @_;
+    if (defined($value)) {
+	if (!ref($value)) {
+	    $value =~ s/\s//g;
+	    my %opts = map( ($_, 1), split /\|/, $value);
+	    @opts{qw(REQUEST CACHE COMP_LOAD)} = (1,1,1) if $opts{ALL};
+	    @opts{qw(CACHE_READ CACHE_WRITE)} = (1,1) if $opts{CACHE};
+	    @opts{qw(REQ_START REQ_END)} = (1,1) if $opts{REQUEST};
+	    $self->{system_log_events_hash} = \%opts;
+	} elsif (ref($value) eq 'HASH') {
+	    $self->{system_log_events_hash} = $value;
+	} else {
+	    die "system_log_events: argument must be a scalar or hash reference";
+	}
+    }
+    return $self->{system_log_events};
+}
+
+#
+# Determine if the specified event should be logged.
+#
+sub system_log_event_check
+{
+    my ($self,$flag) = @_;
+    return ($self->{system_log_fh} && $self->{system_log_events_hash}->{$flag});
 }
 
 #
@@ -724,14 +793,14 @@ sub call_hooks {
 # Each line begins with the time, pid, and event name.
 #
 # We only print the line if the log file handle is defined AND the
-# event name is in our system_log_events hash.
+# event name is in system_log_events_hash.
 #
 sub write_system_log {
     my $self = shift;
 
-    if (defined $self->system_log_file && $self->system_log_events->{$_[0]}) {
-	my $time = (pkg_loaded("Time::HiRes") ? scalar(Time::HiRes::gettimeofday()) : time);
-	$self->system_log_file->print(join ($self->system_log_separator,
+    if ($self->{system_log_fh} && $self->{system_log_events_hash}->{$_[0]}) {
+	my $time = ($HTML::Mason::Config{use_time_hires} ? scalar(Time::HiRes::gettimeofday()) : time);
+	$self->{system_log_fh}->print(join ($self->system_log_separator,
 					    $time,                  # current time
 					    $_[0],                  # event name
 					    $$,                     # pid
