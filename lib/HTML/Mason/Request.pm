@@ -767,7 +767,7 @@ sub callers
     if (defined($levels_back)) {
 	my $entry = $self->stack_entry($levels_back);
 	return unless defined $entry;
-	return ( defined $entry ) ? $entry->{comp} : undef;
+	return $entry->{comp};
     } else {
 	return map($_->{comp}, reverse $self->stack);
     }
