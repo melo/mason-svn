@@ -423,7 +423,8 @@ Here's how a simple /newsfeeds/dhandler might look:
     my ($section,$story) = split("/",$arg);    # split out pieces
     my $sth = $DBH->prepare
 	(qq{SELECT headline,body FROM news
-            WHERE section='$section' AND story='$story'});
+            WHERE section=? AND story=?);
+    $sth->execute($section,$story);
     my ($headline,$body) = $sth->fetchrow_array;
     return 404 if !$headline;                  # return "not found" if no such story
     </%init>
@@ -701,7 +702,8 @@ HTML without getting distracted or discouraged by Perl code. For example:
     <%init>
     # Fetch article from database
     my $dbh = DBI::connect ...;
-    my $sth = $dbh->prepare("select * from articles where id = $article_id");
+    my $sth = $dbh->prepare("select * from articles where id = ?");
+    $sth->execute($article_id);
     my ($headline,$date,$author,$body) = $sth->fetchrow_array;
     # Massage the fields
     $headline = uc($headline);
@@ -1779,7 +1781,8 @@ in a single request.
     <%shared>
     my $dbh = DBI::connect ...;
     my $user = $r->connection->user;
-    my $sth = $dbh->prepare("select lname,fname, from users where user_id = '$user'");
+    my $sth = $dbh->prepare("select lname,fname, from users where user_id = ?");
+    $sth->execute($user);
     my ($lname,$fname) = $sth->fetchrow_array;
     my $full_name = "$first $last";
     </%shared>
