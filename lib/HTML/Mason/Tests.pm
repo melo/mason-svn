@@ -553,7 +553,7 @@ sub check_result {
 
     if ($self->{create})
     {
-	diag("# Results for $test->{name}:\n$self->{buffer}\n");
+	diag("Results for $test->{name}:\n$self->{buffer}\n") if $VERBOSE;
 	return;
     }
 
@@ -605,7 +605,7 @@ sub _success
 
     $self->{test_count}++;
 
-    diag("Result for $self->{name}: $test->{name}\n");
+    diag("Result for $self->{name}: $test->{name}\n") if $VERBOSE;
     print STDOUT "ok $self->{test_count}\n";
 }
 
