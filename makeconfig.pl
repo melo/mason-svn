@@ -331,6 +331,7 @@ my \$parser = HTML::Mason::Parser->new;
 my \$interp = HTML::Mason::Interp->new( parser => \$parser,
 				       comp_root => '$APACHE{comp_root}',
 				       data_dir => '$APACHE{data_dir}' );
+chown Apache->server->uid, Apache->server->gid, \$interp->files_written;
 
 my \@ah = ( HTML::Mason::ApacheHandler->new( interp => \$interp,
                                             output_mode => 'batch' ),
