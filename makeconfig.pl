@@ -282,6 +282,7 @@ sub write_apache_conf
   <Location /comps/multiconf1>
     PerlSetVar  MasonCompRoot "$APACHE{comp_root}/multiconf1"
     PerlSetVar  MasonDataDir  "$APACHE{data_dir}/multiconf1"
+    PerlSetVar  MasonUseAutohandlers 0
     SetHandler  perl-script
     PerlModule  HTML::Mason::ApacheHandler
     PerlHandler HTML::Mason::ApacheHandler
@@ -290,6 +291,7 @@ sub write_apache_conf
   <Location /comps/multiconf2>
     PerlSetVar  MasonCompRoot "$APACHE{comp_root}/multiconf2"
     PerlSetVar  MasonDataDir  "$APACHE{data_dir}/multiconf2"
+    PerlSetVar  MasonUseDhandlers 0
     SetHandler  perl-script
     PerlModule  HTML::Mason::ApacheHandler
     PerlHandler HTML::Mason::ApacheHandler

@@ -43,7 +43,7 @@ local $| = 1;
     my $both_no_handler_tests = 8;
     my $cgi_only_no_handler_tests = 2;
     my $apr_only_no_handler_tests = 2;
-    my $multi_conf_tests = 2;
+    my $multi_conf_tests = 4;
 
     my $total = $both_tests + $both_no_handler_tests;
     $total += $cgi_only_tests + $cgi_only_no_handler_tests;
@@ -161,9 +161,28 @@ comp root is <% $m->interp->comp_root =~ m,/comps/multiconf1$, ? 'multiconf1' : 
 EOF
 	      );
 
+    write_comp( 'multiconf1/autohandler', <<'EOF'
+<& $m->fetch_next, autohandler => 'present' &>
+EOF
+	      );
+
+    write_comp( 'multiconf1/autohandler_test', <<'EOF'
+<%args>
+$autohandler => 'absent'
+</%args>
+autohandler is <% $autohandler %>
+EOF
+	      );
+
+
     write_comp( 'multiconf2/foo', <<'EOF',
 I am foo in multiconf2
 comp root is <% $m->interp->comp_root =~ m,/comps/multiconf2$, ? 'multiconf2' : $m->interp->comp_root %>
+EOF
+	      );
+
+    write_comp( 'multiconf2/dhandler', <<'EOF',
+This should not work
 EOF
 	      );
 
@@ -496,6 +515,17 @@ EOF
 						  );
     ok($success);
 
+    $response = Apache::test->fetch('/comps/multiconf1/autohandler_test');
+    $actual = filter_response($response, 0);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+autohandler is absent
+Status code: 0
+EOF
+						  );
+    ok($success);
+
     $response = Apache::test->fetch('/comps/multiconf2/foo');
     $actual = filter_response($response, 0);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
@@ -507,6 +537,11 @@ Status code: 0
 EOF
 					       );
     ok($success);
+
+    $response = Apache::test->fetch('/comps/multiconf2/dhandler_test');
+    $actual = filter_response($response, 0);
+    ok( $actual =~ /404 not found/i,
+	"Attempt to request a non-existent component should not work with dhandlers turned off" );
 
     kill_httpd(1);
 }
