@@ -850,5 +850,24 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_support( path => '/comp_path_test/a/b/c/foo',
+			 component => <<'EOF',
+I am foo!
+EOF
+		       );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'process_comp_path',
+		      description => 'Test that component paths are processed properly',
+		      component => <<'EOF',
+<& ../../../../../interp/comp_path_test/a/b/c/../c/foo &>
+EOF
+		      expect => <<'EOF'
+I am foo!
+
+EOF
+		    );
+
     return $group;
 }
