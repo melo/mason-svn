@@ -320,7 +320,7 @@ sub cgi_request_args
     my ($q, $method) = @_;
 
     my %args;
-    my $param_methods = $method eq 'GET' ? [ 'param' ] : [ 'param', 'url_param' ];
+    my $param_methods = $method ne 'POST' ? [ 'param' ] : [ 'param', 'url_param' ];
     foreach my $method (@$param_methods) {
 	foreach my $key ( $q->$method() ) {
 	    foreach my $value ( $q->$method($key) ) {
