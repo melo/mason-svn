@@ -103,7 +103,7 @@ with the same name.  Task id #476.  Reported by John Michael Mars.
 
 [ INCOMPATIBLE CHANGES ]
 
-** The semantics of @_ for components now match Perl subroutines: @_
+- ** The semantics of @_ for components now match Perl subroutines: @_
 contains aliases to the caller's arguments, instead of copies.  For
 example, if a component updates $_[0], the corresponding argument is
 updated (or an error occurs if it is not updatable). The only users
@@ -257,7 +257,7 @@ a component, it would die instead of returning a not found status.
 
 [ INCOMPATIBLE CHANGES ]
 
-- Removed the long deprecated and undocumented $comp->parent_comp
+- ** Removed the long deprecated and undocumented $comp->parent_comp
 method.  Use $comp->owner instead.
 
 
