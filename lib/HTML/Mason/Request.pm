@@ -198,6 +198,8 @@ sub _initialize {
 	    search: {
 		$request_comp = $self->interp->load($path);
 
+		last search unless $self->use_dhandlers;
+
 		# If path was not found, check for dhandler.
 		unless ($request_comp) {
 		    if ( $request_comp = $interp->find_comp_upwards($path, $self->dhandler_name) ) {
@@ -229,6 +231,12 @@ sub _initialize {
 	}
     };
     $self->{prepare_error} = $@ if $@;
+}
+
+sub use_dhandlers
+{
+    my $self = shift;
+    return defined $self->{dhandler_name} and length $self->{dhandler_name};
 }
 
 sub alter_superclass
