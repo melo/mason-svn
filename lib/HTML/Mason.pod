@@ -150,8 +150,6 @@ Mason to one subdirectory at first, do this:
         </FilesMatch>
     </Location>
 
-=back
-
 Once you have added the configuration directives, restart the
 server. First, go to a standard URL on your site to make sure you
 haven't broken anything. If all goes well you should see the same page
