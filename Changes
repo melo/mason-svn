@@ -5,7 +5,7 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
-1.02  April 12, 2001
+1.02  April 17, 2001
 
 - Completely redesigned error display. The new display includes a
 contextual source listing and readable stacktrace. (implemented by
