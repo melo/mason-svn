@@ -22,7 +22,6 @@ BEGIN
 use File::Basename;
 use File::Path;
 use HTML::Mason::Tests;
-use mod_perl;
 
 use lib 'lib', 't/lib';
 
