@@ -280,6 +280,11 @@ is memory: <% $m->cache->isa('Cache::MemoryCache') ? 1 : 0 %>
 namespace: <% $m->cache->get_namespace %>
 EOF
               );
+
+    write_comp( 'test_code_param', <<'EOF',
+preprocess changes lc fooquux to FOOQUUX
+EOF
+              );
 }
 
 sub cgi_tests
@@ -780,6 +785,20 @@ Status code: 0
 EOF
                                                );
     ok($success);
+
+    unless ($with_handler)
+    {
+        $response = Apache::test->fetch('/comps/test_code_param');
+        $actual = filter_response($response, $with_handler);
+        $success = HTML::Mason::Tests->tests_class->check_output( actual => $actual,
+                                                                  expect => <<"EOF",
+X-Mason-Test: Initial value
+preprocess changes lc FOOQUUX to FOOQUUX
+Status code: 0
+EOF
+                                                                );
+        ok($success);
+    }
 }
 
 sub multi_conf_tests
