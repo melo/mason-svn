@@ -353,7 +353,6 @@ sub load {
 	return $code_cache->{$fq_path}->{comp};
     } else {
 	$objfilemod = (defined($objfile) and $objisfile) ? $objstat[9] : 0;
-	warn "OBJMOD: $objfilemod    SRCMOD: $srcmod\n";
 	#
 	# Load the component from source or object file.
 	#
