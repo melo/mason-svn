@@ -500,7 +500,7 @@ use C<$m-E<gt>scomp> to store and process the output.
 What happens if more than one autohandler applies to a page? Prior to
 version 0.85, only the most specific autohandler would execute.  In
 0.85 and beyond each autohandler gets a chance to run.  The top-most
-autohandler runs first; each $m->call_next transfers control to the
+autohandler runs first; each C<$m-E<gt>call_next> transfers control to the
 next autohandler and finally to the originally called component. This
 allows you, for example, to combine general site-wide templates and
 more specific section-based templates.

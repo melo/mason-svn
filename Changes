@@ -18,8 +18,8 @@ reference will need to be changed. L{Request/item_caller_args}
 Tobey for pointing us in the right direction.
 - Modified the definition of "next component" to depend on the current
 component, not merely the number of times $m->call_next has been
-called.  This allows $m->fetch_next to work as documented. In list
-context, $m->fetch_next now returns the rest of the wrapper chain.
+called.  This allows $m->fetch_next to work as documented. Also
+added $m->fetch_next_all, which returns the rest of the wrapper chain.
 L{Request/item_fetch_next}
 - Fixed bug with ../.. in component paths.  Versions 0.88 and 0.89
 would create multiple object files for a single component and would

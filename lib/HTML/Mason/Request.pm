@@ -462,10 +462,11 @@ sub fetch_comp
 }
 
 #
-# Fetch next component in wrapper chain. If current component is not in chain, search
-# the component stack for the most recent one that was.
+# Fetch the index of the next component in wrapper chain. If current
+# component is not in chain, search the component stack for the most
+# recent one that was.
 #
-sub fetch_next {
+sub _fetch_next_helper {
     my ($self) = @_;
     my $index = $self->{wrapper_index}->{$self->current_comp->path};
     unless (defined($index)) {
@@ -474,14 +475,29 @@ sub fetch_next {
 	while (my $comp = shift(@callers) and !defined($index)) {
 	    $index = $self->{wrapper_index}->{$comp->path};
 	}
-	die "fetch_next: cannot find next component in chain" unless defined($index);
     }
-    if (wantarray) {
-	my @wc = @{$self->{wrapper_chain}};
-	return @wc[($index+1)..$#wc];
-    } else {
-	return $self->{wrapper_chain}->[$index+1];
-    }
+    return $index;
+}
+
+#
+# Fetch next component in wrapper chain.
+#
+sub fetch_next {
+    my ($self) = @_;
+    my $index = $self->_fetch_next_helper;
+    die "fetch_next: cannot find next component in chain" unless defined($index);
+    return $self->{wrapper_chain}->[$index+1];
+}
+
+#
+# Fetch remaining components in wrapper chain.
+#
+sub fetch_next_all {
+    my ($self) = @_;
+    my $index = $self->_fetch_next_helper;
+    die "fetch_next_all: cannot find next component in chain" unless defined($index);
+    my @wc = @{$self->{wrapper_chain}};
+    return @wc[($index+1)..$#wc];
 }
 
 sub file
