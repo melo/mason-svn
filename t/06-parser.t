@@ -46,7 +46,7 @@ sub try_exec_with_parser {
     try_exec($interp,$test,$iteration);
 }
 
-print "1..12\n";
+print "1..13\n";
 
 # allow_globals
 undef(*HTML::Mason::Commands::global);
@@ -95,5 +95,7 @@ sub add_foo_to_perl
 try_exec_with_parser( { postprocess => \&uc_alpha }, 'postprocess', 1 );
 try_exec_with_parser( { postprocess => \&add_foo_to_perl }, 'postprocess', 2 );
 
+# check that only valid variable names are allowed
+try_parse( {}, 'bad_var_name', 1, 'Invalid variable name' );
 
 1;
