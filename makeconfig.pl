@@ -251,6 +251,8 @@ sub write_apache_conf
 <IfDefine CGI_no_handler>
   PerlSetVar  MasonCompRoot "$APACHE{comp_root}"
   PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
+  PerlAddVar  MasonAllowGlobals \$foo
+  PerlAddVar  MasonAllowGlobals \@bar
   PerlSetVar  MasonArgsMethod CGI
   SetHandler  perl-script
   PerlModule  HTML::Mason::ApacheHandler
@@ -267,6 +269,7 @@ sub write_apache_conf
   PerlSetVar  MasonArgsMethod mod_perl
   PerlSetVar  MasonCompRoot "$APACHE{comp_root}"
   PerlSetVar  MasonDataDir  "$APACHE{data_dir}"
+  PerlSetVar  MasonTopLevelPredicate "sub { \$_[0] !~ m(/__[^/]+\$) }"
   SetHandler  perl-script
   PerlModule  HTML::Mason::ApacheHandler
   PerlHandler HTML::Mason::ApacheHandler

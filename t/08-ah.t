@@ -41,8 +41,8 @@ local $| = 1;
     my $cgi_only_tests = 1;
     my $apr_only_tests = 1;
     my $both_no_handler_tests = 8;
-    my $cgi_only_no_handler_tests = 1;
-    my $apr_only_no_handler_tests = 1;
+    my $cgi_only_no_handler_tests = 2;
+    my $apr_only_no_handler_tests = 2;
     my $multi_conf_tests = 2;
 
     my $total = $both_tests + $both_no_handler_tests;
@@ -166,6 +166,19 @@ I am foo in multiconf2
 comp root is <% $m->interp->comp_root =~ m,/comps/multiconf2$, ? 'multiconf2' : $m->interp->comp_root %>
 EOF
 	      );
+
+    write_comp( 'allow_globals', <<'EOF',
+% $foo = 1;
+% @bar = ( qw( a b c ) );
+$foo is <% $foo %>
+@bar is <% @bar %>
+EOF
+	      );
+
+    write_comp( '__top_level_predicate', <<'EOF',
+Shouldn't ever run
+EOF
+	      );
 }
 
 sub write_comp
@@ -222,6 +235,23 @@ EOF
 						  );
     ok($success);
 
+    unless ($with_handler)
+    {
+	# test that MasonAllowGlobals works (testing a list parameter
+	# from httpd.conf)
+	my $response = Apache::test->fetch('/comps/allow_globals');
+	my $actual = filter_response($response, 0);
+	my $success = HTML::Mason::Tests->check_output( actual => $actual,
+							expect => <<'EOF',
+X-Mason-Test: Initial value
+$foo is 1
+@bar is abc
+Status code: 0
+EOF
+						      );
+	ok($success);
+    }
+
     kill_httpd(1);
 }
 
@@ -247,6 +277,16 @@ Status code: 0
 EOF
 						  );
     ok($success);
+
+    unless ($with_handler)
+    {
+	# test that MasonDieHandler works (testing a code parameter
+	# from httpd.conf)
+	my $response = Apache::test->fetch('/comps/__top_level_predicate');
+	my $actual = filter_response($response, 0);
+	ok( $actual =~ /404 not found/,
+	    'top level predicate should have refused request' );
+    }
 
     kill_httpd(1);
 }
@@ -368,14 +408,16 @@ EOF
     # error_mode is html so we get lots of stuff
     $response = Apache::test->fetch($path);
     $actual = filter_response($response, $with_handler);
-    ok( $actual =~ m,error while executing /die:\s+Mine heart is pierced, );
+    ok( $actual =~ m|error while executing /die:\s+Mine heart is pierced|,
+	"Error should have said 'Mine heart is pierced'" );
 
     if ($with_handler)
     {
 	# error_mode is fatal so we just get a 500
 	$response = Apache::test->fetch( "/ah=4/comps/die" );
 	$actual = filter_response($response, $with_handler);
-	ok( $actual =~ m,500 Internal Server Error, );
+	ok( $actual =~ m|500 Internal Server Error|,
+	    "die should have generated 500 error" );
     }
 
     $path = '/comps/params?qs1=foo&qs2=bar&foo=A&foo=B';
