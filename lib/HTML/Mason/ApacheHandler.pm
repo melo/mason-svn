@@ -204,6 +204,7 @@ sub _make_ah
     $p{debug_handler_script} = _get_string_param('DebugHandlerScript');
     $p{debug_mode} = _get_string_param('DebugMode');
     $p{debug_perl_binary} = _get_string_param('DebugPerlBinary');
+    $p{decline_dirs} = _get_boolean_param('DeclineDirs');
     $p{error_mode} = _get_string_param('ErrorMode');
     $p{top_level_predicate} = _get_code_param('TopLevelPredicate');
 
@@ -246,7 +247,7 @@ sub _make_interp
     $p{use_reload_file}       = _get_boolean_param('UseReloadFile');
 
     my @comp_root = _get_list_param('CompRoot', 1);
-    if (@comp_root == 1)
+    if (@comp_root == 1 && $comp_root[0] !~ /=>/)
     {
 	$p{comp_root} = $comp_root[0];
     }
