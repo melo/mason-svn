@@ -382,5 +382,51 @@ No time difference.
 EOF
 		    );
 
+#------------------------------------------------------------
+
+    $group->add_support( path => '/autohandler_test2/autohandler',
+			 component => <<'EOF',
+This is the first autohandler
+<& $m->fetch_next, level => 1 &>\
+EOF
+		       );
+
+#------------------------------------------------------------
+
+    $group->add_support( path => '/autohandler_test2/dir1/autohandler',
+			 component => <<'EOF',
+This is the second autohandler
+% foreach (@_) {
+<% $_ %>
+% }
+<& $m->fetch_next, level => 2 &>\
+EOF
+		       );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'fetch_next',
+		      path => '/autohandler_test2/dir1/fetch_next',
+		      call_path => '/autohandler_test2/dir1/fetch_next',
+		      description => 'Test $m->fetch_next',
+		      component => <<'EOF',
+This is the main component (called by level <% $ARGS{level} %>)
+% foreach (@_) {
+<% $_ %>
+% }
+EOF
+		      expect => <<'EOF',
+This is the first autohandler
+This is the second autohandler
+level
+1
+This is the main component (called by level 2)
+level
+2
+EOF
+		    );
+
+#------------------------------------------------------------
+
     return $group;
 }
