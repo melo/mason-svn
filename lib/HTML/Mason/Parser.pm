@@ -758,7 +758,7 @@ sub _parse_substitute_tag
 	    die $self->_make_error( error => "invalid <% %> escape flag: '$invalids[0]'",
 				    errpos => $params{segbegin} + $params{index} );
 	}
-	$perl = '$_out->($_escape->('.$expr.','.join(",",map("'$_'",@flag_list)).'));';
+	$perl = '$_out->($_escape->(('.$expr.'),'.join(",",map("'$_'",@flag_list)).'));';
     } else {
 	$perl = '$_out->('.$expr.');';
     }
