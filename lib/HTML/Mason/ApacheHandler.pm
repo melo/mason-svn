@@ -358,7 +358,7 @@ sub _get_val
     $p = "Mason$p";
 
     my $c = Apache->request ? Apache->request : Apache->server;
-    my @val = $c->dir_config($p);
+    my @val = $c->dir_config->get($p);
 
     die "Only a single value is allowed for configuration parameter '$p'\n"
 	if @val > 1 && ! $wantarray;
