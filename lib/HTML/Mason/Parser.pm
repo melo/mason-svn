@@ -1232,7 +1232,7 @@ sub make_dirs
     }
     
     my $compilesub = sub {
-	my ($srcfile) = $File::Find::name;
+	my ($srcfile) = @_;
 	return if (!-f $srcfile);
 	return if defined($predicate) && !($predicate->($srcfile));
 	my $compPath = substr($srcfile,length($source_dir));
