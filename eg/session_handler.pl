@@ -10,10 +10,15 @@
 #        returns its error conditions, or upgrade to Perl 5.6.0 or
 #        greater, which has its own bugs.
 
-
-package HTML::Mason;
-
+# Bring in main Mason package.
 use HTML::Mason;
+
+# Bring in ApacheHandler, necessary for mod_perl integration.
+# Uncomment the second line (and comment the first) to use
+# Apache::Request instead of CGI.pm to parse arguments.
+use HTML::Mason::ApacheHandler;
+# use HTML::Mason::ApacheHandler qw(args_method=>'mod_perl');
+
 use strict;
 
 # List of modules that you want to use from components (see Admin
