@@ -215,5 +215,20 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_test( name => 'mfu_count',
+		      description => 'Test mfu_count component method',
+		      component => <<'EOF',
+<% $m->current_comp->mfu_count %>
+% $m->current_comp->mfu_count(75);
+<% $m->current_comp->mfu_count %>
+EOF
+		      expect => <<'EOF',
+1
+75
+EOF
+		    );
+
+#------------------------------------------------------------
+
     return $group;
 }
