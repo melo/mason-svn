@@ -1168,6 +1168,15 @@ sub eval_object_text
 	    $comp = eval($object_text);
 	}
 	$err = $warnstr . $@;
+
+	#
+	# If no error generated and no component object returned, we
+	# have a prematurely-exited <%once> section or other syntax
+	# accident.
+	#
+	unless (1 or $err or (defined($comp) and (UNIVERSAL::isa($comp, 'HTML::Mason::Component') or ref($comp) eq 'CODE'))) {
+	    $err = "could not generate component object (return() in a <%once> section or extra close brace?)";
+	}
     }
 
     #
@@ -1184,8 +1193,6 @@ sub eval_object_text
 	} elsif ($comp) {
 	    if (ref($comp) eq 'CODE') {
 		$err = sprintf($incompat,"a pre-0.7 parser");
-	    } elsif (ref($comp) !~ /HTML::Mason::Component/) {
-		$err = "object file ($object_file) did not return a component object!";
 	    } elsif ($comp->parser_version != $parser_version) {
 		$err = sprintf($incompat,"parser version ".$comp->parser_version);
 	    }
