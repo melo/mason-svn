@@ -33,7 +33,7 @@ use strict;
    # Replace this if you want to use a different storage method.  Also
    # see Apache::Session::Flex in Apache::Session 1.50+ for a way to
    # specify this at run time.
-   use Apache::Session::File;
+   use Apache::Session::File 1.50;
 }
 
 # Create Mason objects
