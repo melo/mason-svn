@@ -217,7 +217,6 @@ sub error_display_html {
     my $title = "Mason error";
     my $error_info = error_parse($error);
 
-    $raw_error =~ s/\n/<br>\n/g;
     $error_info->{raw_error} = $raw_error if $raw_error;
 
     $out .= qq{<html><body>\n<p align="center"><font face="$conf->{'font_face'}"><b>$title</b></font></p>\n};
@@ -250,7 +249,10 @@ sub error_table_html {
 		);
     $show{misc_info} = $error_info->{misc_info} if $error_info->{misc_info};
     $show{debug_info} = $error_info->{debug_info} if $error_info->{debug_info};
-    $show{raw_error} = "<br>" x 30 . "<a name=\"raw_error\">\n" . $error_info->{raw_error} if $error_info->{raw_error};
+    if ($error_info->{raw_error}) {
+	($show{raw_error} = $error_info->{raw_error}) =~ s/\t//g;
+	$show{raw_error} = "<br>" x 30 . "<a name=\"raw_error\">\n" . "<pre>" . $show{raw_error} . "</pre>";
+    }
 
     $out .= qq{<table border="0" cellspacing="0" cellpadding="1">};
     foreach my $item (@{$conf->{'show'}}) {
@@ -316,7 +318,7 @@ sub error_conf {
 		    component_stack => "component stack: ", 
 		    call_trace      => "code stack: ",
 		    debug_info      => "debug info: ",
-		    raw_error       => "<br><a href=\"#raw_error\">raw_error</a>" . "<br>" x 30 . "raw error: ",
+		    raw_error       => "<br><a href=\"#raw_error\">raw_error</a>" . "<br>" x 29 . "raw error: ",
 		},
 
 		show             => [ 
@@ -333,7 +335,7 @@ sub error_conf {
 
     $conf->{table_entry} = sub {
 	my($t, $d) = @_;
-	qq(<tr>\n\t<td nowrap align="left" valign="top"><font face="$conf->{'font_face'}" size="$conf->{'font_size'}"><b>$t</b>&nbsp;</font></td>\n\t<td align="left" valign="top"><font face="$conf->{'font_face'}" size="$conf->{'font_size'}">$d</font></td>\n</tr>\n);
+	qq(<tr>\n\t<td nowrap align="left" valign="top"><font face="$conf->{'font_face'}" size="$conf->{'font_size'}"><b>$t</b>&nbsp;</font></td>\n\t<td align="left" valign="top" nowrap><font face="$conf->{'font_face'}" size="$conf->{'font_size'}">$d</font></td>\n</tr>\n);
     };
 
     return $conf;
