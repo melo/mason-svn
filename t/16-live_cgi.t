@@ -30,7 +30,7 @@ skip_test unless have_httpd;
 kill_httpd(1);
 test_load_apache();
 
-plan(tests => 8);
+plan(tests => 9);
 
 write_test_comps();
 run_tests();
@@ -66,6 +66,11 @@ EOF
 % foreach (sort keys %ARGS) {
 <% $_ %>: <% ref $ARGS{$_} ? join ', ', sort @{ $ARGS{$_} }, 'array' : $ARGS{$_} %>
 % }
+EOF
+	      );
+
+    write_comp( 'error_as_html', <<'EOF',
+% my $x = undef; @$x;
 EOF
 	      );
 
@@ -155,6 +160,12 @@ post2: b
 qs1: foo
 qs2: bar
 EOF
+    }
+
+    {
+        my $path = '/comps/error_as_html';
+        my $response = Apache::test->fetch($path);
+        ok $response->content, qr{<b>error:</b>.*Error during compilation}s;
     }
 
     kill_httpd();
