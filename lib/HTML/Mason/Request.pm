@@ -1344,7 +1344,7 @@ subcomponent takes precedence.
 
 =head1 PARAMETERS TO THE new() CONSTRUCTOR
 
-=over 4
+=over
 
 =item autoflush
 
@@ -1417,6 +1417,8 @@ appropriately named method; for example, to define an "xml" format,
 create a method C<HTML::Mason::Exception::as_xml> patterned after one of
 the built-in methods.
 
+=over
+
 =item error_mode
 
 Indicates how errors are returned to the caller.  The choices are
@@ -1459,8 +1461,6 @@ sets and returns the value.  For example:
 
     my $max_recurse_level = $m->max_recurse;
     $m->autoflush(1);
-
-=back
 
 =head1 OTHER METHODS
 
@@ -2072,7 +2072,7 @@ more details.
 This method is available when Mason is running under either the
 ApacheHandler or CGIHandler modules.
 
-=over 4
+=over
 
 =for html <a name="item_cgi_object"></a>
 
