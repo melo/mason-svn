@@ -128,12 +128,17 @@ sub _handler {
     }
 
     if (my $err = $@) {
+	my $retval = isa_mason_exception($err, 'Abort')   ? $err->aborted_value  :
+		     isa_mason_exception($err, 'Decline') ? $err->declined_value :
+		     rethrow_exception $err;
 
-        unless ( isa_mason_exception($err, 'Abort')
-                 or isa_mason_exception($err, 'Decline') ) {
 
-            rethrow_exception($err);
-        }
+        # Unlike under mod_perl, we cannot simply return a 301 or 302
+        # status and let Apache send headers, we need to explicitly
+        # send this header ourself.
+        $r->send_http_header if $retval && grep { $retval eq $_ } ( 200, 301, 302 );
+
+	return $retval;
     }
 
     if (@_) {
@@ -193,10 +198,9 @@ sub exec
 
     if (my $err = $@)
     {
-	$retval =
-            ( isa_mason_exception($err, 'Abort') ? $err->aborted_value :
-              rethrow_exception $err
-            );
+	$retval = isa_mason_exception($err, 'Abort')   ? $err->aborted_value  :
+                  isa_mason_exception($err, 'Decline') ? $err->declined_value :
+                  rethrow_exception $err;
     }
 
     # On a success code, send headers if they have not been sent and
@@ -208,6 +212,7 @@ sub exec
 	and (!$retval or $retval==200)) {
 	$r->send_http_header();
     }
+
 }
 
 sub redirect {
