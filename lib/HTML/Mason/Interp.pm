@@ -135,17 +135,15 @@ sub _initialize
 	    $fullPath =~ s@/$@@g;
 	    if (-d $fullPath) {
 		my $sub = sub {
-		    if (-f) {
-			my $file = $_;
-			$file =~ s/^\./$fullPath/;
+		    if (-f $File::Find::name) {
+			my $file = $File::Find::name;
 			my $compPath = substr($file,$slen);
 			$self->load($compPath);
 		    }
 		};
 		find($sub,$fullPath);
 	    } elsif (-f $fullPath) {
-		my $compPath = substr($fullPath,$slen);
-		$self->load($compPath);
+		$self->load($p);
 	    }
 	}
 	$self->{code_cache_mode} = $savemode;	

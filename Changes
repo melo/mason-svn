@@ -5,6 +5,14 @@ available at http://www.masonhq.com/changes.html.
 
 ** denotes an incompatible change
 
+0.6.2  Fri Aug 20 09:02:59 PDT 1999
+
+- Fixed problem with shared data cache locks over NFS (submitted by
+Tom Hughes)
+- Fixed mc_auto_comp, which never really worked as documented
+- Fixed preloading for directories (submitted by Dennis Watson)
+- Added back Utils::get_lock, which is used by content management
+
 0.6.1  Tue Jul 27 09:34:31 PDT 1999
 
 - Added warnings to convert-0.6.pl about occasional erroneous

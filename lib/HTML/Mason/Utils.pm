@@ -14,6 +14,7 @@ use IO::File qw(!/^SEEK/);
 use POSIX;
 use Fcntl qw(:flock);
 use File::Basename;
+use File::Path;
 use HTML::Mason::Config;
 use HTML::Mason::Tools qw(date_delta_to_secs);
 use MLDBM ($HTML::Mason::Config{mldbm_use_db}, $HTML::Mason::Config{mldbm_serializer});
@@ -45,7 +46,7 @@ sub access_data_cache
 	my $lockfh;
 	if ($lockargs & LOCK_EX) {
 	    $lockfh = new IO::File ">>$lockfile"
-		or die "cache: cannot open lockfile '$lockfile' for exclusive lock\n";
+		or die "cache: cannot open lockfile '$lockfile' for exclusive lock: $!";
 	} elsif ($lockargs & LOCK_SH) {
 	    $lockfh = new IO::File "<$lockfile";
 	    if (!$lockfh && !-e $lockfile) {
@@ -53,7 +54,7 @@ sub access_data_cache
 		$lockfh->close;
 		$lockfh = new IO::File "<$lockfile";
 	    }
-	    die "cache: cannot open lockfile '$lockfile' for shared lock\n" if !$lockfh;
+	    die "cache: cannot open lockfile '$lockfile' for shared lock: $!" if !$lockfh;
 	} else {
 	    die "unknown lock mode: $lockargs";
 	}
