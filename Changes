@@ -67,6 +67,10 @@ as up to date as possible.
 component called by another component.
 - Fixed a bug that prevented the $m->cache_self method from returning
 anything.
+- Fixed bug in HTML/Mason/Component/Subcomponent.pm create_time
+method.  Reported by Caleb Crome.
+- Fixed bug where Mason would try to escape undefined values in a
+substitution with an escape flag.  Submitted by Denis Shaposhnikov.
 
 0.89  Thu Sep 14 08:44:58 PDT 2000
 
