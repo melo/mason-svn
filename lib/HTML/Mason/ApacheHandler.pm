@@ -83,6 +83,7 @@ use HTML::Mason::Commands;
 use HTML::Mason::FakeApache;
 use HTML::Mason::Tools qw(dumper_method html_escape pkg_installed);
 use HTML::Mason::Utils;
+use Params::Validate qw(:all);
 use Apache::Status;
 
 use HTML::Mason::MethodMaker
@@ -167,7 +168,7 @@ sub import
 	die "Invalid args_method parameter ('$params{args_method}') given to HTML::Mason::ApacheHandler in 'use'\n";
     }
 
-    _make_ah() if _in_apache_conf_file();
+    _make_ah() if _in_apache_conf_file() && ! Apache->server->dir_config('MasonMultipleConfig');
 }
 
 # This is my best guess as to whether we are being configured via the
@@ -175,12 +176,14 @@ sub import
 # later anyway.  This may not be the case in the future though.
 sub _in_apache_conf_file
 {
-    return $ENV{MOD_PERL} && Apache->server->dir_config('MasonCompRoot');
+    return ( $ENV{MOD_PERL} &&
+	     ( Apache->server->dir_config('MasonCompRoot') ||
+	       Apache->server->dir_config('MasonMultipleConfig') ) );
 }
 
 sub _make_ah
 {
-    return if $AH;
+    return $AH if $AH && ! Apache->server->dir_config('MasonMultipleConfig');
 
     my %p;
 
@@ -197,17 +200,16 @@ sub _make_ah
 
     $p{top_level_predicate} = _get_code_param('TopLevelPredicate');
 
-    foreach ( qw( apache_status_title auto_send_headers decline_dirs
-		  error_mode debug_mode debug_perl_binary top_level_predicate
-		) )
+    foreach (keys %p)
     {
 	delete $p{$_} unless defined $p{$_};
     }
 
-
     $AH = HTML::Mason::ApacheHandler->new( interp => _make_interp(),
 					   %p,
 					 );
+
+    return $AH;
 }
 
 sub _make_interp
@@ -258,12 +260,7 @@ sub _make_interp
     $p{data_dir} = _get_string_param('DataDir', 1);
 
     # If not defined we'll use the defaults
-    foreach ( qw( allow_recursive_autohandlers autohandler_name
-		  code_cache_max_size current_time dhandler_name die_handler
-		  system_log_separator out_mode max_recurse use_data_cache
-		  use_object_files use_reload_file verbose_compile_error
-		  out_method
-		) )
+    foreach (keys %p)
     {
 	delete $p{$_} unless defined $p{$_};
     }
@@ -276,7 +273,8 @@ sub _make_interp
 sub _make_parser
 {
     my %p;
-    $p{allow_globals} = _get_string_param('AllowGlobals');
+    $p{allow_globals} = [ _get_list_param('AllowGlobals') ];
+    delete $p{allow_globals} unless @{ $p{allow_globals} };
 
     $p{default_escape_flags} = _get_string_param('DefaultEscapeFlags');
     $p{ignore_warnings_expr} = _get_string_param('IgnoreWarningsExpr');
@@ -290,7 +288,7 @@ sub _make_parser
     $p{postprocess} = _get_code_param('Postprocess');
 
     # If not defined we'll use the defaults
-    foreach ( qw( ignore_warnings_expr in_package use_strict preprocess postprocess ) )
+    foreach (keys %p)
     {
 	delete $p{$_} unless defined $p{$_};
     }
@@ -352,7 +350,8 @@ sub _get_val
     my ($p, $required, $wantarray) = @_;
     $p = "Mason$p";
 
-    my @val = Apache->server->dir_config($p);
+    my $c = Apache->request ? Apache->request : Apache->server;
+    my @val = $c->dir_config($p);
 
     die "Only a single value is allowed for configuration parameter '$p'\n"
 	if @val > 1 && ! $wantarray;
@@ -370,15 +369,31 @@ sub new
 	request_number => 0,
 	%fields,
     };
+
+    validate( @_,
+	      { apache_status_title => { type => SCALAR, optional => 1 },
+		auto_send_headers => { type => SCALAR, optional => 1 },
+		decline_dirs => { type => SCALAR, optional => 1 },
+		error_mode => { type => SCALAR, optional => 1 },
+		output_mode => { type => SCALAR | UNDEF, optional => 1 },
+		top_level_predicate => { type => CODEREF | UNDEF, optional => 1 },
+		debug_mode => { type => SCALAR, optional => 1 },
+		debug_perl_binary => { type => SCALAR, optional => 1 },
+		debug_handler_script => { type => SCALAR, optional => 1 },
+		debug_handler_proc => { type => SCALAR, optional => 1 },
+		debug_dir_config_keys => { type => ARRAYREF, optional => 1 },
+
+		# the only required param
+		interp => { isa => 'HTML::Mason::Interp' },
+	      }
+	    );
+
     my (%options) = @_;
+
     while (my ($key,$value) = each(%options)) {
-	if (exists($fields{$key})) {
-	    $self->{$key} = $value;
-	} else {
-	    die "HTML::Mason::ApacheHandler::new: invalid option '$key'\n";
-	}
+	$self->{$key} = $value;
     }
-    die "HTML::Mason::ApacheHandler::new: must specify value for interp" if !$self->{interp};
+
     bless $self, $class;
     $self->_initialize;
     return $self;
@@ -977,10 +992,19 @@ sub handler
 {
     my $r = shift;
 
-    die "This function cannot be called except by defining HTML::Mason::ApacheHandler as a content handler in you Apache configuration file\n"
-	unless $AH;
+    my $ah;
+    if ($r->dir_config('MasonMultipleConfig'))
+    {
+	$ah = _make_ah;
+    }
+    else
+    {
+	die "This function cannot be called except by defining HTML::Mason::ApacheHandler as a content handler in you Apache configuration file\n"
+	    unless $AH;
+	$ah = $AH;
+    }
 
-    return $AH->handle_request($r);
+    return $ah->handle_request($r);
 }
 
 
