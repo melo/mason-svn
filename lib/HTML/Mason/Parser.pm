@@ -20,7 +20,6 @@ use HTML::Mason::MethodMaker
     ( read_write => [ qw( default_escape_flags
 		      ignore_warnings_expr
 		      in_package
-		      indented_perl_lines
 		      postamble
 		      postprocess
 		      preamble
@@ -35,7 +34,6 @@ my %fields =
      default_escape_flags => '',
      ignore_warnings_expr => 'Subroutine .* redefined',
      in_package => 'HTML::Mason::Commands',
-     indented_perl_lines => 0,
      postamble => '',
      postprocess => undef,
      preamble => '',
@@ -627,16 +625,7 @@ sub _parse_textseg
 	$s->{startline} = 0;
 
 	my %h;
-	if ($self->indented_perl_lines) {
-	    my $subtext = substr($text, $s->{curpos});
-	    if ($subtext =~ /^\s*%/mg) {
-		$h{perl_line} = pos($subtext)-2;
-	    } else {
-		$h{perl_line} = -1;
-	    }
-	} else {
-	    $h{perl_line} = index($text,"\n%",$s->{curpos});	    
-	}
+	$h{perl_line} = index($text,"\n%",$s->{curpos});
 	$h{substitute_tag} = index($text,'<%', $s->{curpos});
 	$h{call_tag}  = index($text,'<&',$s->{curpos});
 
