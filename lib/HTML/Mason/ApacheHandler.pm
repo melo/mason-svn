@@ -376,8 +376,8 @@ sub new
 
     validate( @_,
 	      { apache_status_title => { type => SCALAR, optional => 1 },
-		auto_send_headers => { type => SCALAR, optional => 1 },
-		decline_dirs => { type => SCALAR, optional => 1 },
+		auto_send_headers => { type => SCALAR | UNDEF, optional => 1 },
+		decline_dirs => { type => SCALAR | UNDEF, optional => 1 },
 		error_mode => { type => SCALAR, optional => 1 },
 		output_mode => { type => SCALAR | UNDEF, optional => 1 },
 		top_level_predicate => { type => CODEREF | UNDEF, optional => 1 },
