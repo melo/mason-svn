@@ -16,6 +16,10 @@ Matthew Lewinski)
 version number to ApacheHandler.pm.
 - Changed sql examples in Devel.pod to use bind variables. (suggested
 by Austin S. Lin)
+- Fixed specification of a component root as "foo => /foo" in
+httpd.conf. (reported by Chuck O'Donnell)
+- Added MasonDeclineDirs, accidentally omitted in 1.01. (reported by
+David Wheeler)
 
 1.015 April 3, 2001
 
