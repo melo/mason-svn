@@ -91,7 +91,7 @@ sub new
 
     validate( @_,
 	      { allow_recursive_autohandlers => { type => SCALAR | UNDEF, optional => 1 },
-		autohandler_name => { type => SCALAR | UNDEFz, optional => 1 },
+		autohandler_name => { type => SCALAR | UNDEF, optional => 1 },
 		code_cache_max_size => { type => SCALAR, optional => 1 },
 		current_time => { type => SCALAR, optional => 1 },
 		data_cache_dir => { type => SCALAR, optional => 1 },
