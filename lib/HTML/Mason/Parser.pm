@@ -50,7 +50,7 @@ my %valid_escape_flags = map(($_,1),qw(h n u));
 #
 sub version
 {
-    return 0.8;
+    return "0.8";
 }
 
 sub new
