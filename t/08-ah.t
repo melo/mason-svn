@@ -11,7 +11,7 @@ unless ($mod_perl::VERSION || $mod_perl::VERSION)
 
 use strict;
 
-use vars qw($VERBOSE $DEBUG $TEST_NUM $CONF_DIR $COMP_ROOT $DATA_DIR %APACHE_PARAMS);
+use vars qw($VERBOSE $DEBUG);
 
 BEGIN
 {
@@ -26,7 +26,7 @@ use lib 'lib', 't/lib';
 use Apache::test qw(skip_test have_httpd);
 skip_test unless have_httpd;
 
-# We'll repeat all the tests with an Apache::Request using
+# We'll repeat all the tests with an Apache::Request-using
 # ApacheHandler if the user has the Apache::Request module installed.
 my $has_apache_request = 1;
 eval { require Apache::Request; };
@@ -34,11 +34,23 @@ $has_apache_request = 0 if $@;
 
 local $| = 1;
 
-print '1..';
-print $has_apache_request ? 12 : 6;
-print "\n";
+{
+    my $both_tests = 11;
+    my $cgi_only_tests = 1;
+    my $apr_only_tests = 1;
 
-$TEST_NUM = 0;
+    my $total = $both_tests;
+    $total += $cgi_only_tests;
+    if ($has_apache_request)
+    {
+	$total += $both_tests;
+	$total += $apr_only_tests;
+    }
+
+    print "1..$total\n";
+}
+
+write_test_comps();
 
 print STDERR "\n";
 cgi_tests();
@@ -60,13 +72,86 @@ if ($has_apache_request)
     apache_request_tests();
 }
 
+sub write_test_comps
+{
+    write_comp( 'basic', <<'EOF',
+Basic test.
+2 + 2 = <% 2 + 2 %>.
+uri = <% $r->uri =~ /basic$/ ? '/basic' : $r->uri %>.
+method = <% $r->method %>.
+
+
+EOF
+	      );
+
+    write_comp( 'headers', <<'EOF',
+
+
+% $r->header_out('X-Mason-Test' => 'New value 2');
+Blah blah
+blah
+% $r->header_out('X-Mason-Test' => 'New value 3');
+<%init>
+$r->header_out('X-Mason-Test' => 'New value 1');
+$m->abort if $blank;
+</%init>
+<%args>
+$blank=>0
+</%args>
+EOF
+	      );
+
+    write_comp( 'cgi_object', <<'EOF',
+<% UNIVERSAL::isa(eval { $m->cgi_object }, 'CGI') ? 'CGI' : 'NO CGI' %>
+EOF
+	      );
+
+    write_comp( '_underscore', <<'EOF',
+I am underscore.
+EOF
+	      );
+
+    write_comp( 'dhandler', <<'EOF',
+I am the dhandler.
+EOF
+	      );
+
+    write_comp( 'die', <<'EOF',
+% die 'Mine heart is pierced';
+EOF
+	      );
+
+    if ($has_apache_request)
+     {
+	write_comp( 'apache_request', <<'EOF',
+<% ref $r %>
+EOF
+		  );
+    }
+}
+
+sub write_comp
+{
+    my $name = shift;
+    my $comp = shift;
+
+    my $file = "$ENV{APACHE_DIR}/comps/$name";
+    open F, ">$file"
+	or die "Can't write to '$file': $!";
+
+    print F $comp;
+
+    close F;
+}
+
+
 sub cgi_tests
 {
     start_httpd('CGI');
 
     standard_tests();
 
-    my $response = Apache::test->fetch( '/mason/comps/cgi_object' );
+    my $response = Apache::test->fetch( '/ah=0/comps/cgi_object' );
     my $actual = filter_response($response);
     my $success = HTML::Mason::Tests->check_output( actual => $actual,
 						    expect => <<'EOF',
@@ -86,7 +171,7 @@ sub apache_request_tests
 
     standard_tests();
 
-    my $response = Apache::test->fetch( '/mason/comps/apache_request' );
+    my $response = Apache::test->fetch( '/ah=0/comps/apache_request' );
     my $actual = filter_response($response);
     my $success = HTML::Mason::Tests->check_output( actual => $actual,
 						    expect => <<'EOF',
@@ -102,7 +187,7 @@ EOF
 
 sub standard_tests
 {
-    my $response = Apache::test->fetch( "/mason/comps/basic" );
+    my $response = Apache::test->fetch( "/ah=0/comps/basic" );
     my $actual = filter_response($response);
     my $success = HTML::Mason::Tests->check_output( actual => $actual,
 						    expect => <<'EOF',
@@ -118,7 +203,7 @@ EOF
 						  );
     ok($success);
 
-    $response = Apache::test->fetch( "/mason/comps/headers" );
+    $response = Apache::test->fetch( "/ah=0/comps/headers" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -132,7 +217,7 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/mason_stream/comps/headers" );
+    $response = Apache::test->fetch( "/ah=1/comps/headers" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -146,7 +231,7 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/mason/comps/headers?blank=1" );
+    $response = Apache::test->fetch( "/ah=0/comps/headers?blank=1" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -156,7 +241,7 @@ EOF
 					       );
     ok($success);
 
-    $response = Apache::test->fetch( "/mason_stream/comps/headers?blank=1" );
+    $response = Apache::test->fetch( "/ah=1/comps/headers?blank=1" );
     $actual = filter_response($response);
     $success = HTML::Mason::Tests->check_output( actual => $actual,
 						 expect => <<'EOF',
@@ -165,6 +250,61 @@ Status code: 0
 EOF
 					       );
     ok($success);
+
+    $response = Apache::test->fetch( "/ah=0/comps/_underscore" );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+I am underscore.
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    # top_level_predicate should reject this request.
+    $response = Apache::test->fetch( "/ah=2/comps/_underscore" );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: 
+Status code: 404
+EOF
+					       );
+    ok($success);
+
+    # decline_dirs defaults to true so this request is declined
+    $response = Apache::test->fetch( "/ah=0/comps/" );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: 
+Status code: -1
+EOF
+					       );
+    ok($success);
+
+    # decline_dirs is false so the dhandler should pick this up
+    $response = Apache::test->fetch( "/ah=3/comps/" );
+    $actual = filter_response($response);
+    $success = HTML::Mason::Tests->check_output( actual => $actual,
+						 expect => <<'EOF',
+X-Mason-Test: Initial value
+I am the dhandler.
+Status code: 0
+EOF
+					       );
+    ok($success);
+
+    # error_mode is html so we get lots of stuff
+    $response = Apache::test->fetch( "/ah=0/comps/die" );
+    $actual = filter_response($response);
+    ok( $actual =~ m,error while executing /die:\s+Mine heart is pierced, );
+
+    # error_mode is fatal so we just get a 500
+    $response = Apache::test->fetch( "/ah=4/comps/die" );
+    $actual = filter_response($response);
+    ok( $actual =~ m,500 Internal Server Error, );
 }
 
 # We're not interested in headers that are always going to be
@@ -173,6 +313,8 @@ sub filter_response
 {
     my $response = shift;
 
+    # because the header or content may be undef
+    local $^W = 0;
     my $actual = join "\n", ( 'X-Mason-Test: ' . $response->headers->header('X-Mason-Test'),
 			      $response->content );
 
@@ -214,10 +356,12 @@ sub kill_httpd
 	or die "Can't kill process $pid: $!";
 }
 
+use vars qw($TESTS);
+
 sub ok
 {
     my $ok = !!shift;
     print $ok ? 'ok ' : 'not ok ';
-    print ++$TEST_NUM, "\n";
+    print ++$TESTS, "\n";
 }
 
