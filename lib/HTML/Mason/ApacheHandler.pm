@@ -104,8 +104,6 @@ use HTML::Mason::MethodMaker
 
 # use() params. Assign defaults, in case ApacheHandler is only require'd.
 use vars qw($LOADED $ARGS_METHOD);
-$LOADED = 0;
-$ARGS_METHOD = undef;
 
 my @used = ($HTML::Mason::IN_DEBUG_FILE);
 
