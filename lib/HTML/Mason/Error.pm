@@ -13,16 +13,18 @@ use strict;
 
 require Exporter;
 
-use vars qw(@ISA @EXPORT_OK);
+use vars qw(@ISA @EXPORT_OK $ACTIVE);
 
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(error_process error_display_html);
+$ACTIVE = 1;  # hack to turn off error processing during development
 
 use HTML::Mason::Tools qw(html_escape make_fh);
 
 sub error_process {
     my ($error, $req) = @_;
-
+    return $error unless $ACTIVE;
+    
     my %conf = (
 		'runtime_error' => 'runtime error',
 		'component_error' => 'undefined component',
@@ -88,7 +90,8 @@ sub error_process {
 	    $error_info{'err_descr'} = "while loading $document";
 	}
 
-	elsif($line =~ /while executing (\S*):/) {
+	elsif($line =~ /while executing (\S*):/ and
+	      (!defined($error_info{'err_descr'}) or $error_info{'err_descr'} !~ /while executing/)) {
 	    $error_info{'err_type'} = $conf{'runtime_error'};
 	    $error_info{'err_descr'} = "while executing $1";
 	}
@@ -97,6 +100,7 @@ sub error_process {
 	elsif($line =~ /at (\S*) line (\d*)/) {
 	    my ($message, $file, $linenum) =
 		($line =~ /(.*) at (\S*) line (\d*)/);
+	    $message =~ s/,/ /g;  # hack for sake of error_parse
 	    push @errors, { "message" => $message, "line" => $linenum };
 	    $error_info{'err_file'} = $file;
 	}
@@ -213,6 +217,8 @@ sub error_process {
 
 sub error_display_html {
     my ($error) = @_;
+
+    return "<pre>$error</pre>" unless $ACTIVE;
 
     my $out = '';
 
