@@ -322,11 +322,10 @@ EOF
 		      description => 'make a comp call where the tag starts with a newline',
 		      component => <<'EOF',
 <&
- .foo
+ .foo,
  x => 1
- &>
-
-<%def .foo>
+ &>\
+<%def .foo>\
 x is <% $ARGS{x} %>
 </%def>
 EOF
