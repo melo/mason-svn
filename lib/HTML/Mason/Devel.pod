@@ -899,7 +899,7 @@ non-programmers to work in a cleaner HTML environment.
 
 =head2 &lt;%filter&gt; section
 
-The <%filter> section allows you to arbitrarily filter the output of
+The C<E<lt>%filterE<gt>> section allows you to arbitrarily filter the output of
 the current component. Upon entry to this code, $_ contains the
 component output, and you are expected to modify it in place. The code
 has access to component arguments and can invoke subroutines, call
