@@ -315,9 +315,11 @@ undef if no such component exists.
 
 =item fetch_next
 
-Returns the next component in the content wrapping chain; usually
-called from an autohandler.  See the L<Devel/autohandlers> section of
-the I<Component Developer's Guide> for usage and examples.
+In scalar context, returns the next component in the content wrapping
+chain; in list context, returns the remaining components in the
+content wrapping chain. Usually called from an autohandler.  See the
+L<Devel/autohandlers> section of the I<Component Developer's Guide>
+for usage and examples.
 
 =for html <a name="item_file">
 
