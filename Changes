@@ -5,6 +5,15 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.28  November 6, 2004
+
+This version is entirely identical to 1.27 except for a fix to make
+CPAN/PAUSE properly index the version number in
+HTML::Mason::ApacheHandler.  If you already installed 1.27 you do not
+need to install this version unless you want to fix the "out of date
+modules" report from the CPAN or CPANPLUS shells.
+
+
 1.27  October 28, 2004
 
 [ ENHANCEMENTS ]
