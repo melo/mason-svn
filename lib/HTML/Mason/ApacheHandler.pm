@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -51,13 +51,14 @@ sub cgi_object
 {
     my ($self) = @_;
 
-    if ($HTML::Mason::ApacheHandler::ARGS_METHOD eq 'CGI')
-    {
-	$self->{cgi_object} ||= CGI->new('');
-    }
-    else
-    {
+    if ($HTML::Mason::ApacheHandler::ARGS_METHOD ne '_cgi_args') {
 	die "Can't call cgi_object method unless CGI.pm was used to handle incoming arguments.\n";
+    } elsif (defined($_[1])) {
+	$self->{cgi_object} = $_[1];
+    } else {
+	# We may not have created a CGI object if, say, request was a
+	# GET with no query string. Create one on the fly if necessary.
+	$self->{cgi_object} ||= CGI->new('');
     }
 
     return $self->{cgi_object};
@@ -103,8 +104,6 @@ use HTML::Mason::MethodMaker
 
 # use() params. Assign defaults, in case ApacheHandler is only require'd.
 use vars qw($LOADED $ARGS_METHOD);
-$LOADED = 0;
-$ARGS_METHOD = undef;
 
 my @used = ($HTML::Mason::IN_DEBUG_FILE);
 
@@ -159,7 +158,6 @@ sub new
 {
     my $class = shift;
     my $self = {
-	_permitted => \%fields,
 	request_number => 0,
 	%fields,
     };
@@ -205,7 +203,7 @@ sub _initialize {
 		my @strings = ();
 
 		push (@strings,
-		      qq(<FONT size="+2"><B>$self->apache_status_title</B></FONT><BR><BR>),
+		      qq(<FONT size="+2"><B>) . $self->apache_status_title . qq(</B></FONT><BR><BR>),
 		      $self->interp_status);
 
 		return \@strings;     # return an array ref
@@ -246,7 +244,7 @@ sub interp_status
         map {"<DD><TT>$_ = ".(defined($interp->{$_}) ? 
                                 $interp->{$_} : '<I>undef</I>'
                              )."</TT>\n" 
-            } grep ref $interp->{$_} eq '', sort keys %{$interp->{_permitted}};
+            } grep ! ref $interp->{$_}, sort keys %$interp;
 
     push @strings, '</DL>',
             '<DL><DT><FONT SIZE="+1"><B>Cached components</B></FONT><DD>';
@@ -283,6 +281,10 @@ sub handle_request {
     my $interp = $self->interp;
     $self->{request_number}++;
 
+    if (lc($apreq->dir_config('Filter')) eq 'on') {
+	$apreq = $apreq->filter_register;
+    }
+
     #
     # Construct (and truncate if necessary) the request to log at start
     #
@@ -304,8 +306,8 @@ sub handle_request {
     #
     # Capture debug state as early as possible, before we start messing with $apreq.
     #
-    my $debugState;
-    $debugState = $self->capture_debug_state($apreq)
+    my $debug_state;
+    $debug_state = $self->capture_debug_state($apreq)
 	if ($debugMode eq 'all' or $debugMode eq 'error');
 
     #
@@ -315,10 +317,9 @@ sub handle_request {
 	(ah=>$self,
 	 interp=>$interp,
 	 apache_req=>$apreq,
-	 cgi_object=>$self->{cgi_object},
 	 );
     
-    eval { $retval = $self->handle_request_1($apreq, $request, $debugState) };
+    eval { $retval = $self->handle_request_1($apreq, $request, $debug_state) };
     my $err = $@;
     my $err_code = $request->error_code;
     undef $request;  # ward off memory leak
@@ -326,27 +327,31 @@ sub handle_request {
 
     if ($err) {
 	#
-	# If first component was not found, return 404. In case of
-	# POST we must trick Apache into not reading POST content
+	# If first component was not found, return NOT_FOUND. In case
+	# of POST we must trick Apache into not reading POST content
 	# again. Wish there were a more standardized way to do this...
+	#
+	# This $err_code stuff is really only used to communicate found
+	# errors; it will be replaced with exceptions
 	#
 	if (defined($err_code) and $err_code eq 'top_not_found') {
 	    if ($apreq->method eq 'POST') {
 		$apreq->method('GET');
 		$apreq->headers_in->unset('Content-length');
 	    }
+	    
+	    # Log the error the same way that Apache does (taken from default_handler in http_core.c)
+	    $apreq->log_error("[Mason] File does not exist: ",$apreq->filename . ($apreq->path_info ? $apreq->path_info : ""));
 	    return NOT_FOUND;
 	}
 
 	#
 	# Take out date stamp and (eval nnn) prefix
-	# Add server name, uri, referer, and agent
+	# Add server name, uri
 	#
 	$err =~ s@^\[[^\]]*\] \(eval [0-9]+\): @@mg;
 	$err = html_escape($err);
-	my $referer = $apreq->header_in('Referer') || '<none>';
-	my $agent = $apreq->header_in('User-Agent') || '';
-	$err = sprintf("while serving %s %s (referer=%s, agent=%s)\n%s",$apreq->server->server_hostname,$apreq->uri,$referer,$agent,$err);
+	$err = sprintf("while serving %s %s\n%s",$apreq->server->server_hostname,$apreq->uri,$err);
 
 	if ($self->error_mode eq 'fatal') {
 	    die ("System error:\n$err\n");
@@ -357,14 +362,14 @@ sub handle_request {
 	    }
 	    print("<h3>System error</h3><p><pre><font size=-1>$err</font></pre>\n");
 	    if ($debugMode eq 'error' or $debugMode eq 'all') {
-		my $debugMsg = $self->write_debug_file($apreq,$debugState);
-		print("<pre><font size=-1>\n$debugMsg\n</font></pre>\n");
+		my $debug_msg = $self->write_debug_file($apreq,$debug_state);
+		print("<pre><font size=-1>\n$debug_msg\n</font></pre>\n");
 	    }
 	}
     } else {
 	if ($debugMode eq 'all') {
-	    my $debugMsg = $self->write_debug_file($apreq,$debugState);
-	    print "\n<!--\n$debugMsg\n-->\n" if (http_header_sent($apreq) && !$apreq->header_only && $apreq->header_out("Content-type") =~ /text\/html/);
+	    my $debug_msg = $self->write_debug_file($apreq,$debug_state);
+	    print "\n<!--\n$debug_msg\n-->\n" if (http_header_sent($apreq) && !$apreq->header_only && $apreq->header_out("Content-type") =~ /text\/html/);
 	}
     }
 
@@ -387,10 +392,10 @@ sub write_debug_file
     if (!-d $outDir) {
 	mkpath($outDir,0,0755) or die "cannot create debug directory '$outDir'";
     }
-    my $outPath = "$outDir/$outFile";
-    my $outfh = new IO::File ">$outPath";
-    if (!$outfh) {
-	$r->warn("cannot open debug file '$outPath' for writing");
+    my $out_path = "$outDir/$outFile";
+    my $outfh = do { local *FH; *FH; };  # double *FH avoids warning
+    unless ( open $outfh, ">$out_path" ) {
+	$r->warn("cannot open debug file '$out_path' for writing");
 	return;
     }
 
@@ -404,7 +409,6 @@ sub write_debug_file
 # coderefs are accumulated in %CODEREF_NAME
 # -----------------------------
 BEGIN {
-    use IO::File;
     use File::Copy;
     use Getopt::Std;
     getopt('r');   # r=repeat count, p=user profile req, P=re-entrant profile call
@@ -413,27 +417,32 @@ BEGIN {
     if ($opt_p) {
 	print STDERR "Profiling request ...";
 	# re-enter with different option (no inf. loops, please)
-	system ("perl", "-d:DProf", $0, "-P", "-r$opt_r");
+	system ("perl", "-d:DProf", $0, "-P", "-r$opt_r")
+            or die "Can't execute perl: $!";
     
 # -----------------------------
 # When done, merge named coderefs in tmon.mason with those in tmon.out,
 # then run dprofpp
 # -----------------------------
-	my $fh = new IO::File '< ./tmon.mason' or die "Missing file: tmon.mason";
+        my $fh = do { local *FH; *FH; };  # double *FH avoids warning
+        open $fh, '< ./tmon.mason' or die "Missing file: tmon.mason: $!";
 	foreach (<$fh>) { chomp;  my ($k,$v) = split(/\t/);  $::CODEREF_NAME{$k} = $v; }
-	$fh->close;
+	close $fh or die "can't close file: tmon.mason: $!";
     
-	my $tmonout = new IO::File '< ./tmon.out' or die "Missing file: tmon.out";
-	my $tmontmp = new IO::File '> ./tmon.tmp' or die "Couldn't write file: tmon.tmp";
+	my $tmonout = do { local *FH; *FH; };
+        open $tmonout, '< ./tmon.out' or die "Missing file: tmon.out: $!";
+	my $tmontmp = do { local *FH; *FH; };
+        open $tmontmp, '> ./tmon.tmp' or die "Couldn't write file: tmon.tmp: $!";
 	my $regex = quotemeta(join('|', keys %::CODEREF_NAME));
 	$regex =~ s/\\\|/|/g;   #un-quote the pipe chars
 	while (<$tmonout>) {
 	    s/HTML::Mason::Commands::($regex)/$::CODEREF_NAME{$1}/;
-	    print $tmontmp $_
+	    print $tmontmp $_;
 	}
-	$tmonout->close; $tmontmp->close;
+	close $tmonout or die "can't close file: tmon.out: $!";
+        close $tmontmp or die "can't close file: tmon.tmp: $!";
 	copy('tmon.tmp' => 'tmon.out') or die "$!";
-	unlink('tmon.tmp');
+	unlink('tmon.tmp') or warn "can't remove file: tmon.tmp: $!";
         print STDERR "\nRunning dprofpp ...\n";
 	exec('dprofpp') or die "Couldn't execute dprofpp";
     }
@@ -443,8 +452,8 @@ PERL
     $o .= "BEGIN { \$HTML::Mason::IN_DEBUG_FILE = 1; require '".$self->debug_handler_script."' }\n\n";
     $o .= <<'PERL';
 if ($opt_P) {
-    open SAVEOUT, ">&STDOUT";    # stifle component output while profiling
-    open STDOUT, ">/dev/null";
+    open SAVEOUT, ">&STDOUT" or die "Can't open &STDOUT: $!";    # stifle component output while profiling
+    open STDOUT, ">/dev/null" or die "Can't write to /dev/null: $!";
 }
 for (1 .. $opt_r) {
 print STDERR '.' if ($opt_P and $opt_r > 1);
@@ -457,17 +466,18 @@ PERL
     $o .= 'print "return status: $status\n";'."\n}\n\n";
     $o .= <<'PERL';
 if ($opt_P) {
-    my $fh = new IO::File '>./tmon.mason' or die "Couldn't write tmon.mason";
+    my $fh = do { local *FH; *FH; };
+    open $fh, '>./tmon.mason' or die "Couldn't write to file: tmon.mason: $!";
     print $fh map("$_\t$HTML::Mason::CODEREF_NAME{$_}\n", keys %HTML::Mason::CODEREF_NAME);
-    $fh->close;
+    close $fh or die "Can't close file: tmon.mason: $!";
 }
 PERL
-    $outfh->print($o);
-    $outfh->close();
-    chmod(0775,$outPath);
+    print $outfh $o;
+    close $outfh or die "can't close file: $out_path: $!";
+    chmod(0775,$out_path) or die "can't chmod file to 0775: $out_path: $!";
 
-    my $debugMsg = "Debug file is '$outFile'.\nFull debug path is '$outPath'.\n";
-    return $debugMsg;
+    my $debug_msg = "Debug file is '$outFile'.\nFull debug path is '$out_path'.\n";
+    return $debug_msg;
 }
 
 sub capture_debug_state
@@ -519,14 +529,21 @@ sub capture_debug_state
 
 sub handle_request_1
 {
-    my ($self,$r,$request,$debugState) = @_;
+    my ($self,$r,$request,$debug_state) = @_;
     my $interp = $self->interp;
 
     #
     # If filename is a directory, then either decline or simply reset
     # the content type, depending on the value of decline_dirs.
     #
-    if (-d $r->finfo) {
+    # ** We should be able to use $r->finfo here, but finfo is broken
+    # in some versions of mod_perl (e.g. see Shane Adams message on
+    # mod_perl list on 9/10/00)
+    #
+    my $is_dir = -d $r->filename;
+    my $is_file = -f _;
+
+    if ($is_dir) {
 	if ($self->decline_dirs) {
 	    return DECLINED;
 	} else {
@@ -539,19 +556,23 @@ sub handle_request_1
     # (mainly for dhandlers).
     #
     my $pathname = $r->filename;
-    $pathname .= $r->path_info unless -f $r->finfo;
+    $pathname .= $r->path_info unless $is_file;
 
     #
-    # Compute the component path via the resolver.
+    # Compute the component path via the resolver. Return NOT_FOUND on failure.
     #
     my $comp_path = $interp->resolver->file_to_path($pathname,$interp);
-    return NOT_FOUND unless $comp_path;
+    unless ($comp_path) {
+	$r->warn("[Mason] Cannot resolve file to component: $pathname (is file outside component root?)");
+	return NOT_FOUND;
+    }
 
     #
-    # Decline if file does not pass top level predicate.
+    # Return NOT_FOUND if file does not pass top level predicate.
     #
-    if (-f $r->finfo and defined($self->{top_level_predicate})) {
-	return NOT_FOUND unless $self->{top_level_predicate}->($r->filename);
+    if ($is_file and defined($self->top_level_predicate) and !$self->top_level_predicate->($r->filename)) {
+	$r->warn("[Mason] File fails top level predicate: ".$r->filename);
+	return NOT_FOUND;
     }
 
     #
@@ -567,9 +588,9 @@ sub handle_request_1
     if ($HTML::Mason::IN_DEBUG_FILE) {
 	%args = %{$r->{args_hash}};
     } else {
-	%args = $self->$ARGS_METHOD(\$r);
+	%args = $self->$ARGS_METHOD(\$r,$request);
     }
-    $debugState->{args_hash} = \%args if $debugState;
+    $debug_state->{args_hash} = \%args if $debug_state;
 
     #
     # Deprecated output_mode parameter - just pass to request out_mode.
@@ -648,27 +669,31 @@ sub handle_request_1
 #
 sub _cgi_args
 {
-    my ($self, $rref) = @_;
+    my ($self, $rref, $request) = @_;
 
     my $r = $$rref;
-    my $q;
-    unless ($r->method eq 'GET' && !scalar($r->args)) {
-        $self->{cgi_object} = CGI->new;
-    }
 
-    return unless exists $self->{cgi_object};
+    # For optimization, don't bother creating a CGI object if request
+    # is a GET with no query string
+    return if $r->method eq 'GET' && !scalar($r->args);
+
+    my $q = CGI->new;
+    $request->cgi_object($q);
 
     my %args;
-    foreach my $key ( $self->{cgi_object}->param ) {
-	foreach my $value ( $self->{cgi_object}->param($key) ) {
-	    if (exists($args{$key})) {
-		if (ref($args{$key}) eq 'ARRAY') {
-		    push @{ $args{$key} }, $value;
+    my $methods = $r->method eq 'GET' ? [ 'param' ] : [ 'param', 'url_param' ];
+    foreach my $method (@$methods) {
+	foreach my $key ( $q->$method() ) {
+	    foreach my $value ( $q->$method($key) ) {
+		if (exists($args{$key})) {
+		    if (ref($args{$key}) eq 'ARRAY') {
+			push @{ $args{$key} }, $value;
+		    } else {
+			$args{$key} = [$args{$key}, $value];
+		    }
 		} else {
-		    $args{$key} = [$args{$key}, $value];
+		    $args{$key} = $value;
 		}
-	    } else {
-		$args{$key} = $value;
 	    }
 	}
     }
@@ -678,15 +703,18 @@ sub _cgi_args
 
 #
 # Get %args hash via Apache::Request package. As a side effect, assign the
-# new Apache::Request package back to $r.
+# new Apache::Request package back to $r, unless $r is already an Apache::Request.
 #
 sub _mod_perl_args
 {
-    my ($self, $rref) = @_;
+    my ($self, $rref, $request) = @_;
 
-    my $apr = Apache::Request->new($$rref);
-    $$rref = $apr;
-
+    my $apr = $$rref;
+    unless (UNIVERSAL::isa($apr, 'Apache::Request')) {
+	$apr = Apache::Request->new($apr);
+	$$rref = $apr;
+    }
+    
     return unless $apr->param;
 
     my %args;

@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -9,8 +9,6 @@ use strict;
 use Carp;
 use File::Path;
 use File::Basename;
-use IO::File;
-use IO::Seekable;
 use HTML::Mason::Parser;
 use HTML::Mason::Tools qw(is_absolute_path);
 use HTML::Mason::Commands qw();
@@ -23,6 +21,8 @@ use HTML::Mason::MethodMaker
     ( read_only => [ qw( code_cache
 			 comp_root
 			 data_dir
+			 die_handler
+			 die_handler_overridden
 			 hooks
 			 system_log_file
 			 system_log_separator
@@ -55,6 +55,8 @@ my %fields =
      data_cache_dir => '',
      data_dir => undef,
      dhandler_name => 'dhandler',
+     die_handler => sub { confess($_[0]) },
+     die_handler_overridden => 0,
      system_log_file => undef,
      system_log_separator => "\cA",
      max_recurse => 32,
@@ -86,7 +88,6 @@ sub new
 	system_log_events_hash => undef
     };
     my (%options) = @_;
-    my ($rootDir,$outMethod,$systemLogEvents);
     while (my ($key,$value) = each(%options)) {
 	next if $key =~ /out_method|system_log_events/;
 	if (exists($fields{$key})) {
@@ -95,6 +96,8 @@ sub new
 	    die "HTML::Mason::Interp::new: invalid option '$key'\n";
 	}
     }
+    $self->{die_handler_overridden} = 1 if exists $options{die_handler};
+
     die "HTML::Mason::Interp::new: must specify value for data_dir\n" if !$self->{data_dir};
     $self->{data_cache_dir} ||= ($self->{data_dir} . "/cache");
     bless $self, $class;
@@ -162,9 +165,12 @@ sub _initialize
     #
     if ($self->{system_log_events_hash}) {
 	$self->{system_log_file} = $self->data_dir . "/etc/system.log" if !$self->system_log_file;
-	my $fh = new IO::File ">>".$self->system_log_file
+	my $fh = do { local *FH; *FH; };  # double *FH avoids warning
+	open $fh, ">>".$self->system_log_file
 	    or die "Couldn't open system log file ".$self->{system_log_file}." for append";
-	$fh->autoflush(1);
+	my $oldfh = select $fh;
+	$| = 1;
+	select $oldfh;
 	$self->{system_log_fh} = $fh;
     }
     
@@ -172,7 +178,9 @@ sub _initialize
     # Preloads
     #
     if ($self->preloads) {
+	die "list reference expected for preloads parameter" unless ref($self->preloads) eq 'ARRAY';
 	foreach my $pattern (@{$self->preloads}) {
+	    die "preloads pattern must be an absolute path" unless substr($pattern,0,1) eq '/';
 	    my @paths = $self->resolver->glob_path($pattern,$self);
 	    foreach (@paths) { $self->load($_) }
 	}
@@ -209,25 +217,26 @@ sub exec {
 #
 sub check_reload_file {
     my ($self) = @_;
-    my $reloadFile = $self->reload_file;
-    return if (!-f $reloadFile);
+    my $reload_file = $self->reload_file;
+    return if (!-f $reload_file);
     my $lastmod = (stat(_))[9];
     if ($lastmod > $self->{last_reload_time}) {
-	my ($block);
 	my $length = (stat(_))[7];
 	$self->{last_reload_file_pos} = 0 if ($length < $self->{last_reload_file_pos});
-	my $fh = new IO::File $reloadFile;
-	return if !$fh;
+	my $fh = do { local *FH; *FH; };  # double *FH avoids warning
+	open $fh, $reload_file or return;
+
+	my $block;
 	my $pos = $self->{last_reload_file_pos};
-	$fh->seek($pos,&SEEK_SET);
+	seek ($fh,$pos,0);
 	read($fh,$block,$length-$pos);
 	$self->{last_reload_time} = $lastmod;
-	$self->{last_reload_file_pos} = $fh->tell;
+	$self->{last_reload_file_pos} = tell $fh;
 	my @lines = split("\n",$block);
-	foreach my $compPath (@lines) {
-	    if (exists($self->{code_cache}->{$compPath})) {
-		$self->{code_cache_current_size} -= $self->{code_cache}->{$compPath}->{size};
-		delete($self->{code_cache}->{$compPath});
+	foreach my $comp_path (@lines) {
+	    if (exists($self->{code_cache}->{$comp_path})) {
+		$self->{code_cache_current_size} -= $self->{code_cache}->{$comp_path}->{comp}->object_size;
+		delete($self->{code_cache}->{$comp_path});
 	    }
 	}
     }
@@ -241,13 +250,8 @@ sub process_comp_path
 {
     my ($self,$comp_path,$dir_path) = @_;
 
-    if ($comp_path !~ m@^/@) {
-	$comp_path = $dir_path . ($dir_path eq "/" ? "" : "/") . $comp_path;
-    }
-
-    $comp_path =~ s@/[^/]+/\.\.@@;
-    $comp_path =~ s@/\./@/@;
-    return $comp_path;
+    $comp_path = "$dir_path/$comp_path" if $comp_path !~ m@^/@;
+    return 'HTML::Mason::Tools'->mason_canonpath($comp_path);
 }
 
 #
@@ -273,17 +277,11 @@ sub load {
     my $resolver = $self->{resolver};
 
     #
-    # Use resolver to look up component and get fully-qualified path.
-    # Return undef if component not found.
-    #
-    my (@lookup_info) = $resolver->lookup_path($path,$self);
-    my $fq_path = $lookup_info[0] or return undef;
-
-    #
     # If using reload file, assume that we are using object files and
     # have a cached subroutine or object file.
     #
     if ($self->{use_reload_file}) {
+	my $fq_path = $path;   # note - this will foil multiple component roots
 	return $code_cache->{$fq_path}->{comp} if exists($code_cache->{$fq_path});
 
 	$objfile = $self->object_dir . $fq_path;
@@ -297,6 +295,13 @@ sub load {
 	$code_cache->{$fq_path}->{comp} = $comp;
 	return $comp;
     }
+
+    #
+    # Use resolver to look up component and get fully-qualified path.
+    # Return undef if component not found.
+    #
+    my (@lookup_info) = $resolver->lookup_path($path,$self);
+    my $fq_path = $lookup_info[0] or return undef;
 
     #
     # Get last modified time of source.
@@ -400,11 +405,11 @@ sub purge_code_cache {
 	$self->{code_cache_current_size} = $cur_size;
 
 	#
-	# Multiple each remaining cache item's count by a decay factor,
+	# Multiply each remaining cache item's count by a decay factor,
 	# to gradually reduce impact of old information.
 	#
 	foreach my $elem (@elems) {
-	    $elem->[2]->{mfu_count} *= $decay_factor;
+	    $elem->[2]->mfu_count( $elem->[2]->mfu_count * $decay_factor );
 	}
     }
 }
@@ -570,12 +575,13 @@ sub write_system_log {
 
     if ($self->{system_log_fh} && $self->{system_log_events_hash}->{$_[0]}) {
 	my $time = ($HTML::Mason::Config{use_time_hires} ? scalar(Time::HiRes::gettimeofday()) : time);
-	$self->{system_log_fh}->print(join ($self->system_log_separator,
-					    $time,                  # current time
-					    $_[0],                  # event name
-					    $$,                     # pid
-					    @_[1..$#_]              # event-specific fields
-					    ),"\n");
+	my $fh = $self->{system_log_fh};
+	print $fh (join ($self->system_log_separator,
+			 $time,                  # current time
+			 $_[0],                  # event name
+			 $$,                     # pid
+			 @_[1..$#_]              # event-specific fields
+			),"\n");
     }
 }
 

@@ -65,7 +65,8 @@ component title, as in an error message.
 
 For example:
 
-    comp_root => [['private', '/usr/home/joe/comps'], ['main', '/usr/local/www/htdocs']]
+    comp_root => [['private', '/usr/home/joe/comps'],
+                  ['main', '/usr/local/www/htdocs']]
 
 This specifies two component roots, a main component tree and a
 private tree which overrides certain components.  The order is
@@ -90,6 +91,19 @@ The required Mason data directory. Mason's various data directories
 
 Specifies an absolute directory for data cache files. By default, it lives
 under C<data_dir>/cache.
+
+=item die_handler
+
+Specifies a subroutine reference to be used to override $SIG{__DIE__}
+when components are being executed.  If this parameter is specified
+then it will override the normal error handling done by Mason.  The
+default error handler produces a stack trace that excludes the part of
+the stack inside the Mason core code.
+
+If this parameter is false, then $SIG{__DIE__} will not be overridden
+at all.  Defaults to
+
+ sub { confess($_[0]) }
 
 =item dhandler_name
 
@@ -132,18 +146,22 @@ a parser with default parameters.
 
 =item preloads
 
-A set of component paths and/or component directories to load when the
-interpreter initializes. This should only be used for components that
+A list of component paths, optionally with glob wildcards, to load
+when the interpreter initializes. e.g.
+
+    preloads => ['/foo/index.html','/bar/*.pl']
+
+Default is the empty list. This should only be used for components that
 are frequently viewed and rarely updated.  See the L<Admin/preloading>
 section of the I<Admin Guide> for further details.
 
 =item static_file_root
 
-Absolute path to prepend to relative filenames passed to C<$m->file()>. Does
+Absolute path to prepend to relative filenames passed to C<$m-E<gt>file()>. Does
 not require a trailing slash. For example, if the file root is
-'/foo/bar', then C<$m->file('baz/bap')> will read the file
+'/foo/bar', then C<$m-E<gt>file('baz/bap')> will read the file
 '/foo/bar/baz/bap'. Undefined by default; if left undefined,
-relative path names to C<$m->file()> are prepended with the
+relative path names to C<$m-E<gt>file()> are prepended with the
 current component directory.
 
 =item system_log_events
@@ -256,7 +274,7 @@ Interp's exec() method:
 where I<comp> is a component path or component object.
 
 Component parameters are given as a series of name/value pairs, just
-as they are with C<$m->comp>. exec returns the return value of
+as they are with C<$m-E<gt>comp>. exec returns the return value of
 the component. Component output is sent to standard output by default,
 but you can change this by specifying C<out_method>.
 
@@ -270,14 +288,14 @@ in a file:
 					  data_dir=>'<data directory>',
 					  out_method=>\$outbuf);
     my $retval = $interp->exec('<component path>',<args>...);
-    open(F,"mason.out");
+    open(F,">mason.out");
     print F $outbuf;
     close(F);
     print "return value of component was: $retval\n";
 
 =head1 AUTHOR
 
-Jonathan Swartz, swartz@transbay.net
+Jonathan Swartz, swartz@pobox.com
 
 =head1 SEE ALSO
 

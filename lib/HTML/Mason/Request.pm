@@ -1,4 +1,4 @@
-# Copyright (c) 1998-99 by Jonathan Swartz. All rights reserved.
+# Copyright (c) 1998-2000 by Jonathan Swartz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 
@@ -19,7 +19,8 @@ use HTML::Mason::MethodMaker
 			 count
 			 declined
 			 error_code
-			 interp ) ],
+			 interp
+			 top_comp ) ],
 
       read_write => [ qw( out_method
 			  out_mode ) ],
@@ -45,7 +46,8 @@ sub new
 	error_flag => undef,
 	out_buffer => '',
 	stack_array => undef,
-	wrapper_chain => undef
+	wrapper_chain => undef,
+	wrapper_index => undef
     };
     my (%options) = @_;
     while (my ($key,$value) = each(%options)) {
@@ -125,22 +127,28 @@ sub exec {
     # This label is for declined requests.
     retry:
     
-    # Build wrapper chain.
-    my @wrapper_chain = ($comp);
-    for (my $parent = $comp->parent; $parent; $parent = $parent->parent) {
-	unshift(@wrapper_chain,$parent);
-	die "inheritance chain length > 32 (infinite inheritance loop?)" if (@wrapper_chain > 32);
-    }
-    my $first_comp = shift(@wrapper_chain);
-    $self->{wrapper_chain} = [@wrapper_chain];
+    # Build wrapper chain and index.
+    my $first_comp;
+    {my @wrapper_chain = ($comp);
+     for (my $parent = $comp->parent; $parent; $parent = $parent->parent) {
+	 unshift(@wrapper_chain,$parent);
+	 die "inheritance chain length > 32 (infinite inheritance loop?)" if (@wrapper_chain > 32);
+     }
+     $first_comp = $wrapper_chain[0];
+     $self->{wrapper_chain} = [@wrapper_chain];
+     $self->{wrapper_index} = {map(($wrapper_chain[$_]->path => $_),(0..$#wrapper_chain))}; }
+
+    # Fill top_level slots for introspection.
+    $self->{top_comp} = $first_comp;
+    $self->{top_args} = \@args;
 
     # Call the first component.
     my ($result, @result);
     if (wantarray) {
-	local $SIG{'__DIE__'} = sub { confess($_[0]) };
+	local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
 	@result = eval {$self->comp({base_comp=>$comp}, $first_comp, @args)};
     } else {
-	local $SIG{'__DIE__'} = sub { confess($_[0]) };
+	local $SIG{'__DIE__'} = $interp->die_handler if $interp->die_handler;
 	$result = eval {$self->comp({base_comp=>$comp}, $first_comp, @args)};
     }
     my $err = $@;
@@ -159,18 +167,24 @@ sub exec {
 
     # If an error occurred...
     if ($err and !$self->aborted) {
-	my $i = index($err,'HTML::Mason::Interp::exec');
-	$err = substr($err,0,$i) if $i!=-1;
-	$err =~ s/^\s*(HTML::Mason::Commands::__ANON__|HTML::Mason::Request::call).*\n//gm;
-	# Salvage what was left in the request stack for backtrace information
-	if (@{$self->{stack_array}}) {
-	    my @titles = map($_->{comp}->title,@{$self->{stack_array}});
-	    my $errmsg = "error while executing $titles[-1]:\n";
-	    $errmsg .= $err."\n";
-	    $errmsg .= "backtrace: " . join(" <= ",reverse(@titles)) . "\n" if @titles > 1;
-	    die ($errmsg);
+	if ($interp->die_handler_overridden) {
+	    # the default $SIG{__DIE__} was overridden so let's not
+	    # mess with the error message
+	    die $err;
 	} else {
-	    die ($err);
+	    my $i = index($err,'HTML::Mason::Interp::exec');
+	    $err = substr($err,0,$i) if $i!=-1;
+	    $err =~ s/^\s*(HTML::Mason::Commands::__ANON__|HTML::Mason::Request::call).*\n//gm;
+	    # Salvage what was left in the request stack for backtrace information
+	    if (@{$self->{stack_array}}) {
+		my @titles = map($_->{comp}->title,@{$self->{stack_array}});
+		my $errmsg = "error while executing $titles[-1]:\n";
+		$errmsg .= $err."\n";
+		$errmsg .= "backtrace: " . join(" <= ",reverse(@titles)) . "\n" if @titles > 1;
+		die ($errmsg);
+	    } else {
+		die ($err);
+	    }
 	}
     }
 
@@ -257,10 +271,10 @@ sub cache_self
 	#
 	my $lref = $self->top_stack;
 	my %save_locals = %$lref;
-	$lref->{sink} = sub { $output .= $_[0] };
+	$lref->{sink} = $self->_new_sink(\$output);
 	$lref->{in_cache_self_flag} = 1;
 
-	my $retval = $lref->{comp}->run( @{ $lref->{args} } );
+	$retval = $lref->{comp}->run( @{ $lref->{args} } );
 	$self->top_stack({%save_locals});
 
 	#
@@ -297,7 +311,7 @@ sub call_dynamic {
 
 sub call_next {
     my ($self,@extra_args) = @_;
-    my $comp = shift(@{$self->{wrapper_chain}}) or die "call_next: no next component to invoke";
+    my $comp = $self->fetch_next or die "call_next: no next component to invoke";
     my @args = (@{$self->current_args},@extra_args);
     return $self->comp($comp, @args);
 }
@@ -330,7 +344,12 @@ sub caller_args
     my ($self,$index) = @_;
     my @caller_stack = reverse(@{$self->stack});
     if (defined($index)) {
-	return $caller_stack[$index]->{args};
+	if (wantarray) {
+	    return @{$caller_stack[$index]->{args}};
+	} else {
+	    my %h = @{$caller_stack[$index]->{args}};
+	    return \%h;
+	}
     } else {
 	die "caller_args expects stack level as argument";
     }
@@ -348,7 +367,7 @@ sub call_self
     my $content;
     my $lref = $self->top_stack;
     my %save_locals = %$lref;
-    $lref->{sink} = sub { $content .= $_[0] };
+    $lref->{sink} = $self->_new_sink(\$content);
     $lref->{in_call_self_flag} = 1;
 
 
@@ -361,6 +380,7 @@ sub call_self
     }
     $self->top_stack({%save_locals});
     $$cref = $content if ref($cref) eq 'SCALAR';
+    undef $content;
 
     return 1;
 }
@@ -447,7 +467,44 @@ sub fetch_comp
     return $self->interp->load($path);
 }
 
-sub fetch_next { return shift->{wrapper_chain}->[0] }
+#
+# Fetch the index of the next component in wrapper chain. If current
+# component is not in chain, search the component stack for the most
+# recent one that was.
+#
+sub _fetch_next_helper {
+    my ($self) = @_;
+    my $index = $self->{wrapper_index}->{$self->current_comp->path};
+    unless (defined($index)) {
+	my @callers = $self->callers;
+	shift(@callers);
+	while (my $comp = shift(@callers) and !defined($index)) {
+	    $index = $self->{wrapper_index}->{$comp->path};
+	}
+    }
+    return $index;
+}
+
+#
+# Fetch next component in wrapper chain.
+#
+sub fetch_next {
+    my ($self) = @_;
+    my $index = $self->_fetch_next_helper;
+    die "fetch_next: cannot find next component in chain" unless defined($index);
+    return $self->{wrapper_chain}->[$index+1];
+}
+
+#
+# Fetch remaining components in wrapper chain.
+#
+sub fetch_next_all {
+    my ($self) = @_;
+    my $index = $self->_fetch_next_helper;
+    die "fetch_next_all: cannot find next component in chain" unless defined($index);
+    my @wc = @{$self->{wrapper_chain}};
+    return @wc[($index+1)..$#wc];
+}
 
 sub file
 {
@@ -476,8 +533,8 @@ sub file_root
 
 sub out
 {
-    my ($self,$text) = @_;
-    $self->current_sink->($text) if defined($text);
+    my $self = shift;
+    $self->current_sink->(@_);
 }
 
 sub time
@@ -569,12 +626,12 @@ sub comp1 {
     if (@args >= 2 and $args[-2] eq 'STORE' and ref($args[-1]) eq 'SCALAR' and @args % 2 == 0) {
 	my $store = $args[-1];
 	$$store = '';
-	$sink = sub { $$store .= $_[0] if defined ($_[0]) };
+	$sink = $self->_new_sink($store);
 	splice(@args,-2);
     } elsif ($depth>0) {
 	$sink = $self->top_stack->{sink};
     } elsif ($self->out_mode eq 'batch') {
-	$sink = sub { $self->{out_buffer} .= $_[0] if defined ($_[0]) };
+	$sink = $self->_new_sink(\($self->{out_buffer}));
     } else {
 	$sink = $self->out_method;
     }
@@ -626,18 +683,11 @@ sub comp1 {
 #
 sub scomp {
     my $self = shift;
-    my $store = '';
 
     # Set a new top-level sink.
-    my $save_sink = $self->current_sink;
-    $self->top_stack->{sink} = sub { $store .= $_[0] if defined($_[0]) };
-
-    # Call comp wrapped in an eval so we can pop off sink no matter what happens
-    my $retval = eval { $self->comp(@_) };
-    my $err = $@;
-    $self->top_stack->{sink} = $save_sink;
-    die $err if $err;
-
+    my $store = '';
+    local $self->top_stack->{sink} = $self->_new_sink(\$store);
+    $self->comp(@_);
     return $store;
 }
 
@@ -684,6 +734,15 @@ sub unsuppress_hook {
     push(@{$self->{"hooks_$args{type}"}},$code);
 }
 
+#
+# Returns a new closure that will write its arguments to the given scalar ref.
+#
+sub _new_sink {
+    shift;  # Don't need $self
+    my $out_ref = shift;
+    return sub { for (@_) { $$out_ref .= $_ if defined } };
+}
+
 sub clear_buffer
 {
     my ($self) = @_;
@@ -695,6 +754,17 @@ sub flush_buffer
     my ($self, $content) = @_;
     $self->out_method->($self->{out_buffer});
     $self->{out_buffer} = '';    
+}
+
+sub top_args
+{
+    my ($self) = @_;
+    if (wantarray) {
+	return @{$self->{top_args}};
+    } else {
+	my %h = @{$self->{top_args}};
+	return \%h;
+    }
 }
 
 #

@@ -1,26 +1,7 @@
 use ExtUtils::MakeMaker;
-require 5.004;
+
+use 5.004;
 require './makeconfig.pl';
-
-#--- Installation check
-
-sub chk_version
-{
- my($pkg,$wanted,$msg) = @_;
-
- local($|) = 1;
- print "Checking for $pkg...";
-
- eval { my $p; ($p = $pkg . ".pm") =~ s#::#/#g; require $p; };
-
- my $vstr = ${"${pkg}::VERSION"} ? "found v" . ${"${pkg}::VERSION"}
-				 : "not found";
- my $vnum = ${"${pkg}::VERSION"} || 0;
-
- print $vnum >= $wanted ? "ok\n" : " " . $vstr . "\n";
-
- $vnum >= $wanted;
-}
 
 # These are required modules.
 
@@ -35,16 +16,49 @@ chk_version(Data::Dumper => '2.08') or
 	. "    from CPAN/modules/by-module/Data/Dumper-x.x.tar.gz\n\n";
 
 make_config();
+setup_mod_perl_tests();
+
+# Get these into the MY namespace for the MY::test method
+%MY::APACHE = %APACHE;
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
     'NAME'    => 'HTML::Mason',
     'VERSION_FROM' => 'lib/HTML/Mason.pm', # finds $VERSION
-    'PREREQ_PM' => { MLDBM => 2.0, Data::Dumper => 2.08 },
-    'DIR' => 'faq',
+    'PREREQ_PM' => { MLDBM => 2.0, Data::Dumper => 2.08, 'File::Spec' => 0.8 },
+
+    # %APACHE is created when setup_mod_perl_tests() is called.  The
+    # code that does this creation is in makeconfig.pl.
     clean => {
-	'FILES' => 'lib/HTML/Mason/Config.pm',
+	'FILES' => "lib/HTML/Mason/Config.pm mason_tests $APACHE{apache_dir}/httpd.conf $APACHE{apache_dir}/error_log $APACHE{apache_dir}/httpd $APACHE{comp_root} $APACHE{data_dir} $APACHE{apache_dir}/mason_handler_CGI.pl $APACHE{apache_dir}/mason_handler_mod_perl.pl",
     }
 );
 
+package MY;
+
+sub test
+{
+    my $self = shift;
+
+    my $test = $self->SUPER::test(@_);
+
+    $test =~ s/(runtests \@ARGV;)/\$\$ENV{MASON_VERBOSE}=\$(TEST_VERBOSE); $1/;
+
+    # %APACHE & $APACHE{apache_dir} are globals set in makeconfig.pl.
+    # If we are not going to test with Apache there is no harm in
+    # setting this anyway.
+    my $port = $APACHE{port} || 8228;
+    $APACHE{apache_dir} ||= '';
+    $test =~ s/(runtests \@ARGV;)/\$\$ENV{MASON_VERBOSE}=\$(TEST_VERBOSE); \$\$ENV{PORT}=$port; \$\$ENV{APACHE_DIR}=q^$APACHE{apache_dir}^; $1/;
+
+    return $test;
+}
+
+sub libscan
+{
+    my $self = shift;
+    my $file = shift;
+
+    return $file =~ /makeconfig\.pl/ ? 0 : $self->SUPER::libscan($file);
+}
