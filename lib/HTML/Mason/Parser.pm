@@ -1248,7 +1248,7 @@ sub make_dirs
 	$|++;
 	select $oldfh;
     }
-    
+
     my $compilesub = sub {
 	my ($srcfile) = @_;
 	return if (!-f $srcfile);
@@ -1307,7 +1307,7 @@ sub make_dirs
 	    }
 	}
     };
-    close $relfh;
+    close $relfh if defined($reload_file);
     die $@ if $@;
 }
 
