@@ -233,9 +233,8 @@ EOF
 	      );
 
     write_comp( 'redirect_with_scomp', <<'EOF',
-<%init>
-$m->scomp('.redirect');
-</%init>
+Some content
+% $m->scomp('.redirect');
 <%def .redirect>
 % $m->redirect('/comps/basic');
 </%def>
