@@ -755,5 +755,39 @@ EOF
 
 #------------------------------------------------------------
 
+    $group->add_test( name => 'callers_off_stack',
+		      description => 'Test the callers() method with with an index that goes off the stack',
+		      component => <<'EOF',
+% my $caller = $m->callers(3);
+% if ( defined $caller ) {
+<% $caller->title %>
+% } else {
+no caller(3)
+% }
+EOF
+		      expect => <<'EOF',
+no caller(3)
+EOF
+		    );
+
+#------------------------------------------------------------
+
+    $group->add_test( name => 'caller_args_off_stack',
+		      description => 'Test the caller_args() method with with an index that goes off the stack',
+		      component => <<'EOF',
+% my $args = $m->caller_args(3);
+% if ( defined $args ) {
+got args
+% } else {
+no caller_args(3)
+% }
+EOF
+		      expect => <<'EOF',
+no caller_args(3)
+EOF
+		    );
+
+#------------------------------------------------------------
+
     return $group;
 }
