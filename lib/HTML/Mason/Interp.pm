@@ -121,6 +121,10 @@ sub new
 	    );
 
     my (%options) = @_;
+
+    die "out_mode parameter must be either 'batch' or 'stream'\n"
+	if defined $options{out_mode} && $options{out_mode} ne 'batch' && $options{out_mode} ne 'stream';
+
     while (my ($key,$value) = each(%options)) {
 	next if $key =~ /out_method|system_log_events/;
 	$self->{$key} = $value;
