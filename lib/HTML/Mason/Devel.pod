@@ -439,7 +439,7 @@ A component or dhandler that does not want to handle a particular request may
 defer control to the next dhandler by calling C<$m-E<gt>decline>.
 
 The administrator can customize the file name used for dhandlers, or
-turn off dhandlers entirely, with the L<Interp/dhandler_name> Interp
+turn off dhandlers entirely, with the L<HTML::Mason::Interp/dhandler_name> Interp
 parameter.
 
 =head2 autohandlers
@@ -509,10 +509,10 @@ more specific section-based templates.
 Autohandlers can be made even more powerful in conjunction with
 Mason's object-oriented style features: methods, attributes, and
 inheritance.  In the interest of space these are discussed in a
-separate section, L<Devel/Object-Oriented Techniques>.
+separate section, L<HTML::Mason::Devel/Object-Oriented Techniques>.
 
 The administrator can customize the file name used for autohandlers,
-or turn off autohandlers entirely, with the L<Interp/autohandler_name>
+or turn off autohandlers entirely, with the L<HTML::Mason::Interp/autohandler_name>
 Interp parameter.
 
 =head2 dhandlers vs. autohandlers
@@ -769,7 +769,7 @@ However, the code runs once per request (whenever the component is used)
 and its variables last only til the end of the request.
 
 Useful for initializing variables needed in, say, the main body and
-one more subcomponents or methods. See L<Devel/Object-Oriented
+one more subcomponents or methods. See L<HTML::Mason::Devel/Object-Oriented
 Techniques> for an example of usage.
 
 Avoid using C<E<lt>%sharedE<gt>> for side-effect code that needs to run at a
@@ -861,7 +861,7 @@ Second, via the call_method component method:
     $comp->call_method('method1');
 
 Methods are commonly used in conjunction with autohandlers to make
-templates more flexible. See L<Devel/Object-Oriented Techniques> for
+templates more flexible. See L<HTML::Mason::Devel/Object-Oriented Techniques> for
 more information.
 
 =head1 FLAGS AND ATTRIBUTES
@@ -879,7 +879,7 @@ component's behavior.
 Currently there is only one flag, <tt>inherit</tt>, which specifies
 the component's <i>parent</i> in the form of a relative or absolute
 component path. A component inherits methods and attributes from its
-parent; see L<Devel/Object-Oriented Techniques> for examples.
+parent; see L<HTML::Mason::Devel/Object-Oriented Techniques> for examples.
 
     <%flags>
     inherit=>'/site_handler'
@@ -1073,7 +1073,7 @@ The current valid flags are
     n - turn off default escape flags
 
 The administrator may specify a set of default escape flags via
-the L<Parser/default_escape_flags> Parser parameter. For example,
+the L<HTML::Mason::Parser/default_escape_flags> Parser parameter. For example,
 if the administrator specifies
 
     default_escape_flags=>'h'
@@ -1390,7 +1390,7 @@ will work as long as I<get_user_cookie> doesn't output anything besides
 whitespace (and given its functional nature, it shouldn't).
 
 The administrator can turn off automatic header sending via the
-L<ApacheHandler/auto_send_headers> ApacheHandler parameter.
+L<HTML::Mason::ApacheHandler/auto_send_headers> ApacheHandler parameter.
 
 Note to pre-0.8 users: the mc_suppress_http_header command is no longer needed.
 For backwards compatibility, mc_suppress_http_header is still defined

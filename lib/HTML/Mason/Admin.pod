@@ -565,21 +565,21 @@ package that components execute in, by default B<HTML::Mason::Commands>:
       use vars qw($dbh %session);
     }
 
-Alternatively you can use the L<Parser/allow_globals> parameter or method:
+Alternatively you can use the L<HTML::Mason::Parser/allow_globals> parameter or method:
 
     my $parser = new HTML::Mason::Parser (..., allow_globals => [qw($dbh %session)]);
     $parser->allow_globals(qw($foo @bar))
 
 The only advantage to C<allow_globals> is that it will do
 the right thing if you've chosen a different package for components
-to run in (via the L<Parser/in_package> Parser parameter.)
+to run in (via the L<HTML::Mason::Parser/in_package> Parser parameter.)
 
 Similarly, to initialize the variable in C<handler.pl>, you need to
 set it in the component package:
 
    $HTML::Mason::Commands::dbh = DBI->connect(...);
 
-Alternatively you can use the L<Interp/set_global> Interp method:
+Alternatively you can use the L<HTML::Mason::Interp/set_global> Interp method:
 
     $interp->set_global(dbh => DBI->connect(...));
 
@@ -678,7 +678,7 @@ handle a request for /foo/bar.
 If you would like Mason to handle directory requests, do the
 following:
 
-1. Set the L<ApacheHandler/decline_dirs> ApacheHandler parameter to 0.
+1. Set the L<HTML::Mason::ApacheHandler/decline_dirs> ApacheHandler parameter to 0.
 
 2. If your C<handler.pl> contains the standard "return -1" line to
 decline non-text requests (as given in the previous section), add a
@@ -1038,7 +1038,7 @@ to administer them.
 When Mason loads a component, it places it in a memory cache.
 
 The maximum size of the cache is specified with the
-L<Interp/code_cache_max_size> Interp parameter; default is 10MB.
+L<HTML::Mason::Interp/code_cache_max_size> Interp parameter; default is 10MB.
 When the cache fills up, Mason frees up space by discarding a
 number of components. The discard algorithm is least frequently used
 (LFU), with a periodic decay to gradually eliminate old frequency
@@ -1065,7 +1065,7 @@ others.
 Naturally, a cache entry is invalidated if the corresponding component
 source file changes.
 
-To turn off code caching completely, set L<Interp/code_cache_max_size> to
+To turn off code caching completely, set L<HTML::Mason::Interp/code_cache_max_size> to
 0.
 
 =head2 Object files
@@ -1091,13 +1091,13 @@ If you change any Parser options, you must remove object files
 previously created under that parser for the changes to take effect.
 
 If for some reason you don't want Mason to create object files, set
-the L<Interp/use_object_files> Interp parameter to 0.
+the L<HTML::Mason::Interp/use_object_files> Interp parameter to 0.
 
 =head2 Preloading
 
 You can tell Mason to preload a set of components in the parent
 process, rather than loading them on demand, using the
-L<Interp/preloads> Interp parameter.  Each child server will start
+L<HTML::Mason::Interp/preloads> Interp parameter.  Each child server will start
 with those components loaded in the memory cache. The trade-offs are:
 
 =over
@@ -1132,7 +1132,7 @@ behavior in two ways:
 1.  Does not check component source files at all, relying solely on
 object files.  This means the developer or an automated system is
 responsible for recompiling any components that change and recreating
-object files, using the L<Parser/make_component> Parser method.
+object files, using the L<HTML::Mason::Parser/make_component> Parser method.
 
 2.  Rather than continuously checking whether object files have
 changed, Mason monitors a "reload file" containing an ever-growing
@@ -1141,7 +1141,7 @@ the developer or an automated system is responsible for appending the
 component path to the reload file. The reload file is kept in
 C<data_dir/etc/reload.lst>.
 
-You can activate this mode with the L<Interp/use_reload_file>
+You can activate this mode with the L<HTML::Mason::Interp/use_reload_file>
 Interp method.
 
 The advantage of using this mode is that Mason stats one file per
@@ -1180,8 +1180,8 @@ context such as the middle of a table which never gets closed. In batch
 mode, the error message is output neatly and alone.
 
 Batch mode also offers more flexibility in controlling HTTP
-headers (see L<Devel/sending_http_headers>) and in handling
-mid-request error conditions (see L<Request/clear_buffer>).
+headers (see L<HTML::Mason::Devel/sending_http_headers>) and in handling
+mid-request error conditions (see L<HTML::Mason::Request/clear_buffer>).
 
 Stream mode may help get data to the browser more quickly, allowing
 server and browser to work in parallel. It also prevents memory

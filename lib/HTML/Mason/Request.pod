@@ -17,8 +17,8 @@ access the current request object via the global C<$m>.
 
 =head1 COMPONENT PATHS
 
-The methods L<Request/comp>, L<Request/comp_exists>, L<Request/fetch_comp>, and
-L<Request/process_comp_path> take a component path as argument.
+The methods L<HTML::Mason::Request/comp>, L<HTML::Mason::Request/comp_exists>, L<HTML::Mason::Request/fetch_comp>, and
+L<HTML::Mason::Request/process_comp_path> take a component path as argument.
 
 =over
 
@@ -85,7 +85,7 @@ without an argument.
 Returns the current base component for method and attributes.
 Generally set to the original page component; however, if you invoke
 call_method on a component, C<base_comp> is dynamically set to that
-component until call_method exits. See L<Devel/Object-Oriented
+component until call_method exits. See L<HTML::Mason::Devel/Object-Oriented
 Techniques> for examples of usage.
 
 =for html <a name="item_cache">
@@ -96,7 +96,7 @@ Techniques> for examples of usage.
 C<$m-E<gt>cache> lets you store and retrieve the results
 of computation for improved performance. Each component has its own
 data cache for storing one or more key/value pairs. The cache is
-implemented as a DBM database. See the L<Devel/data caching>
+implemented as a DBM database. See the L<HTML::Mason::Devel/data caching>
 section of the I<Component Developer's Guide> for examples
 and caching strategies.
 
@@ -230,7 +230,7 @@ from an autohandler. With no arguments, the original arguments are
 passed to the component.  Any arguments specified here serve to
 augment and override (in case of conflict) the original
 arguments. Works like C<$m-E<gt>comp> in terms of return value and
-scalar/list context.  See the L<Devel/autohandlers> section of the
+scalar/list context.  See the L<HTML::Mason::Devel/autohandlers> section of the
 I<Component Developer's Guide> for examples.
 
 =for html <a name="item_clear_buffer">
@@ -318,7 +318,7 @@ undef if no such component exists.
 
 Returns the next component in the content wrapping chain, or undef if
 there is no next component. Usually called from an autohandler.  See
-the L<Devel/autohandlers> section of the I<Component Developer's
+the L<HTML::Mason::Devel/autohandlers> section of the I<Component Developer's
 Guide> for usage and examples.
 
 =for html <a name="item_fetch_next_all">
@@ -327,7 +327,7 @@ Guide> for usage and examples.
 
 Returns a list of the remaining components in the content wrapping
 chain. Usually called from an autohandler.  See the
-L<Devel/autohandlers> section of the I<Component Developer's Guide>
+L<HTML::Mason::Devel/autohandlers> section of the I<Component Developer's Guide>
 for usage and examples.
 
 =for html <a name="item_file">
@@ -409,7 +409,7 @@ a port that looks one day into the future.
 =item top_args
 
 Returns the arguments originally passed to the top level component
-(see L<Request/top_comp> for definition).  When called in scalar
+(see L<HTML::Mason::Request/top_comp> for definition).  When called in scalar
 context, a hash reference is returned. When called in list context, a
 list of arguments (which may be assigned to a hash) is returned.
 

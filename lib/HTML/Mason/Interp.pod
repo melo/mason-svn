@@ -28,7 +28,7 @@ stand-alone Perl script), see the L<STANDALONE MODE> section below.
 True or undef. Default is true as of verison 0.85. If true,
 autohandlers apply both to their own directories and all
 subdirectories; if undef, only to their own directories. See the
-L<Devel/autohandlers> section of the Component Developer's Guide for a
+L<HTML::Mason::Devel/autohandlers> section of the Component Developer's Guide for a
 discussion of the pros and cons.
 
 =item autohandler_name
@@ -245,7 +245,7 @@ in the case of a list or hash.  For example:
 
 The global is set in the package that components run in: usually
 C<HTML::Mason::Commands>, although this can be overridden via the
-Parser parameter L<Parser/in_package>.  The lines above, for example,
+Parser parameter L<HTML::Mason::Parser/in_package>.  The lines above, for example,
 are equivalent to:
 
     $HTML::Mason::Commands::dbh = DBI->connect(...);
@@ -254,7 +254,7 @@ are equivalent to:
 assuming that C<in_package> has not been changed.
 
 Any global that you set should also be registered with the Parser
-parameter L<Parser/allow_globals>; otherwise you'll get warnings from
+parameter L<HTML::Mason::Parser/allow_globals>; otherwise you'll get warnings from
 C<strict>.
 
 =back

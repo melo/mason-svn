@@ -44,10 +44,10 @@ directly with a component object.
 =head2 CREATING AND ACCESSING COMPONENTS
 
 Common ways to get handles on existing component objects include the
-L<Request/current_comp>, L<Request/callers>, and L<Request/fetch_comp> Request methods.
+L<HTML::Mason::Request/current_comp>, L<HTML::Mason::Request/callers>, and L<HTML::Mason::Request/fetch_comp> Request methods.
 
 There is no published C<new> method, because creating a component
-requires a parser. Use the L<Parser/make_component> Parser method to create a
+requires a parser. Use the L<HTML::Mason::Parser/make_component> Parser method to create a
 new component dynamically.
 
 Similarly, there is no C<execute> or C<call> method, because calling a
