@@ -1,0 +1,6 @@
+<%args>
+$foo
+$8teen
+%bar
+</%args>
+Never get here
