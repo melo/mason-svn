@@ -45,12 +45,13 @@ test_load_apache();
     my $apr_only_tests = 1;
     my $both_no_handler_tests = 8;
     my $cgi_only_no_handler_tests = 1;
+    my $cgi_only_with_handler_tests = 1;
     $cgi_only_no_handler_tests++ if $mod_perl::VERSION >= 1.24;
     my $apr_only_no_handler_tests = 3;
     my $multi_conf_tests = 4;
 
     my $total = $both_tests + $both_no_handler_tests;
-    $total += $cgi_only_tests + $cgi_only_no_handler_tests;
+    $total += $cgi_only_tests + $cgi_only_no_handler_tests + $cgi_only_with_handler_tests;
     if ($has_apache_request)
     {
 	$total += $both_tests + $both_no_handler_tests;
@@ -207,6 +208,14 @@ EOF
 decline_dirs is <% $HTML::Mason::ApacheHandler::AH->decline_dirs %>
 EOF
 	      );
+
+    write_comp( 'head_request', <<'EOF',
+% foreach (keys %ARGS) {
+<% $_ %>: <% ref $ARGS{$_} ? 'is a ref' : 'not a ref' %>
+% }
+% $r->send_http_header;
+EOF
+	      );
 }
 
 sub write_comp
@@ -277,6 +286,24 @@ $foo is 1
 Status code: 0
 EOF
 						      );
+	ok($success);
+    }
+
+    if ($with_handler)
+    {
+	$path = '/comps/head_request?foo=1&bar=1&bar=2';
+	$path = "/ah=5$path" if $with_handler;
+	$response = Apache::test->fetch( { uri => $path, method => 'HEAD' } );
+	$actual = filter_response($response, $with_handler);
+	$success = HTML::Mason::Tests->check_output( actual => $actual,
+						     expect => <<'EOF',
+X-Mason-Test: Initial value
+foo: not a ref
+bar: is a ref
+Status code: 0
+EOF
+						   );
+
 	ok($success);
     }
 
