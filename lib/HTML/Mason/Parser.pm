@@ -441,7 +441,7 @@ sub _parse_var_decls
 	    die $self->_make_error( error => "unknown type for argument/attribute '$var': first character must be \$, \@, or \%" );
 	}
 
-	unless ($name =~ /^[a-zA-Z_]/)
+	unless ($name =~ /^[^\W\d]\w*/)
 	{
 	    die $self->_make_error( error => "Invalid variable name: $type$name" );
 	}
