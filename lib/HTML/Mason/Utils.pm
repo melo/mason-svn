@@ -35,7 +35,7 @@ sub access_data_cache
     my $path = $cacheFile;
 
     my $lockCacheFile = sub {
-        my $lockargs = shift || LOCK_EX|LOCK_NB;
+	my $lockargs = shift || LOCK_EX|LOCK_NB;
 	my ($base,$lockdir) = fileparse($physFile);
 	$lockdir .= "locks";
 	mkpath($lockdir,0,0755) if (!-d $lockdir);
@@ -213,7 +213,7 @@ sub access_data_cache
 	# our entry may be modified - check it.
 	#
 	if ($fileLastModified > $mem->{lastUpdated}) {
-            my $lockfh = &$lockCacheFile(LOCK_SH|LOCK_NB);
+	    my $lockfh = &$lockCacheFile(LOCK_SH|LOCK_NB);
 	    return unless $lockfh;
 	    my %in;
 	    tie (%in, $tieClass, $cacheFile, O_RDONLY, 0);
