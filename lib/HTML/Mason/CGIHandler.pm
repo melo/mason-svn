@@ -118,10 +118,9 @@ sub _handler {
 
     if (my $err = $@) {
 
-        if ( isa_mason_exception($err, 'Abort')
-             or isa_mason_exception($err, 'Decline') ) {
+        unless ( isa_mason_exception($err, 'Abort')
+                 or isa_mason_exception($err, 'Decline') ) {
 
-        } else {
             rethrow_exception($err);
         }
     }
@@ -181,15 +180,6 @@ sub exec
     my $retval;
 
     eval { $retval = $self->SUPER::exec(@_) };
-
-    if ($@) {
-	if (isa_mason_exception($@, 'TopLevelNotFound')) {
-	    # Log the error the same way that Apache does (taken from default_handler in http_core.c)
-	    warn "[Mason] File does not exist: ", $r->filename . ($r->path_info ? $r->path_info : "");
-	}
-
-        rethrow_exception $@;
-    }
 
     # On a success code, send headers if they have not been sent and
     # if we are the top-level request. Since the out_method sends
