@@ -52,9 +52,31 @@ through components. The optional argument specifies the return
 value from C<Interp::exec>; in a web environment, this ultimately
 becomes the HTTP status code.
 
-Note: under the current implementation, any pending filters (via the
-<%filter> tag) will not be applied to the output when you abort.
-This is a known bug but there is no easy workaround.
+abort() is implemented via die() and can thus be caught by eval(). 
+
+Under the current implementation, any pending C<E<lt>%filterE<gt>> sections will
+not be applied to the output after an abort.  This is a known bug but
+there is no easy workaround.
+
+The methods C<aborted> and C<aborted_value> return a boolean
+indicating whether the current request was aborted and the argument
+with which it was aborted, respectively. These would be used,
+for example, after an eval() returned with a non-empty C<$@>.
+
+=for html <a name="item_aborted">
+
+=item aborted
+
+Returns true or undef indicating whether the current request was aborted
+with C<abort>.
+
+=for html <a name="item_aborted_value">
+
+=item aborted_value
+
+Returns the argument passed to C<abort> when the request was
+aborted. Returns undef if the request was not aborted or was aborted
+without an argument.
 
 =for html <a name="item_base_comp">
 
