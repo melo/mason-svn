@@ -54,14 +54,14 @@ the need for flexibility arises.
 A simple configuration looks like:
 
     DocumentRoot /usr/local/www/htdocs
-    DefaultType text/html
-    PerlSetVar MasonCompRoot "/usr/local/www/htdocs"
-    PerlSetVar MasonDataDir "/usr/local/www/mason"
+    PerlSetVar MasonCompRoot /usr/local/www/htdocs
+    PerlSetVar MasonDataDir /usr/local/www/mason
     PerlModule HTML::Mason::ApacheHandler
-    <Location />
+
+    <FilesMatch "*.html">
         SetHandler perl-script
         PerlHandler HTML::Mason::ApacheHandler
-    </Location>
+    </FilesMatch>
 
 C<MasonCompRoot> specifies the I<component root>, the top of your
 component source tree. In simple configurations the component root is
