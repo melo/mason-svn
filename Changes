@@ -5,7 +5,7 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
-1.24  November 10, 2003
+1.24  November 11, 2003
 
 [ BUG FIXES ]
 
@@ -21,6 +21,9 @@ the preloads feature, now uses File::Glob::bsd_glob when run with Perl
 5.6.0+.  This function properly handles spaces in filenames, which are
 legal on most systems, and common on Win32.  Implemented by Autrijus
 Tang.
+- The Admin guide erroneously said that the default component root
+when running Mason outside a web environment was "/".  It is the
+current working directory.  Reported by Patrick Kane.
 
 
 1.23  September 8, 2003
