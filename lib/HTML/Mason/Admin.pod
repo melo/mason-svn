@@ -102,15 +102,15 @@ rules on truth/falseness.  It is recommended that you use 0 (false) or
 
 =item * code
 
-The string is treated as a piece of code.  This is used for parameters
-that expect code references.  For example, an anonymous subroutine
-might look like:
+The string is treated as a piece of code and C<eval>'ed.  This is used
+for parameters that expect subroutine references.  For example, an
+anonymous subroutine might look like:
 
  PerlSetVar  MasonDieHandler  "sub { die join ' -- ', @_ }"
 
-A named subroutine call must be wrapped in an anonymous subroutine:
+A named subroutine call would look like this:
 
- PerlSetVar  MasonDieHandler  "sub { Carp::croak(@_) }"
+ PerlSetVar  MasonDieHandler  "\&Carp::croak"
 
 =item * list
 
@@ -215,7 +215,7 @@ Corresponds to the C<current_time> parameter.
 
 Corresponds to the C<data_cache_dir> parameter.
 
-=item * MasonDieHandler - code or 0
+=item * MasonDieHandler - code or 0 or undef
 
 Corresponds to the C<die_handler> parameter.
 
@@ -342,8 +342,8 @@ the proper permissions to create the data directories.
 =head2 Memory Usage
 
 To maximize shared memory, you should put your Mason configuration
-directives B<before> you load the C<HTML::Mason::ApacheHandler>
-module via a C<PerlModule> directive.
+directives in the configuration file B<before> you load the
+C<HTML::Mason::ApacheHandler> module via a C<PerlModule> directive.
 
 =head1 CONFIGURING VIA A HANDLER SCRIPT
 
@@ -1197,7 +1197,7 @@ development, and 'error' or 'none' in production.
 
 Consider reload files only for frequently visited production sites.
 
-=head1 CONFIGURING VIRTUAL SITES 
+=head1 CONFIGURING VIRTUAL SITES
 
 These examples extend the single site configurations given so far.
 
