@@ -121,8 +121,9 @@ To set a list parameter, use C<PerlAddVar> for the values, like this:
  PerlAddVar  MasonPreloads  /foo/bar/quux.comp
 
 As noted above, C<PerlAddVar> is only available in mod_perl 1.24 and
-up.  This means that it is only possible to assign a single value to
-list parameters if you are using a mod_perl older than 1.24.
+up.  This means that it is only possible to assign a single value
+(using C<PerlSetVar>) to list parameters if you are using a mod_perl
+older than 1.24.
 
 =back
 
