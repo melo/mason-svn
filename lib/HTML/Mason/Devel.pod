@@ -1183,8 +1183,8 @@ I<expire_at>: takes an absolute expiration time, in Perl time() format
 
 I<expire_in>: takes a relative expiration time of the form
 "<num><unit>", where <num> is a positive number and <unit> is one of
-seconds, minutes, hours, days, or weeks, or any abbreviation thereof.
-E.g. "10min", "1hour".
+seconds, minutes, hours, days, weeks, months, years, or any reasonable
+abbreviation thereof (m=month, min=minute).  E.g. "10min", "1hour".
 
 I<expire_next>: takes a string, either 'hour' or 'day'. It indicates
 an expiration time at the top of the next hour or day.
