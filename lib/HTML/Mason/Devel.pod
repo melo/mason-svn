@@ -13,13 +13,13 @@ installation), you should also read B<HTML::Mason::Admin>. There you
 will find information about virtual site configuration, performance
 tuning, component caching, and so on.
 
-I strongly suggest that you have a working Mason to play with as you
+We strongly suggest that you have a working Mason to play with as you
 work through these examples. Other component examples can be found in
 the C<samples/> directory.
 
 =head1 HOW TO USE THIS MANUAL
 
-If you are just learning Mason and want to get started quickly, I
+If you are just learning Mason and want to get started quickly, we
 recommend the following sections:
 
 o L<What Are Components?>
@@ -574,15 +574,19 @@ default values. For example:
 
     # another comment
     $d=>5
-    @e=>('foo','baz')
-    %f=>(joe=>1,bob=>2)
+    $e=>$d*2
+    @f=>('foo','baz')
+    %g=>(joe=>1,bob=>2)
     </%args>
 
-Here, $a, @b, and %c are required arguments; the component generates
-an error if the caller leaves them unspecified. $d, @e, and %f are
+Here, I<$a>, I<@b>, and I<%c> are required arguments; the component generates
+an error if the caller leaves them unspecified. I<$d>, I<$e>, I<@f> and I<%g> are
 optional arguments; they are assigned the specified default values if
 unspecified.  All the arguments are available as lexically scoped ("my")
 variables in the rest of the component.
+
+Mason fills arguments in top-to-bottom order, and default expressions
+may reference earlier arguments (as $e references $d above).
 
 Arguments are separated by one or more newlines. Comments may be used at
 the end of a line or on their own line.
@@ -637,7 +641,10 @@ The following examples illustrate the different ways to pass and receive paramet
     $grades, then $grades will equal {Alice => 92, Bob => 87}
     @grades, then @grades will equal ('Alice', 92, 'Bob', 87)
     %grades, then %grades will equal (Alice => 92, Bob => 87)
-  In addition, $ARGS{grades} will equal {Alice => 92, Bob => 87}.
+  In addition, $ARGS{grades} will equal ['Alice',92,'Bob',87] in the
+    URL case, or {Alice => 92, Bob => 87} in the component call case.
+    (The discrepancy exists because, in a query string, there is no detectable
+    difference between a list or hash.)
 
 =head2 Using @_ instead
 
