@@ -397,7 +397,8 @@ HTML::Mason::ApacheHandler.
 
     <FilesMatch "\.html$">
         SetHandler perl-script
-        PerlHandler HTML::Mason   # notice - no ::ApacheHandler!
+        # notice - no ::ApacheHandler!
+        PerlHandler HTML::Mason
     </FilesMatch>
 
 =head2 Creating the Mason objects
