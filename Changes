@@ -5,6 +5,29 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.27
+
+[ BUG FIXES ]
+
+- The request object was not available as $m in the preamble if
+in_package was set.  Reported by David Wheeler and David Baird.  Task
+id #538.
+
+- Component with subcomponents or methods were not getting freed when
+they were purged from the code cache.  Task id #549.
+
+- If both a parent request and subrequest had autoflush set, output
+from the subrequest wasn't actually flushed.  Reported by Tony
+Clayton.  Task id #550.
+
+- The documentation in HTML::Mason::Tests for the path and call_path
+parameters was wrong.  Reported by Michael Gray.  Task id #528.
+
+- Line numbers in errors were incorrectly reported if the error
+happened in code after an <%args>, <%attr>, or <%flags> block.
+Reported by Tony Clayton.  Task id #552.
+
+
 1.26  April 5, 2004
 
 [ BUG FIXES ]
