@@ -5,6 +5,12 @@ available at http://www.masonhq.com/code/history.html.
 
 ** denotes an incompatible change
 
+1.2??
+
+- Updated to support mod_perl2 RC5, which breaks support for all
+earlier version of mod_perl 2.
+
+
 1.28  November 6, 2004
 
 This version is entirely identical to 1.27 except for a fix to make
