@@ -331,7 +331,7 @@ use HTML::Mason::MethodMaker
 my ($STARTED);
 
 # hack to let the make_params_pod.pl script work
-__PACKAGE__->_startup() if Apache->server;
+__PACKAGE__->_startup() if Apache->can('server') && Apache->server;
 sub _startup
 {
     my $pack = shift;
