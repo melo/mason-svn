@@ -663,7 +663,7 @@ sub get_uid_gid
 	# Apache2 lacks $s->uid.
 	# Workaround by searching the config tree.
 	require Apache2::Directive;
-	my $conftree = Apache::Directive->conftree;
+	my $conftree = Apache2::Directive->conftree;
 	my $user = $conftree->lookup('User');
 	my $group = $conftree->lookup('Group');
 	$user =~ s/^["'](.*)["']$/$1/;
