@@ -658,21 +658,20 @@ sub new
 
 sub get_uid_gid
 {
-	return (Apache->server->uid, Apache->server->gid) unless APACHE2;
+    return (Apache->server->uid, Apache->server->gid) unless APACHE2;
 
-	# Apache2 lacks $s->uid.
-	# Workaround by searching the config tree.
-	require Apache2::Directive;
-	my $conftree = Apache2::Directive->conftree;
-	my $user = $conftree->lookup('User');
-	my $group = $conftree->lookup('Group');
-	$user =~ s/^["'](.*)["']$/$1/;
-	$group =~ s/^["'](.*)["']$/$1/;
-	my $uid = getpwnam($user);
-	my $gid = getgrnam($group);
-	return ($uid,$gid);
+    # Apache2 lacks $s->uid.
+    # Workaround by searching the config tree.
+    require Apache2::Directive;
+    my $conftree = Apache2::Directive->conftree;
+    my $user = $conftree->lookup('User');
+    my $group = $conftree->lookup('Group');
+    $user =~ s/^["'](.*)["']$/$1/;
+    $group =~ s/^["'](.*)["']$/$1/;
+    my $uid = getpwnam($user);
+    my $gid = getgrnam($group);
+    return ($uid,$gid);
 }
-	
 
 # Register with Apache::Status at module startup.  Will get replaced
 # with a more informative status once an interpreter has been created.
